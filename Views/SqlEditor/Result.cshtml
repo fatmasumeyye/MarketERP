@@ -1,0 +1,43 @@
+﻿@model System.Data.DataTable
+
+@{
+    ViewData["Title"] = "SQL Sonuçları";
+}
+
+<h2 class="mb-4">SQL Sonuçları</h2>
+
+<a href="/SqlEditor" class="btn btn-secondary mb-3">
+    Geri Dön
+</a>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-warning">
+        Sorgu sonucu kayıt bulunamadı.
+    </div>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                @foreach (System.Data.DataColumn column in Model.Columns)
+                {
+                    <th>@column.ColumnName</th>
+                }
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (System.Data.DataRow row in Model.Rows)
+            {
+                <tr>
+                    @foreach (var item in row.ItemArray)
+                    {
+                        <td>@item</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}

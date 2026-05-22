@@ -1,0 +1,62 @@
+﻿@model List<MarketERP.Models.EmployeeBonus>
+
+@{
+    ViewData["Title"] = "Çalışan Primleri";
+}
+
+<h2 class="mb-4">Çalışan Primleri</h2>
+
+<form asp-action="Add" method="post" class="mb-4">
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <select name="EmployeeId" class="form-control" asp-items="ViewBag.Employees" required>
+                <option value="">Çalışan seçiniz</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <input type="number" step="0.01" name="BonusAmount" class="form-control" placeholder="Prim Tutarı" required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="date" name="BonusDate" class="form-control" required />
+        </div>
+
+        <div class="col-md-4">
+            <input type="text" name="Description" class="form-control" placeholder="Açıklama" />
+        </div>
+
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100">Ekle</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Çalışan</th>
+            <th>Prim Tutarı</th>
+            <th>Tarih</th>
+            <th>Açıklama</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var bonus in Model)
+        {
+            <tr>
+                <td>@bonus.Id</td>
+                <td>@bonus.Employee?.FullName</td>
+                <td>@bonus.BonusAmount ₺</td>
+                <td>@bonus.BonusDate.ToString("dd.MM.yyyy")</td>
+                <td>@bonus.Description</td>
+                <td>
+                    <a href="/EmployeeBonuses/Delete/@bonus.Id" class="btn btn-danger btn-sm">Sil</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

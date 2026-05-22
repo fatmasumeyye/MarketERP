@@ -1,0 +1,68 @@
+﻿@model List<MarketERP.Models.EmployeeShift>
+
+@{
+    ViewData["Title"] = "Çalışan Vardiyaları";
+}
+
+<h2 class="mb-4">Çalışan Vardiyaları</h2>
+
+<form asp-action="Add" method="post" class="mb-4">
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <select name="EmployeeId" class="form-control" asp-items="ViewBag.Employees" required>
+                <option value="">Çalışan seçiniz</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <input type="date" name="ShiftDate" class="form-control" required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="time" name="StartTime" class="form-control" required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="time" name="EndTime" class="form-control" required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="text" name="Description" class="form-control" placeholder="Açıklama" />
+        </div>
+
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100">Ekle</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Çalışan</th>
+            <th>Tarih</th>
+            <th>Başlangıç</th>
+            <th>Bitiş</th>
+            <th>Açıklama</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var shift in Model)
+        {
+            <tr>
+                <td>@shift.Id</td>
+                <td>@shift.Employee?.FullName</td>
+                <td>@shift.ShiftDate.ToString("dd.MM.yyyy")</td>
+                <td>@shift.StartTime.ToString(@"hh\:mm")</td>
+                <td>@shift.EndTime.ToString(@"hh\:mm")</td>
+                <td>@shift.Description</td>
+                <td>
+                    <a href="/EmployeeShifts/Delete/@shift.Id" class="btn btn-danger btn-sm">Sil</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

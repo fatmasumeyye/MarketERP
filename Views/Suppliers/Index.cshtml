@@ -1,0 +1,60 @@
+﻿@model List<MarketERP.Models.Supplier>
+
+@{
+    ViewData["Title"] = "Tedarikçi Yönetimi";
+}
+
+<h2 class="mb-4">Tedarikçi Yönetimi</h2>
+
+<form asp-action="Add" method="post" class="mb-4">
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <input type="text" name="CompanyName" class="form-control" placeholder="Firma adı" required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="text" name="Phone" class="form-control" placeholder="Telefon" />
+        </div>
+
+        <div class="col-md-3">
+            <input type="email" name="Email" class="form-control" placeholder="E-posta" />
+        </div>
+
+        <div class="col-md-3">
+            <input type="text" name="Address" class="form-control" placeholder="Adres" />
+        </div>
+
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100">Ekle</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Firma</th>
+            <th>Telefon</th>
+            <th>E-posta</th>
+            <th>Adres</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var supplier in Model)
+        {
+            <tr>
+                <td>@supplier.Id</td>
+                <td>@supplier.CompanyName</td>
+                <td>@supplier.Phone</td>
+                <td>@supplier.Email</td>
+                <td>@supplier.Address</td>
+                <td>
+                    <a href="/Suppliers/Delete/@supplier.Id" class="btn btn-danger btn-sm">Sil</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

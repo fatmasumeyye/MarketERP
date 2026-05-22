@@ -1,0 +1,35 @@
+﻿@model Dictionary<string, List<string>>
+
+@{
+    ViewData["Title"] = "Veritabanı Şeması";
+}
+
+<h2 class="mb-4">Veritabanı Şeması</h2>
+
+<div class="row">
+    @foreach (var table in Model)
+    {
+        <div class="col-md-4 mb-4">
+            <a href="/DatabaseSchema/Details?tableName=@table.Key" class="text-decoration-none text-dark">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-dark text-white">
+                        <strong>@table.Key</strong>
+                    </div>
+
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+
+                            @foreach (var column in table.Value)
+                            {
+                                <li class="list-group-item">
+                                    @column
+                                </li>
+                            }
+
+                        </ul>
+                    </div>
+                </div>
+            </a>
+        </div>
+    }
+</div>

@@ -1,0 +1,106 @@
+﻿@model MarketERP.Models.Sale
+
+@{
+    ViewData["Title"] = "Fatura";
+
+    var details = ViewBag.SaleDetails as List<MarketERP.Models.SaleDetail>;
+
+    decimal araToplam = details.Sum(x => x.Subtotal);
+    decimal kdv = araToplam * 0.10M;
+    decimal genelToplam = araToplam + kdv;
+}
+
+<div class="card shadow p-4">
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            <h2>Market ERP</h2>
+            <p>Market Otomasyon Sistemi</p>
+            <p>Adres: Merkez / Türkiye</p>
+            <p>Telefon: 0555 000 00 00</p>
+        </div>
+
+        <div class="text-end">
+            <h4>FATURA</h4>
+            <p><strong>Fatura No:</strong> FTR-@Model.Id</p>
+            <p><strong>Tarih:</strong> @Model.SaleDate.ToString("dd.MM.yyyy HH:mm")</p>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="mb-4">
+        <h5>Müşteri Bilgileri</h5>
+
+        <p>
+            <strong>Ad Soyad:</strong>
+            @Model.Customer?.FullName
+        </p>
+
+        <p>
+            <strong>Telefon:</strong>
+            @Model.Customer?.Phone
+        </p>
+
+        <p>
+            <strong>E-posta:</strong>
+            @Model.Customer?.Email
+        </p>
+
+        <p>
+            <strong>Adres:</strong>
+            @Model.Customer?.Address
+        </p>
+    </div>
+
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Ürün</th>
+                <th>Adet</th>
+                <th>Birim Fiyat</th>
+                <th>Ara Toplam</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in details)
+            {
+                <tr>
+                    <td>@item.Product?.Name</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.UnitPrice ₺</td>
+                    <td>@item.Subtotal ₺</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="row justify-content-end">
+        <div class="col-md-4">
+            <table class="table table-bordered">
+                <tr>
+                    <th>Ara Toplam</th>
+                    <td>@araToplam ₺</td>
+                </tr>
+                <tr>
+                    <th>KDV %10</th>
+                    <td>@kdv ₺</td>
+                </tr>
+                <tr>
+                    <th>Genel Toplam</th>
+                    <td><strong>@genelToplam ₺</strong></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="text-end mt-3">
+        <button onclick="window.print()" class="btn btn-primary">
+            Yazdır
+        </button>
+
+        <a href="/Sales" class="btn btn-secondary">
+            Geri Dön
+        </a>
+    </div>
+</div>

@@ -1,0 +1,221 @@
+﻿@{
+    ViewData["Title"] = "İstatistikler";
+}
+
+<style>
+    .stat-card {
+        border: none;
+        border-radius: 18px;
+        padding: 10px;
+        color: white;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        transition: 0.3s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+        }
+
+        .stat-card h5 {
+            font-size: 15px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .stat-card h2 {
+            font-size: 34px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+    .bg-modern-blue {
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+    }
+
+    .bg-modern-green {
+        background: linear-gradient(135deg, #134e5e, #71b280);
+    }
+
+    .bg-modern-yellow {
+        background: linear-gradient(135deg, #b8860b, #d4af37);
+    }
+
+    .bg-modern-red {
+        background: linear-gradient(135deg, #7b1e1e, #b33939);
+    }
+
+    .bg-modern-dark {
+        background: linear-gradient(135deg, #232526, #414345);
+    }
+
+    .bg-modern-cyan {
+        background: linear-gradient(135deg, #136a8a, #267871);
+    }
+
+    .bg-modern-gray {
+        background: linear-gradient(135deg, #485563, #29323c);
+    }
+</style>
+
+<h2 class="mb-4">ERP İstatistikleri</h2>
+
+<div class="row mb-4">
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-blue mb-3">
+            <div class="card-body">
+                <h5>Tablo Sayısı</h5>
+                <h2>@ViewBag.TableCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-green mb-3">
+            <div class="card-body">
+                <h5>Ürün Sayısı</h5>
+                <h2>@ViewBag.ProductCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-yellow mb-3">
+            <div class="card-body">
+                <h5>Müşteri Sayısı</h5>
+                <h2>@ViewBag.CustomerCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-dark mb-3">
+            <div class="card-body">
+                <h5>Çalışan Sayısı</h5>
+                <h2>@ViewBag.EmployeeCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-cyan mb-3">
+            <div class="card-body">
+                <h5>Toplam Ciro</h5>
+                <h2>@ViewBag.TotalRevenue ₺</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-gray mb-3">
+            <div class="card-body">
+                <h5>Satış Sayısı</h5>
+                <h2>@ViewBag.SaleCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-green mb-3">
+            <div class="card-body">
+                <h5>Toplam Prim</h5>
+                <h2>@ViewBag.TotalBonus ₺</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card stat-card bg-modern-red mb-3">
+            <div class="card-body">
+                <h5>Açık Destek</h5>
+                <h2>@ViewBag.OpenTicketCount</h2>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<h4>Veritabanı Tabloları</h4>
+
+<table class="table table-bordered table-striped mb-4">
+    <thead class="table-dark">
+        <tr>
+            <th>Tablo Adı</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var table in ViewBag.TableNames)
+        {
+            <tr>
+                <td>@table</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h4>En Çok Satılan Ürünler</h4>
+
+<table class="table table-bordered table-striped mb-4">
+    <thead class="table-dark">
+        <tr>
+            <th>Ürün</th>
+            <th>Toplam Adet</th>
+            <th>Toplam Gelir</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.TopSellingProducts)
+        {
+            <tr>
+                <td>@item.ProductName</td>
+                <td>@item.TotalQuantity</td>
+                <td>@item.TotalRevenue ₺</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h4>Kritik Stoktaki Ürünler</h4>
+
+<table class="table table-bordered table-striped mb-4">
+    <thead class="table-dark">
+        <tr>
+            <th>Ürün</th>
+            <th>Stok</th>
+            <th>Kritik Stok</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in ViewBag.CriticalProducts)
+        {
+            <tr>
+                <td>@product.Name</td>
+                <td>@product.StockQuantity</td>
+                <td>@product.CriticalStock</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h4>Son Satışlar</h4>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Satış ID</th>
+            <th>Toplam Tutar</th>
+            <th>Tarih</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var sale in ViewBag.LastSales)
+        {
+            <tr>
+                <td>@sale.Id</td>
+                <td>@sale.TotalAmount ₺</td>
+                <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+            </tr>
+        }
+    </tbody>
+</table>

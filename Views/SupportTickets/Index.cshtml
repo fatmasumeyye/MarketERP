@@ -1,0 +1,88 @@
+﻿@model List<MarketERP.Models.SupportTicket>
+
+@{
+    ViewData["Title"] = "Müşteri Destek Talepleri";
+}
+
+<h2 class="mb-4">Müşteri Destek Talepleri</h2>
+
+<form asp-action="Add" method="post" class="mb-4">
+    <div class="row mb-2">
+
+        <div class="col-md-3">
+            <select name="CustomerId" class="form-control" asp-items="ViewBag.Customers">
+                <option value="">Müşteri seçiniz</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <input type="text" name="Subject" class="form-control" placeholder="Konu" required />
+        </div>
+
+        <div class="col-md-4">
+            <input type="text" name="Message" class="form-control" placeholder="Mesaj" required />
+        </div>
+
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">
+                Talep Oluştur
+            </button>
+        </div>
+
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Müşteri</th>
+            <th>Konu</th>
+            <th>Mesaj</th>
+            <th>Durum</th>
+            <th>Tarih</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var ticket in Model)
+        {
+            <tr>
+                <td>@ticket.Id</td>
+                <td>@ticket.Customer?.FullName</td>
+                <td>@ticket.Subject</td>
+                <td>@ticket.Message</td>
+
+                <td>
+                    @if (ticket.Status == "Çözüldü")
+                    {
+                        <span class="badge bg-success">Çözüldü</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Açık</span>
+                    }
+                </td>
+
+                <td>@ticket.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+
+                <td class="d-flex gap-1">
+
+                    <a href="/SupportTickets/Resolve/@ticket.Id"
+                           class="btn btn-success btn-sm">
+                        ✓
+                    </a>
+
+                    <a href="/SupportTickets/Delete/@ticket.Id"
+                           class="btn btn-danger btn-sm">
+                        🗑
+                    </a>
+
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>

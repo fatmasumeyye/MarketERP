@@ -1,0 +1,276 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<style>
+    .dashboard-card {
+        border: none;
+        border-radius: 18px;
+        color: white;
+        padding: 10px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+        transition: 0.3s;
+    }
+
+        .dashboard-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .dashboard-card h5 {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .dashboard-card h2 {
+            font-size: 32px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+    .bg-card-blue {
+        background: linear-gradient(135deg, #1f3b73, #355c9a);
+    }
+
+    .bg-card-green {
+        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+    }
+
+    .bg-card-orange {
+        background: linear-gradient(135deg, #9a6700, #ca8a04);
+    }
+
+    .bg-card-red {
+        background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+    }
+
+    .bg-card-gray {
+        background: linear-gradient(135deg, #374151, #4b5563);
+    }
+
+    .section-title {
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+
+    .custom-table {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+</style>
+
+<h2 class="mb-4">Dashboard</h2>
+@if (ViewBag.CriticalStockCount > 0)
+{
+    <div class="alert alert-danger shadow-sm">
+        ⚠ @ViewBag.CriticalStockCount ürün kritik stok seviyesinde!
+    </div>
+}
+
+<div class="row mb-4">
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-blue mb-3">
+            <div class="card-body">
+                <h5>Toplam Ciro</h5>
+                <h2>@ViewBag.TotalRevenue ₺</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-green mb-3">
+            <div class="card-body">
+                <h5>Satış Sayısı</h5>
+                <h2>@ViewBag.SaleCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-gray mb-3">
+            <div class="card-body">
+                <h5>Ürün Sayısı</h5>
+                <h2>@ViewBag.ProductCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-red mb-3">
+            <div class="card-body">
+                <h5>Kritik Stok</h5>
+                <h2>@ViewBag.CriticalStockCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-orange mb-3">
+            <div class="card-body">
+                <h5>Bekleyen İzin</h5>
+                <h2>@ViewBag.PendingLeaveCount</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-blue mb-3">
+            <div class="card-body">
+                <h5>Bugünkü Satış</h5>
+                <h2>@ViewBag.TodaySaleCount</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-green mb-3">
+            <div class="card-body">
+                <h5>Bugünkü Ciro</h5>
+                <h2>@ViewBag.TodayRevenue ₺</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-gray mb-3">
+            <div class="card-body">
+                <h5>Aylık Ciro</h5>
+                <h2>@ViewBag.MonthlyRevenue ₺</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card dashboard-card bg-card-orange mb-3">
+            <div class="card-body">
+                <h5>Yıllık Ciro</h5>
+                <h2>@ViewBag.YearlyRevenue ₺</h2>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<h4 class="section-title">Kritik Stoktaki Ürünler</h4>
+
+<div class="custom-table mb-4">
+    <table class="table table-bordered table-striped mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Ürün</th>
+                <th>Stok</th>
+                <th>Kritik Stok</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var product in ViewBag.CriticalProducts)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.StockQuantity</td>
+                    <td>@product.CriticalStock</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h4 class="section-title">Son Satışlar</h4>
+
+<div class="custom-table">
+    <table class="table table-bordered table-striped mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Satış ID</th>
+                <th>Toplam Tutar</th>
+                <th>Tarih</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var sale in ViewBag.LastSales)
+            {
+                <tr>
+                    <td>@sale.Id</td>
+                    <td>@sale.TotalAmount ₺</td>
+                    <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div class="mt-5">
+
+    <h4 class="section-title">
+        Genel Sistem Özeti
+    </h4>
+
+    <div class="card p-4 shadow-sm border-0"
+         style="border-radius:18px;">
+
+        <canvas id="erpChart" height="110"></canvas>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const ctx = document.getElementById('erpChart');
+
+    new Chart(ctx, {
+    type: 'bar',
+
+    data: {
+    labels: @Html.Raw(Json.Serialize(ViewBag.ChartLabels)),
+
+    datasets: [{
+    label: 'ERP Verileri',
+
+    data: @Html.Raw(Json.Serialize(ViewBag.ChartData)),
+
+    backgroundColor: [
+    '#355c9a',
+    '#2d6a4f',
+    '#ca8a04',
+    '#7f1d1d'
+    ],
+
+    borderRadius: 12,
+    borderSkipped: false
+    }]
+    },
+
+    options: {
+    responsive: true,
+
+    plugins: {
+    legend: {
+    display: false
+    }
+    },
+
+    scales: {
+    y: {
+    beginAtZero: true,
+
+    ticks: {
+    precision: 0
+    },
+
+    grid: {
+    color: 'rgba(0,0,0,0.05)'
+    }
+    },
+
+    x: {
+    grid: {
+    display: false
+    }
+    }
+    }
+    }
+    });
+</script>

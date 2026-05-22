@@ -1,0 +1,71 @@
+﻿@{
+    ViewData["Title"] = "SQL Rapor Paneli";
+}
+
+<h2 class="mb-4">SQL Rapor Paneli</h2>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">
+        @ViewBag.Error
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Success"]
+    </div>
+}
+
+<div class="alert alert-info">
+    Sadece SELECT, SHOW ve DESCRIBE sorguları çalıştırılmalıdır.
+</div>
+
+<form asp-action="Execute" method="post">
+
+    <div class="mb-3">
+        <label class="form-label">SQL Sorgusu</label>
+
+        <textarea name="query"
+                  class="form-control"
+                  rows="6"
+                  placeholder="Örn: SELECT * FROM products;">@ViewBag.Query</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Sorguyu Çalıştır
+    </button>
+
+</form>
+
+<hr class="my-4" />
+
+<h4>Sorgu Kaydet</h4>
+
+<form asp-action="SaveQuery" method="post">
+
+    <div class="mb-3">
+        <input type="text"
+               name="title"
+               class="form-control"
+               placeholder="Sorgu başlığı" />
+    </div>
+
+    <div class="mb-3">
+        <textarea name="query"
+                  class="form-control"
+                  rows="4"
+                  placeholder="Kaydedilecek SQL sorgusu"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        Sorguyu Kaydet
+    </button>
+
+</form>
+
+<hr class="my-4" />
+<a href="/SqlEditor/SavedQueries" class="btn btn-outline-dark mt-3">
+    Kayıtlı Sorgular
+</a>

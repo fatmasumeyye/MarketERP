@@ -1,0 +1,114 @@
+﻿@model List<MarketERP.Models.Expense>
+
+@{
+    ViewData["Title"] = "Gelir Gider Yönetimi";
+}
+
+<h2 class="mb-4">Gelir Gider Yönetimi</h2>
+
+<div class="row mb-4">
+
+    <div class="col-md-4">
+        <div class="card text-bg-success mb-3">
+            <div class="card-body">
+                <h5>Toplam Gelir</h5>
+                <h2>@ViewBag.TotalIncome ₺</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-bg-danger mb-3">
+            <div class="card-body">
+                <h5>Toplam Gider</h5>
+                <h2>@ViewBag.TotalExpense ₺</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-bg-dark mb-3">
+            <div class="card-body">
+                <h5>Net Kâr</h5>
+                <h2>@ViewBag.NetProfit ₺</h2>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<form asp-action="Add" method="post" class="mb-4">
+    <div class="row mb-2">
+
+        <div class="col-md-3">
+            <input type="text"
+                   name="Title"
+                   class="form-control"
+                   placeholder="Gider başlığı"
+                   required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="number"
+                   step="0.01"
+                   name="Amount"
+                   class="form-control"
+                   placeholder="Tutar"
+                   required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="date"
+                   name="ExpenseDate"
+                   class="form-control"
+                   required />
+        </div>
+
+        <div class="col-md-3">
+            <input type="text"
+                   name="Description"
+                   class="form-control"
+                   placeholder="Açıklama" />
+        </div>
+
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">
+                Gider Ekle
+            </button>
+        </div>
+
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Başlık</th>
+            <th>Tutar</th>
+            <th>Tarih</th>
+            <th>Açıklama</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var expense in Model)
+        {
+            <tr>
+                <td>@expense.Id</td>
+                <td>@expense.Title</td>
+                <td>@expense.Amount ₺</td>
+                <td>@expense.ExpenseDate.ToString("dd.MM.yyyy")</td>
+                <td>@expense.Description</td>
+                <td>
+                    <a href="/Expenses/Delete/@expense.Id"
+                           class="btn btn-danger btn-sm"
+                           onclick="return confirm('Bu gider kaydını silmek istediğinize emin misiniz?')">
+                        Sil
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

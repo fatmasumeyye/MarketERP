@@ -1,0 +1,43 @@
+﻿@model List<Dictionary<string, object>>
+
+@{
+    ViewData["Title"] = "Tablo Detayları";
+}
+
+<h2 class="mb-4">@ViewBag.TableName Tablosu</h2>
+
+<a href="/DatabaseSchema" class="btn btn-secondary mb-3">
+    Geri Dön
+</a>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-warning">
+        Bu tabloda kayıt bulunmuyor.
+    </div>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                @foreach (var column in Model.First().Keys)
+                {
+                    <th>@column</th>
+                }
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    @foreach (var value in row.Values)
+                    {
+                        <td>@value</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}

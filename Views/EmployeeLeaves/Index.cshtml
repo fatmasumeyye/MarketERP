@@ -1,0 +1,79 @@
+﻿@model List<MarketERP.Models.EmployeeLeave>
+
+@{
+    ViewData["Title"] = "Çalışan İzinleri";
+}
+
+<h2 class="mb-4">Çalışan İzinleri</h2>
+
+<form asp-action="Add" method="post" class="mb-4">
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <select name="EmployeeId" class="form-control" asp-items="ViewBag.Employees" required>
+                <option value="">Çalışan seçiniz</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <input type="date" name="StartDate" class="form-control" required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="date" name="EndDate" class="form-control" required />
+        </div>
+
+        <div class="col-md-3">
+            <input type="text" name="LeaveReason" class="form-control" placeholder="İzin nedeni" />
+        </div>
+
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">İzin Ekle</button>
+        </div>
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Çalışan</th>
+            <th>Başlangıç</th>
+            <th>Bitiş</th>
+            <th>Neden</th>
+            <th>Durum</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var leave in Model)
+        {
+            <tr>
+                <td>@leave.Id</td>
+                <td>@leave.Employee?.FullName</td>
+                <td>@leave.StartDate.ToString("dd.MM.yyyy")</td>
+                <td>@leave.EndDate.ToString("dd.MM.yyyy")</td>
+                <td>@leave.LeaveReason</td>
+                <td>
+                    @if (leave.Status == "Onaylandı")
+                    {
+                        <span class="badge bg-success">Onaylandı</span>
+                    }
+                    else if (leave.Status == "Reddedildi")
+                    {
+                        <span class="badge bg-danger">Reddedildi</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">Beklemede</span>
+                    }
+                </td>
+                <td>
+                    <a href="/EmployeeLeaves/Approve/@leave.Id" class="btn btn-success btn-sm">Onayla</a>
+                    <a href="/EmployeeLeaves/Reject/@leave.Id" class="btn btn-warning btn-sm">Reddet</a>
+                    <a href="/EmployeeLeaves/Delete/@leave.Id" class="btn btn-danger btn-sm">Sil</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

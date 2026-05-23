@@ -1,9 +1,18 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MarketERP.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP.Controllers
 {
     public class LoginController : Controller
     {
+        private readonly AppDbContext _context;
+
+        public LoginController(AppDbContext context)
+        {
+            _context = context;
+        }
+
         public IActionResult Index()
         {
             return View();
@@ -12,14 +21,34 @@ namespace MarketERP.Controllers
         [HttpPost]
         public IActionResult Index(string username, string password)
         {
-            if (username == "admin" && password == "12345")
+            var user = _context.Employees
+                .Include(e => e.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefault(e =>
+                    e.Username == username &&
+                    e.Password == password &&
+                    e.IsActive);
+
+            if (user == null)
             {
-                HttpContext.Session.SetString("Username", username);
-                return RedirectToAction("Index", "Home");
+                ViewBag.Error = "Kullanıcı adı veya şifre hatalı!";
+                return View();
             }
 
-            ViewBag.Error = "Kullanıcı adı veya şifre hatalı!";
-            return View();
+            HttpContext.Session.SetInt32("EmployeeId", user.Id);
+            HttpContext.Session.SetString("Username", user.Username ?? "");
+            HttpContext.Session.SetString("FullName", user.FullName);
+
+            var roleNames = user.UserRoles?
+                .Select(ur => ur.Role.Name)
+                .ToList();
+
+            if (roleNames != null && roleNames.Any())
+            {
+                HttpContext.Session.SetString("Roles", string.Join(",", roleNames));
+            }
+
+            return RedirectToAction("Index", "Home");
         }
 
         public IActionResult Logout()

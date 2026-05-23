@@ -1,9 +1,11 @@
 ﻿using MarketERP.Data;
 using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("finance.view")]
     public class ExpensesController : Controller
     {
         private readonly AppDbContext _context;

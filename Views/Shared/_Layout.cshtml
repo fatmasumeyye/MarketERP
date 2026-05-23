@@ -1,5 +1,7 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@using MarketERP.Helpers
+
+<!DOCTYPE html>
+<html lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,23 +12,35 @@
     <link rel="stylesheet" href="~/MarketERP.styles.css" asp-append-version="true" />
 </head>
 <body>
+    @{
+        var isLoggedIn = Context.Session.GetInt32("EmployeeId") != null;
+        var fullName = Context.Session.GetString("FullName");
+    }
+
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">MarketERP</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <ul class="navbar-nav flex-grow-1">
+
+                        @if (isLoggedIn && Context.HasPermission("dashboard.view"))
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">
                                     Dashboard
                                 </a>
                             </li>
+                        }
 
+                        @if (isLoggedIn && Context.HasPermission("product.view"))
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Categories" asp-action="Index">
                                     Kategoriler
@@ -38,101 +52,142 @@
                                     Ürünler / Stok
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("sale.retail.create") || Context.HasPermission("sale.wholesale.create") || Context.HasPermission("sale.view.all")))
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Sales" asp-action="Index">
                                     Satışlar
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("sale.retail.create") || Context.HasPermission("sale.wholesale.create") || Context.HasPermission("support.view")))
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Customers" asp-action="Index">
                                     Müşteriler
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Login" asp-action="Index">
-                                    Giriş
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       href="/Login/Logout"
-                                       onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?')">
-                                    Çıkış Yap
-                                </a>
-                            </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("user.manage") || Context.HasPermission("reports.employee")))
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Employees" asp-action="Index">
                                     Çalışanlar
                                 </a>
                             </li>
+
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="EmployeeBonuses" asp-action="Index">
                                     Primler
                                 </a>
                             </li>
+
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="EmployeeLeaves" asp-action="Index">
                                     İzinler
                                 </a>
                             </li>
+
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="EmployeeShifts" asp-action="Index">
                                     Vardiyalar
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && Context.HasPermission("support.view"))
+                        {
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       asp-controller="SupportTickets"
-                                       asp-action="Index">
+                                <a class="nav-link text-dark" asp-controller="SupportTickets" asp-action="Index">
                                     Destek Talepleri
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("purchase.view") || Context.HasPermission("purchase.create")))
+                        {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Suppliers" asp-action="Index">
                                     Tedarikçiler
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && Context.HasPermission("role.manage"))
+                        {
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       asp-controller="DatabaseSchema"
-                                       asp-action="Index">
+                                <a class="nav-link text-dark" asp-controller="DatabaseSchema" asp-action="Index">
                                     Veritabanı Şeması
                                 </a>
                             </li>
+
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       asp-controller="SqlEditor"
-                                       asp-action="Index">
+                                <a class="nav-link text-dark" asp-controller="SqlEditor" asp-action="Index">
                                     SQL Rapor Paneli
                                 </a>
                             </li>
+
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       asp-controller="SqlEditor"
-                                       asp-action="SavedQueries">
+                                <a class="nav-link text-dark" asp-controller="SqlEditor" asp-action="SavedQueries">
                                     Kayıtlı Sorgular
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("reports.sales") || Context.HasPermission("reports.stock") || Context.HasPermission("reports.financial")))
+                        {
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       asp-controller="Statistics"
-                                       asp-action="Index">
+                                <a class="nav-link text-dark" asp-controller="Statistics" asp-action="Index">
                                     İstatistikler
                                 </a>
                             </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("finance.view") || Context.HasPermission("reports.financial")))
+                        {
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       asp-controller="Expenses"
-                                       asp-action="Index">
+                                <a class="nav-link text-dark" asp-controller="Expenses" asp-action="Index">
                                     Gelir-Gider
                                 </a>
                             </li>
-                        </ul>
+                        }
+                    </ul>
+
+                    <ul class="navbar-nav">
+                        @if (isLoggedIn)
+                        {
+                            <li class="nav-item">
+                                <span class="nav-link text-dark">
+                                    @fullName
+                                </span>
+                            </li>
+
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   href="/Login/Logout"
+                                   onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?')">
+                                    Çıkış Yap
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Login" asp-action="Index">
+                                    Giriş
+                                </a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
@@ -144,6 +199,7 @@
             &copy; 2026 - MarketERP - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

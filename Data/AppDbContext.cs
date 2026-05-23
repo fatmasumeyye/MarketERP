@@ -23,5 +23,9 @@ namespace MarketERP.Data
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<SavedQuery> SavedQueries { get; set; }
         public DbSet<Expense> Expenses { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
@@ -34,6 +35,11 @@ namespace MarketERP.Controllers
             {
                 products = products.Where(p => p.Name.Contains(search));
             }
+
+            ViewBag.ProductIdsUsedInSales = _context.SaleDetails
+    .Select(sd => sd.ProductId)
+    .Distinct()
+    .ToList();
 
             return View(products.ToList());
         }
@@ -76,16 +82,32 @@ namespace MarketERP.Controllers
 
         public IActionResult Delete(int id)
         {
+            if (!HttpContext.HasPermission("product.delete"))
+            {
+                return RedirectToAction("AccessDenied", "Login");
+            }
+
+            var hasSaleDetails = _context.SaleDetails.Any(sd => sd.ProductId == id);
+
+            if (hasSaleDetails)
+            {
+                TempData["Error"] = "Bu ürün daha önce satışta kullanıldığı için silinemez. ERP sistemlerinde satış geçmişi olan ürünler silinmez.";
+                return RedirectToAction("Index");
+            }
+
             var product = _context.Products.Find(id);
 
             if (product != null)
             {
                 _context.Products.Remove(product);
                 _context.SaveChanges();
+
+                TempData["Success"] = "Ürün başarıyla silindi.";
             }
 
             return RedirectToAction("Index");
         }
+
         [HttpPost]
         public IActionResult AddStock(int productId, int quantity)
         {

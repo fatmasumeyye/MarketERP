@@ -3,13 +3,24 @@
 @{
     ViewData["Title"] = "Ürün Yönetimi";
 }
-
+@{
+    var productIdsUsedInSales = ViewBag.ProductIdsUsedInSales as List<int> ?? new List<int>();
+}
 <h2 class="mb-4">Ürün / Stok Yönetimi</h2>
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
         @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
     </div>
 }
 
@@ -69,7 +80,7 @@
     <button type="submit" class="btn btn-primary">Ürün Ekle</button>
 </form>
 
-<table class="table table-bordered table-striped">
+<table class="table table-bordered table-striped align-middle">
     <thead class="table-dark">
         <tr>
             <th>ID</th>
@@ -124,7 +135,21 @@
 
                 <td>
                     <a href="/Products/Edit/@product.Id" class="btn btn-warning btn-sm">Düzenle</a>
-                    <a href="/Products/Delete/@product.Id" class="btn btn-danger btn-sm">Sil</a>
+
+                    @if (productIdsUsedInSales.Contains(product.Id))
+                    {
+                        <button class="btn btn-secondary btn-sm" disabled title="Bu ürün satış geçmişinde kullanıldığı için silinemez.">
+                            Silinemez
+                        </button>
+                    }
+                    else
+                    {
+                        <a href="/Products/Delete/@product.Id"
+                               class="btn btn-danger btn-sm"
+                               onclick="return confirm('Bu ürünü silmek istediğinize emin misiniz?');">
+                            Sil
+                        </a>
+                    }
                 </td>
             </tr>
         }

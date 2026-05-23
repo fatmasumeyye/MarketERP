@@ -3,9 +3,11 @@ using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("reports.employee")]
     public class EmployeeShiftsController : Controller
     {
         private readonly AppDbContext _context;

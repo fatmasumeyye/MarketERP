@@ -6,9 +6,11 @@ using MySqlConnector;
 using System.Data;
 using MarketERP.Models;
 using MarketERP.Data;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("sql.editor")]
     public class SqlEditorController : Controller
     {
         private readonly IConfiguration _configuration;

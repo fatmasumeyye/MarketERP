@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MySqlConnector;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("database.view")]
     public class DatabaseSchemaController : Controller
     {
         private readonly IConfiguration _configuration;

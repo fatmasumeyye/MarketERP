@@ -7,6 +7,7 @@ using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("product.view")]
     public class ProductsController : Controller
     {
         private readonly AppDbContext _context;

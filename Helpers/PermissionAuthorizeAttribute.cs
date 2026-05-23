@@ -5,11 +5,11 @@ namespace MarketERP.Helpers
 {
     public class PermissionAuthorizeAttribute : ActionFilterAttribute
     {
-        private readonly string _permissionCode;
+        private readonly string[] _permissionCodes;
 
-        public PermissionAuthorizeAttribute(string permissionCode)
+        public PermissionAuthorizeAttribute(params string[] permissionCodes)
         {
-            _permissionCode = permissionCode;
+            _permissionCodes = permissionCodes;
         }
 
         public override void OnActionExecuting(ActionExecutingContext context)
@@ -24,7 +24,10 @@ namespace MarketERP.Helpers
                 return;
             }
 
-            if (!httpContext.HasPermission(_permissionCode))
+            var hasAnyPermission = _permissionCodes.Any(permission =>
+                httpContext.HasPermission(permission));
+
+            if (!hasAnyPermission)
             {
                 context.Result = new RedirectToActionResult("AccessDenied", "Login", null);
                 return;

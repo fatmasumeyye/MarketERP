@@ -1,9 +1,11 @@
 ﻿using MarketERP.Data;
 using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("employee.view")]
     public class EmployeesController : Controller
     {
         private readonly AppDbContext _context;

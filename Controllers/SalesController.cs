@@ -4,9 +4,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using MarketERP.Helpers;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize(
+    "sale.retail.create",
+    "sale.wholesale.create",
+    "sale.view.own",
+    "sale.view.branch",
+    "sale.view.all"
+)]
     public class SalesController : Controller
     {
         private readonly AppDbContext _context;

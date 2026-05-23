@@ -1,4 +1,6 @@
 ﻿using MarketERP.Data;
+using MarketERP.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,13 +25,21 @@ namespace MarketERP.Controllers
         {
             var user = _context.Employees
                 .Include(e => e.UserRoles)
-                .ThenInclude(ur => ur.Role)
+                    .ThenInclude(ur => ur.Role)
                 .FirstOrDefault(e =>
                     e.Username == username &&
-                    e.Password == password &&
                     e.IsActive);
 
-            if (user == null)
+            if (user == null || string.IsNullOrEmpty(user.Password))
+            {
+                ViewBag.Error = "Kullanıcı adı veya şifre hatalı!";
+                return View();
+            }
+
+            var passwordHasher = new PasswordHasher<Employee>();
+            var result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
+
+            if (result == PasswordVerificationResult.Failed)
             {
                 ViewBag.Error = "Kullanıcı adı veya şifre hatalı!";
                 return View();
@@ -49,6 +59,11 @@ namespace MarketERP.Controllers
             }
 
             return RedirectToAction("Index", "Home");
+        }
+
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
 
         public IActionResult Logout()

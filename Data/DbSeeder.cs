@@ -1,4 +1,5 @@
-﻿using MarketERP.Models;
+﻿using Microsoft.AspNetCore.Identity;
+using MarketERP.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP.Data
@@ -80,6 +81,8 @@ namespace MarketERP.Data
 
             if (!context.Employees.Any(e => e.Username == "admin"))
             {
+                var passwordHasher = new PasswordHasher<Employee>();
+
                 var admin = new Employee
                 {
                     FullName = "Sistem Yöneticisi",
@@ -87,10 +90,11 @@ namespace MarketERP.Data
                     Position = "Admin",
                     Email = "admin@marketerp.com",
                     Username = "admin",
-                    Password = "123456",
                     IsActive = true,
                     HireDate = DateTime.Now
                 };
+
+                admin.Password = passwordHasher.HashPassword(admin, "123456");
 
                 context.Employees.Add(admin);
                 await context.SaveChangesAsync();

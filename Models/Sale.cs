@@ -20,6 +20,9 @@ namespace MarketERP.Models
         [Column("total_amount")]
         public decimal TotalAmount { get; set; }
 
+        [Column("payment_type")]
+        public string PaymentType { get; set; } = "Nakit";
+
         public Customer? Customer { get; set; }
 
         public Employee? Employee { get; set; }

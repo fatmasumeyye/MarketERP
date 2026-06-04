@@ -153,9 +153,21 @@ namespace MarketERP.Controllers
 
         [HttpPost]
         [PermissionAuthorize("sale.retail.create")]
-        public IActionResult CompleteSale(int? customerId)
+        public IActionResult CompleteSale(int? customerId, string paymentType)
         {
             var cart = GetCart();
+
+            if (string.IsNullOrWhiteSpace(paymentType))
+            {
+                TempData["Error"] = "Ödeme tipi seçmelisiniz.";
+                return RedirectToAction("Retail");
+            }
+
+            if (paymentType != "Nakit" && paymentType != "Kart")
+            {
+                TempData["Error"] = "Geçersiz ödeme tipi.";
+                return RedirectToAction("Retail");
+            }
 
             if (cart.Count == 0)
             {
@@ -210,7 +222,8 @@ namespace MarketERP.Controllers
                 CustomerId = customerId,
                 EmployeeId = employeeId,
                 SaleDate = DateTime.Now,
-                TotalAmount = total
+                TotalAmount = total,
+                PaymentType = paymentType
             };
 
             _context.Sales.Add(sale);

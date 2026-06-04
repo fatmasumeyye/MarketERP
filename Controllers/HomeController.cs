@@ -1,5 +1,6 @@
 using MarketERP.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP.Controllers
 {
@@ -19,7 +20,15 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
+            var roles = HttpContext.Session.GetString("Roles");
+
+            if (!string.IsNullOrEmpty(roles) && roles.Contains("Kasiyer"))
+            {
+                return CashierDashboard();
+            }
+
             var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
             var currentMonth = DateTime.Today.Month;
             var currentYear = DateTime.Today.Year;
 
@@ -27,26 +36,33 @@ namespace MarketERP.Controllers
             ViewBag.ProductCount = _context.Products.Count();
             ViewBag.CustomerCount = _context.Customers.Count();
 
-            ViewBag.TotalRevenue = _context.Sales.Sum(s => s.TotalAmount);
+            ViewBag.TotalRevenue = _context.Sales
+                .Select(s => (decimal?)s.TotalAmount)
+                .Sum() ?? 0;
+
             ViewBag.SaleCount = _context.Sales.Count();
 
             ViewBag.CriticalStockCount = _context.Products
                 .Count(p => p.StockQuantity <= p.CriticalStock);
 
             ViewBag.TodaySaleCount = _context.Sales
-                .Count(s => s.SaleDate.Date == today);
+                .Count(s => s.SaleDate >= today && s.SaleDate < tomorrow);
 
             ViewBag.TodayRevenue = _context.Sales
-                .Where(s => s.SaleDate.Date == today)
-                .Sum(s => s.TotalAmount);
+                .Where(s => s.SaleDate >= today && s.SaleDate < tomorrow)
+                .Select(s => (decimal?)s.TotalAmount)
+                .Sum() ?? 0;
+
             ViewBag.MonthlyRevenue = _context.Sales
-    .Where(s => s.SaleDate.Month == currentMonth
-             && s.SaleDate.Year == currentYear)
-    .Sum(s => s.TotalAmount);
+                .Where(s => s.SaleDate.Month == currentMonth
+                         && s.SaleDate.Year == currentYear)
+                .Select(s => (decimal?)s.TotalAmount)
+                .Sum() ?? 0;
 
             ViewBag.YearlyRevenue = _context.Sales
                 .Where(s => s.SaleDate.Year == currentYear)
-                .Sum(s => s.TotalAmount);
+                .Select(s => (decimal?)s.TotalAmount)
+                .Sum() ?? 0;
 
             ViewBag.LastSales = _context.Sales
                 .OrderByDescending(s => s.SaleDate)
@@ -71,7 +87,9 @@ namespace MarketERP.Controllers
 
             ViewBag.EmployeeCount = _context.Employees.Count();
 
-            ViewBag.TotalBonus = _context.EmployeeBonuses.Sum(b => b.BonusAmount);
+            ViewBag.TotalBonus = _context.EmployeeBonuses
+                .Select(b => (decimal?)b.BonusAmount)
+                .Sum() ?? 0;
 
             ViewBag.PendingLeaveCount = _context.EmployeeLeaves
                 .Count(l => l.Status == "Beklemede");
@@ -104,6 +122,56 @@ namespace MarketERP.Controllers
             };
 
             return View();
+        }
+
+        private IActionResult CashierDashboard()
+        {
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+            var fullName = HttpContext.Session.GetString("FullName");
+
+            if (employeeId == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            var todaySales = _context.Sales
+                .Where(s =>
+                    s.EmployeeId == employeeId.Value &&
+                    s.SaleDate >= today &&
+                    s.SaleDate < tomorrow);
+
+            var todaySaleCount = todaySales.Count();
+
+            var todayTotal = todaySales
+                .Select(s => (decimal?)s.TotalAmount)
+                .Sum() ?? 0;
+
+            var averageSaleAmount = todaySaleCount > 0
+                ? todayTotal / todaySaleCount
+                : 0;
+
+            var lastSale = _context.Sales
+                .Where(s => s.EmployeeId == employeeId.Value)
+                .OrderByDescending(s => s.SaleDate)
+                .FirstOrDefault();
+
+            ViewBag.FullName = fullName;
+            ViewBag.TodaySaleCount = todaySaleCount;
+            ViewBag.TodayTotal = todayTotal;
+            ViewBag.AverageSaleAmount = averageSaleAmount;
+            ViewBag.LastSale = lastSale;
+
+            ViewBag.LastMySales = _context.Sales
+                .Include(s => s.Customer)
+                .Where(s => s.EmployeeId == employeeId.Value)
+                .OrderByDescending(s => s.SaleDate)
+                .Take(5)
+                .ToList();
+
+            return View("CashierDashboard");
         }
 
         public IActionResult Privacy()

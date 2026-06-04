@@ -1,11 +1,10 @@
-﻿@model List<MarketERP.Models.SaleDetail>
+﻿@model List<MarketERP.Models.Sale>
 
 @{
-    ViewData["Title"] = "Satış Yönetimi";
-    var cart = ViewBag.Cart as List<MarketERP.Controllers.CartItem>;
+    ViewData["Title"] = "Satış Listesi";
 }
 
-<h2 class="mb-4">Satış Yönetimi</h2>
+<h2 class="mb-4">Satış Listesi</h2>
 
 @if (TempData["Error"] != null)
 {
@@ -34,13 +33,23 @@
     </div>
 </div>
 
+<div class="mb-3">
+    <a href="/Sales/Retail" class="btn btn-primary">
+        Perakende Satış
+    </a>
+
+    <a href="/Sales/Wholesale" class="btn btn-dark">
+        Toptan Satış
+    </a>
+</div>
+
 <form method="get" class="mb-4">
     <div class="row">
         <div class="col-md-4">
             <input type="text"
                    name="search"
                    class="form-control"
-                   placeholder="Satılan ürün ara..." />
+                   placeholder="Müşteri adına göre ara..." />
         </div>
 
         <div class="col-md-2">
@@ -50,129 +59,6 @@
         </div>
     </div>
 </form>
-
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-dark text-white">
-        <strong>Sepete Ürün Ekle</strong>
-    </div>
-
-    <div class="card-body">
-        <form asp-action="AddToCart" method="post">
-            <div class="row mb-2">
-                <div class="col-md-6">
-                    <select name="productId" id="productSelect" class="form-control" required>
-                        <option value="">Ürün seçiniz</option>
-
-                        @foreach (var product in ViewBag.ProductList)
-                        {
-                            <option value="@product.Id" data-price="@product.SalePrice">
-                                @product.Name - @product.SalePrice ₺
-                            </option>
-                        }
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <input type="number"
-                           name="quantity"
-                           id="quantityInput"
-                           class="form-control"
-                           placeholder="Adet"
-                           min="1"
-                           required />
-                </div>
-
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary w-100">
-                        Sepete Ekle
-                    </button>
-                </div>
-            </div>
-        </form>
-
-        <div class="alert alert-light border mt-3">
-            Tahmini Toplam Tutar:
-            <strong id="estimatedTotal">0 ₺</strong>
-        </div>
-    </div>
-</div>
-
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-secondary text-white">
-        <strong>Sepet</strong>
-    </div>
-
-    <div class="card-body">
-        @if (cart == null || cart.Count == 0)
-        {
-            <div class="alert alert-warning">
-                Sepet boş. Satış yapmak için önce ürün ekleyin.
-            </div>
-        }
-        else
-        {
-            <table class="table table-bordered table-striped">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Ürün</th>
-                        <th>Adet</th>
-                        <th>Birim Fiyat</th>
-                        <th>Toplam</th>
-                        <th>İşlem</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @foreach (var item in cart)
-                    {
-                        <tr>
-                            <td>@item.ProductName</td>
-                            <td>@item.Quantity</td>
-                            <td>@item.UnitPrice ₺</td>
-                            <td>@item.Subtotal ₺</td>
-                            <td>
-                                <a href="/Sales/RemoveFromCart/@item.ProductId"
-                                       class="btn btn-danger btn-sm">
-                                    Sepetten Çıkar
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            <div class="alert alert-success">
-                <strong>Sepet Toplamı:</strong> @ViewBag.CartTotal ₺
-            </div>
-
-            <form asp-action="CompleteSale" method="post">
-                <div class="row">
-                    <div class="col-md-6">
-                        <select name="customerId" class="form-control" asp-items="ViewBag.Customers" required>
-                            <option value="">Müşteri seçiniz</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-success w-100">
-                            Satışı Tamamla
-                        </button>
-                    </div>
-
-                    <div class="col-md-3">
-                        <a href="/Sales/ClearCart"
-                               class="btn btn-outline-danger w-100"
-                               onclick="return confirm('Sepeti temizlemek istediğinize emin misiniz?')">
-                            Sepeti Temizle
-                        </a>
-                    </div>
-                </div>
-            </form>
-        }
-    </div>
-</div>
-
-<h4 class="mb-3">Satış Geçmişi</h4>
 
 <table class="table table-bordered table-striped">
     <thead class="table-dark">
@@ -186,7 +72,7 @@
     </thead>
 
     <tbody>
-        @foreach (var sale in ViewBag.SaleList)
+        @foreach (var sale in Model)
         {
             <tr>
                 <td>@sale.Id</td>
@@ -210,22 +96,3 @@
         }
     </tbody>
 </table>
-
-<script>
-    const productSelect = document.getElementById("productSelect");
-    const quantityInput = document.getElementById("quantityInput");
-    const estimatedTotal = document.getElementById("estimatedTotal");
-
-    function calculateTotal() {
-        const selectedOption = productSelect.options[productSelect.selectedIndex];
-        const price = parseFloat(selectedOption?.getAttribute("data-price")) || 0;
-        const quantity = parseInt(quantityInput.value) || 0;
-
-        const total = price * quantity;
-
-        estimatedTotal.innerText = total.toLocaleString("tr-TR") + " ₺";
-    }
-
-    productSelect.addEventListener("change", calculateTotal);
-    quantityInput.addEventListener("input", calculateTotal);
-</script>

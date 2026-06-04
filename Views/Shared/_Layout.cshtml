@@ -54,16 +54,34 @@
                             </li>
                         }
 
-                        @if (isLoggedIn && (Context.HasPermission("sale.retail.create") || Context.HasPermission("sale.wholesale.create") || Context.HasPermission("sale.view.all")))
+                        @if (isLoggedIn && Context.HasPermission("sale.retail.create"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Index">
-                                    Satışlar
+                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Retail">
+                                    Perakende Satış
                                 </a>
                             </li>
                         }
 
-                        @if (isLoggedIn && (Context.HasPermission("sale.retail.create") || Context.HasPermission("sale.wholesale.create") || Context.HasPermission("support.view")))
+                        @if (isLoggedIn && Context.HasPermission("sale.wholesale.create"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Wholesale">
+                                    Toptan Satış
+                                </a>
+                            </li>
+                        }
+
+                        @if (isLoggedIn && (Context.HasPermission("sale.view.all") || Context.HasPermission("sale.view.branch")))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Index">
+                                    Satış Listesi
+                                </a>
+                            </li>
+                        }
+
+                        @if (isLoggedIn && Context.HasPermission("customer.view"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Customers" asp-action="Index">
@@ -168,8 +186,8 @@
 
                             <li class="nav-item">
                                 <a class="nav-link text-dark"
-                                   href="/Login/Logout"
-                                   onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?')">
+                                       href="/Login/Logout"
+                                       onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?')">
                                     Çıkış Yap
                                 </a>
                             </li>

@@ -1,0 +1,204 @@
+﻿@model List<MarketERP.Controllers.CartItem>
+
+@{
+    ViewData["Title"] = "Perakende Satış";
+    var cart = ViewBag.Cart as List<MarketERP.Controllers.CartItem>;
+}
+
+<h2 class="mb-4">Perakende Satış</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Success"]
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-5">
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <strong>Barkod ile Ürün Ekle</strong>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="AddBarcodeToCart" method="post">
+                    <div class="mb-2">
+                        <label class="form-label">Barkod</label>
+                        <input type="text"
+                               name="barcode"
+                               class="form-control"
+                               placeholder="Barkod okut veya elle gir"
+                               autofocus />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Adet</label>
+                        <input type="number"
+                               name="quantity"
+                               class="form-control"
+                               value="1"
+                               min="1" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        Sepete Ekle
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <strong>Ürün Seçerek Ekle</strong>
+            </div>
+
+            <div class="card-body">
+                <form asp-action="AddToCart" method="post">
+                    <div class="mb-2">
+                        <label class="form-label">Ürün</label>
+                        <select name="productId" id="productSelect" class="form-control" required>
+                            <option value="">Ürün seçiniz</option>
+
+                            @foreach (var product in ViewBag.ProductList)
+                            {
+                                <option value="@product.Id" data-price="@product.SalePrice">
+                                    @product.Name - @product.SalePrice ₺
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Adet</label>
+                        <input type="number"
+                               name="quantity"
+                               id="quantityInput"
+                               class="form-control"
+                               value="1"
+                               min="1"
+                               required />
+                    </div>
+
+                    <div class="alert alert-light border">
+                        Tahmini Toplam:
+                        <strong id="estimatedTotal">0 ₺</strong>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">
+                        Sepete Ekle
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <strong>Sepet</strong>
+            </div>
+
+            <div class="card-body">
+                @if (cart == null || cart.Count == 0)
+                {
+                    <div class="alert alert-warning">
+                        Sepet boş. Satış yapmak için ürün ekleyin.
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Ürün</th>
+                                <th>Adet</th>
+                                <th>Birim Fiyat</th>
+                                <th>Toplam</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var item in cart)
+                            {
+                                <tr>
+                                    <td>@item.ProductName</td>
+                                    <td>@item.Quantity</td>
+                                    <td>@item.UnitPrice ₺</td>
+                                    <td>@item.Subtotal ₺</td>
+                                    <td>
+                                        <a href="/Sales/RemoveFromCart/@item.ProductId"
+                                               class="btn btn-danger btn-sm">
+                                            Çıkar
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-success">
+                        <strong>Genel Toplam:</strong> @ViewBag.CartTotal ₺
+                    </div>
+
+                    <form asp-action="CompleteSale" method="post">
+                        <div class="mb-2">
+                            <label class="form-label">Müşteri</label>
+
+                            <select name="customerId" class="form-control" asp-items="ViewBag.Customers">
+                                <option value="">Nihai Tüketici</option>
+                            </select>
+
+                            <small class="text-muted">
+                                Müşteri seçilmezse satış otomatik olarak Nihai Tüketici adına kaydedilir.
+                            </small>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                Satışı Tamamla
+                            </button>
+
+                            <a href="/Sales/ClearCart"
+                                   class="btn btn-outline-danger w-100"
+                                   onclick="return confirm('Sepeti temizlemek istediğinize emin misiniz?')">
+                                Sepeti Temizle
+                            </a>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const productSelect = document.getElementById("productSelect");
+    const quantityInput = document.getElementById("quantityInput");
+    const estimatedTotal = document.getElementById("estimatedTotal");
+
+    function calculateTotal() {
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const price = parseFloat(selectedOption?.getAttribute("data-price")) || 0;
+        const quantity = parseInt(quantityInput.value) || 0;
+
+        const total = price * quantity;
+
+        estimatedTotal.innerText = total.toLocaleString("tr-TR") + " ₺";
+    }
+
+    if (productSelect && quantityInput) {
+        productSelect.addEventListener("change", calculateTotal);
+        quantityInput.addEventListener("input", calculateTotal);
+    }
+</script>

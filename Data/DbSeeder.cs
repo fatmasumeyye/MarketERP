@@ -159,13 +159,9 @@ namespace MarketERP.Data
             );
 
             await AssignPermissionsToRoleAsync(context, "Kasiyer",
-                "dashboard.view",
-                "product.view",
-                "category.view",
-                "customer.view",
-                "customer.create",
-                "sale.retail.create",
-                "sale.view.own"
+                 "dashboard.view",
+                 "sale.retail.create",
+                 "sale.view.own"
             );
 
             await AssignPermissionsToRoleAsync(context, "Toptan Satış Sorumlusu",

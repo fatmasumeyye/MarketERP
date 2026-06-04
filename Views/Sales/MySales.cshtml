@@ -1,0 +1,54 @@
+﻿@model List<MarketERP.Models.Sale>
+
+@{
+    ViewData["Title"] = "Kendi Satışlarım";
+}
+
+<h2 class="mb-4">Kendi Satışlarım</h2>
+
+<div class="alert alert-info">
+    Bu ekranda sadece senin yaptığın satışlar listelenir.
+</div>
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-warning">
+        Henüz sana ait satış kaydı bulunmuyor.
+    </div>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Satış ID</th>
+                <th>Müşteri</th>
+                <th>Toplam Tutar</th>
+                <th>Tarih</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var sale in Model)
+            {
+                <tr>
+                    <td>@sale.Id</td>
+                    <td>@sale.Customer?.FullName</td>
+                    <td>@sale.TotalAmount ₺</td>
+                    <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>
+                        <a href="/Sales/Invoice/@sale.Id?returnUrl=/Sales/MySales"
+                               class="btn btn-info btn-sm">
+                            Fatura
+                        </a>
+
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            İade Talebi Yakında
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

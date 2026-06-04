@@ -63,6 +63,15 @@
                             </li>
                         }
 
+                        @if (isLoggedIn && Context.HasPermission("sale.view.own"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="MySales">
+                                    Kendi Satışlarım
+                                </a>
+                            </li>
+                        }
+
                         @if (isLoggedIn && Context.HasPermission("sale.wholesale.create"))
                         {
                             <li class="nav-item">

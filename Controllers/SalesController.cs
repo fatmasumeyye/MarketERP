@@ -62,6 +62,25 @@ namespace MarketERP.Controllers
             return View(cart);
         }
 
+        [PermissionAuthorize("sale.view.own")]
+        public IActionResult MySales()
+        {
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+
+            if (employeeId == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            var sales = _context.Sales
+                .Include(s => s.Customer)
+                .Where(s => s.EmployeeId == employeeId.Value)
+                .OrderByDescending(s => s.SaleDate)
+                .ToList();
+
+            return View(sales);
+        }
+
         [PermissionAuthorize("sale.wholesale.create")]
         public IActionResult Wholesale()
         {
@@ -269,7 +288,15 @@ namespace MarketERP.Controllers
             "sale.retail.create",
             "sale.wholesale.create"
         )]
-        public IActionResult Invoice(int id)
+
+        [PermissionAuthorize(
+    "sale.view.own",
+    "sale.view.branch",
+    "sale.view.all",
+    "sale.retail.create",
+    "sale.wholesale.create"
+)]
+        public IActionResult Invoice(int id, string? returnUrl = null)
         {
             var sale = _context.Sales
                 .Include(s => s.Customer)
@@ -287,6 +314,7 @@ namespace MarketERP.Controllers
                 .ToList();
 
             ViewBag.SaleDetails = details;
+            ViewBag.ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/Sales/MySales" : returnUrl;
 
             return View(sale);
         }

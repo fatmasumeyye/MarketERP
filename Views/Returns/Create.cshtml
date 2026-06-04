@@ -1,0 +1,64 @@
+﻿@{
+    ViewData["Title"] = "İade Talebi Oluştur";
+    var sale = ViewBag.Sale as MarketERP.Models.Sale;
+    var details = ViewBag.Details as List<MarketERP.Models.SaleDetail>;
+}
+
+<h2 class="mb-4">İade Talebi Oluştur</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+<div class="alert alert-info">
+    <strong>Satış No:</strong> @sale?.Id |
+    <strong>Tarih:</strong> @sale?.SaleDate.ToString("dd.MM.yyyy HH:mm") |
+    <strong>Toplam:</strong> @sale?.TotalAmount ₺
+</div>
+
+<form asp-action="Create" method="post">
+    <input type="hidden" name="saleId" value="@sale?.Id" />
+
+    <div class="mb-3">
+        <label class="form-label">İade Edilecek Ürün</label>
+
+        <select name="saleDetailId" class="form-control" required>
+            <option value="">Ürün seçiniz</option>
+
+            @if (details != null)
+            {
+                foreach (var detail in details)
+                {
+                    <option value="@detail.Id">
+                        @detail.Product?.Name - Satılan Adet: @detail.Quantity - Birim Fiyat: @detail.UnitPrice ₺
+                    </option>
+                }
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">İade Adedi</label>
+        <input type="number" name="quantity" class="form-control" min="1" value="1" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">İade Sebebi</label>
+        <textarea name="reason"
+                  class="form-control"
+                  rows="4"
+                  placeholder="İade sebebini yazınız..."
+                  required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-warning">
+        İade Talebi Oluştur
+    </button>
+
+    <a href="/Sales/MySales" class="btn btn-secondary">
+        Geri Dön
+    </a>
+</form>

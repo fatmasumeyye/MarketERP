@@ -81,6 +81,15 @@
                             </li>
                         }
 
+                        @if (isLoggedIn && Context.HasPermission("cash.closing.create"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="CashRegister" asp-action="MyClosings">
+                                    Kasa Kapanışı
+                                </a>
+                            </li>
+                        }
+
                         @if (isLoggedIn && Context.HasPermission("sale.wholesale.create"))
                         {
                             <li class="nav-item">

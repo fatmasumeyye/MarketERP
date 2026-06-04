@@ -1,0 +1,103 @@
+﻿@model List<MarketERP.Models.CashRegisterClosing>
+
+@{
+    ViewData["Title"] = "Kasa Kapanışlarım";
+}
+
+<h2 class="mb-4">Kasa Kapanışlarım</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Success"]
+    </div>
+}
+
+<div class="alert alert-info">
+    Bu ekranda sadece kendi oluşturduğun kasa kapanışları listelenir.
+</div>
+
+<div class="mb-3">
+    <a href="/CashRegister/Create" class="btn btn-primary">
+        Bugünkü Kasa Kapanışını Oluştur
+    </a>
+</div>
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-warning">
+        Henüz kasa kapanışı oluşturmadın.
+    </div>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Kapanış ID</th>
+                <th>Tarih</th>
+                <th>Nakit Satış</th>
+                <th>Kart Satış</th>
+                <th>Toplam Satış</th>
+                <th>Beyan Edilen Nakit</th>
+                <th>Fark</th>
+                <th>Durum</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var closing in Model)
+            {
+                <tr>
+                    <td>@closing.Id</td>
+                    <td>@closing.ClosingDate.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>@closing.CashSalesTotal.ToString("N2") ₺</td>
+                    <td>@closing.CardSalesTotal.ToString("N2") ₺</td>
+                    <td>@closing.TotalSalesAmount.ToString("N2") ₺</td>
+                    <td>@closing.DeclaredCashAmount.ToString("N2") ₺</td>
+
+                    <td>
+                        @if (closing.CashDifference == 0)
+                        {
+                            <span class="badge bg-success">Tam</span>
+                        }
+                        else if (closing.CashDifference > 0)
+                        {
+                            <span class="badge bg-info text-dark">
+                                Fazla: @closing.CashDifference.ToString("N2") ₺
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">
+                                Eksik: @Math.Abs(closing.CashDifference).ToString("N2") ₺
+                            </span>
+                        }
+                    </td>
+
+                    <td>
+                        @if (closing.Status == "Beklemede")
+                        {
+                            <span class="badge bg-warning text-dark">Beklemede</span>
+                        }
+                        else if (closing.Status == "Onaylandı")
+                        {
+                            <span class="badge bg-success">Onaylandı</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Reddedildi</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

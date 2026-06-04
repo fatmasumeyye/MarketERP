@@ -28,5 +28,6 @@ namespace MarketERP.Data
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<ReturnRequest> ReturnRequests { get; set; }
+        public DbSet<CashRegisterClosing> CashRegisterClosings { get; set; }
     }
 }

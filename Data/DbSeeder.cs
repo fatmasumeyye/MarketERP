@@ -104,7 +104,10 @@ namespace MarketERP.Data
                 new Permission { Code = "sql.editor", Description = "SQL rapor panelini kullanma" },
 
                 new Permission { Code = "return.request", Description = "İade talebi oluşturma" },
-                new Permission { Code = "return.approve", Description = "İade talebi onaylama" }
+                new Permission { Code = "return.approve", Description = "İade talebi onaylama" },
+
+                new Permission { Code = "cash.closing.create", Description = "Kasa kapanışı oluşturma" },
+                new Permission { Code = "cash.closing.approve", Description = "Kasa kapanışı onaylama" }
             };
 
             foreach (var permission in permissions)
@@ -159,14 +162,16 @@ namespace MarketERP.Data
                 "employee.view",
                 "support.view",
                 "support.manage",
-                "return.approve"
+                "return.approve",
+                "cash.closing.approve"
             );
 
             await AssignPermissionsToRoleAsync(context, "Kasiyer",
                 "dashboard.view",
                 "sale.retail.create",
                 "sale.view.own",
-                "return.request"
+                "return.request",
+                "cash.closing.create"
             );
 
             await AssignPermissionsToRoleAsync(context, "Toptan Satış Sorumlusu",

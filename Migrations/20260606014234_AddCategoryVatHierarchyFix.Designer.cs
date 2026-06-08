@@ -4,6 +4,7 @@ using MarketERP.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketERP.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260606014234_AddCategoryVatHierarchyFix")]
+    partial class AddCategoryVatHierarchyFix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -97,8 +100,7 @@ namespace MarketERP.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("DefaultVatRate")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)")
+                        .HasColumnType("decimal(65,30)")
                         .HasColumnName("default_vat_rate");
 
                     b.Property<string>("Name")
@@ -399,13 +401,11 @@ namespace MarketERP.Migrations
                         .HasColumnName("name");
 
                     b.Property<decimal>("PurchasePrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("decimal(65,30)")
                         .HasColumnName("purchase_price");
 
                     b.Property<decimal>("SalePrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
+                        .HasColumnType("decimal(65,30)")
                         .HasColumnName("sale_price");
 
                     b.Property<int>("StockQuantity")
@@ -416,10 +416,6 @@ namespace MarketERP.Migrations
                         .HasColumnType("int")
                         .HasColumnName("supplier_id");
 
-                    b.Property<decimal?>("VatRateOverride")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("vat_rate_override");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
@@ -427,153 +423,6 @@ namespace MarketERP.Migrations
                     b.HasIndex("SupplierId");
 
                     b.ToTable("products");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.ProductSupplier", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsDefault")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("is_default");
-
-                    b.Property<int?>("LeadTimeDays")
-                        .HasColumnType("int")
-                        .HasColumnName("lead_time_days");
-
-                    b.Property<int>("MinOrderQuantity")
-                        .HasColumnType("int")
-                        .HasColumnName("min_order_quantity");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int")
-                        .HasColumnName("product_id");
-
-                    b.Property<decimal>("PurchasePrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("purchase_price");
-
-                    b.Property<int>("SupplierId")
-                        .HasColumnType("int")
-                        .HasColumnName("supplier_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("SupplierId");
-
-                    b.ToTable("product_suppliers");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.PurchaseOrder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("approved_at");
-
-                    b.Property<DateTime?>("CheckedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("checked_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("created_at");
-
-                    b.Property<int?>("EmployeeId")
-                        .HasColumnType("int")
-                        .HasColumnName("employee_id");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("longtext")
-                        .HasColumnName("note");
-
-                    b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("order_date");
-
-                    b.Property<DateTime?>("ReceivedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("received_at");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("status");
-
-                    b.Property<int>("SupplierId")
-                        .HasColumnType("int")
-                        .HasColumnName("supplier_id");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("total_amount");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.HasIndex("SupplierId");
-
-                    b.ToTable("purchase_orders");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.PurchaseOrderItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int")
-                        .HasColumnName("product_id");
-
-                    b.Property<int>("PurchaseOrderId")
-                        .HasColumnType("int")
-                        .HasColumnName("purchase_order_id");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int")
-                        .HasColumnName("quantity");
-
-                    b.Property<int>("ReceivedQuantity")
-                        .HasColumnType("int")
-                        .HasColumnName("received_quantity");
-
-                    b.Property<decimal>("Subtotal")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("subtotal");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("unit_price");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("PurchaseOrderId");
-
-                    b.ToTable("purchase_order_items");
                 });
 
             modelBuilder.Entity("MarketERP.Models.ReturnRequest", b =>
@@ -737,10 +586,6 @@ namespace MarketERP.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("AppliedVatRate")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("applied_vat_rate");
-
                     b.Property<int>("ProductId")
                         .HasColumnType("int")
                         .HasColumnName("product_id");
@@ -760,14 +605,6 @@ namespace MarketERP.Migrations
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(65,30)")
                         .HasColumnName("unit_price");
-
-                    b.Property<decimal>("VatAmount")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("vat_amount");
-
-                    b.Property<decimal>("VatBase")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("vat_base");
 
                     b.HasKey("Id");
 
@@ -916,8 +753,7 @@ namespace MarketERP.Migrations
                 {
                     b.HasOne("MarketERP.Models.Category", "ParentCategory")
                         .WithMany("SubCategories")
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ParentCategoryId");
 
                     b.Navigation("ParentCategory");
                 });
@@ -968,62 +804,6 @@ namespace MarketERP.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("Supplier");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.ProductSupplier", b =>
-                {
-                    b.HasOne("MarketERP.Models.Product", "Product")
-                        .WithMany("ProductSuppliers")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MarketERP.Models.Supplier", "Supplier")
-                        .WithMany("ProductSuppliers")
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("Supplier");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.PurchaseOrder", b =>
-                {
-                    b.HasOne("MarketERP.Models.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MarketERP.Models.Supplier", "Supplier")
-                        .WithMany("PurchaseOrders")
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("Supplier");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.PurchaseOrderItem", b =>
-                {
-                    b.HasOne("MarketERP.Models.Product", "Product")
-                        .WithMany("PurchaseOrderItems")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MarketERP.Models.PurchaseOrder", "PurchaseOrder")
-                        .WithMany("Items")
-                        .HasForeignKey("PurchaseOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("PurchaseOrder");
                 });
 
             modelBuilder.Entity("MarketERP.Models.ReturnRequest", b =>
@@ -1159,30 +939,11 @@ namespace MarketERP.Migrations
                     b.Navigation("RolePermissions");
                 });
 
-            modelBuilder.Entity("MarketERP.Models.Product", b =>
-                {
-                    b.Navigation("ProductSuppliers");
-
-                    b.Navigation("PurchaseOrderItems");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.PurchaseOrder", b =>
-                {
-                    b.Navigation("Items");
-                });
-
             modelBuilder.Entity("MarketERP.Models.Role", b =>
                 {
                     b.Navigation("RolePermissions");
 
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("MarketERP.Models.Supplier", b =>
-                {
-                    b.Navigation("ProductSuppliers");
-
-                    b.Navigation("PurchaseOrders");
                 });
 #pragma warning restore 612, 618
         }

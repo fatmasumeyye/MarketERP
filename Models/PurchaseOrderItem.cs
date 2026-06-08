@@ -2,14 +2,14 @@
 
 namespace MarketERP.Models
 {
-    [Table("sale_details")]
-    public class SaleDetail
+    [Table("purchase_order_items")]
+    public class PurchaseOrderItem
     {
         [Column("id")]
         public int Id { get; set; }
 
-        [Column("sale_id")]
-        public int SaleId { get; set; }
+        [Column("purchase_order_id")]
+        public int PurchaseOrderId { get; set; }
 
         [Column("product_id")]
         public int ProductId { get; set; }
@@ -23,16 +23,10 @@ namespace MarketERP.Models
         [Column("subtotal")]
         public decimal Subtotal { get; set; }
 
-        [Column("applied_vat_rate")]
-        public decimal AppliedVatRate { get; set; }
+        [Column("received_quantity")]
+        public int ReceivedQuantity { get; set; }
 
-        [Column("vat_base")]
-        public decimal VatBase { get; set; }
-
-        [Column("vat_amount")]
-        public decimal VatAmount { get; set; }
-
-        public Sale? Sale { get; set; }
+        public PurchaseOrder? PurchaseOrder { get; set; }
 
         public Product? Product { get; set; }
     }

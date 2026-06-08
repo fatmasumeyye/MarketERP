@@ -1,0 +1,484 @@
+﻿@{
+    ViewData["Title"] = "Satın Alma Siparişi Oluştur";
+}
+
+<style>
+    .order-card {
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 18px;
+        background: #fff;
+    }
+
+    .info-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+
+    .order-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .total-box {
+        border: 1px solid #dee2e6;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 10px 14px;
+        min-width: 240px;
+        text-align: right;
+    }
+
+    .product-select {
+        min-width: 260px;
+    }
+
+    .supplier-select {
+        min-width: 280px;
+    }
+
+    .small-muted {
+        color: #6c757d;
+        font-size: 13px;
+    }
+
+    .price-box {
+        min-width: 120px;
+        font-weight: 600;
+    }
+</style>
+
+<h2 class="mb-4">Satın Alma Siparişi Oluştur</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+<div class="order-card">
+    <form asp-action="CreateManual" method="post">
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <label class="form-label">Sipariş Notu</label>
+                <input type="text"
+                       name="Note"
+                       class="form-control"
+                       placeholder="Örn: Haftalık manuel satın alma siparişi" />
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>Manuel satın alma mantığı:</strong>
+            <br />
+            Her satırda önce ürün seçilir. Sonra sadece o ürünü sağlayabilen tedarikçiler listelenir.
+            Tedarikçiye özel iskonto otomatik uygulanır. Farklı tedarikçiler seçilirse sistem siparişleri tedarikçiye göre ayrı oluşturur.
+        </div>
+
+        <div class="order-toolbar">
+            <button type="button" class="btn btn-outline-primary" onclick="addRow()">
+                + Ürün Satırı Ekle
+            </button>
+
+            <div class="total-box">
+                <strong>Toplam:</strong>
+                <span id="grandTotal">0,00 ₺</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Ürün</th>
+                        <th>Barkod</th>
+                        <th>Mevcut Stok</th>
+                        <th>Tedarikçi</th>
+                        <th>Miktar</th>
+                        <th>Liste Fiyatı</th>
+                        <th>İskonto</th>
+                        <th>Net Fiyat</th>
+                        <th>Ara Toplam</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+
+                <tbody id="orderRows">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between mt-3">
+            <a href="/PurchaseOrders" class="btn btn-secondary">
+                Siparişlere Dön
+            </a>
+
+            <button type="submit"
+                    class="btn btn-success"
+                    onclick="return confirmPurchaseOrder()">
+                Siparişi Oluştur
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    const productSupplierOptions = @Html.Raw(ViewBag.ProductSupplierOptionsJson ?? "[]");
+
+    let rowIndex = 0;
+
+    function safeNumber(value) {
+        const numberValue = Number(value);
+        return isNaN(numberValue) ? 0 : numberValue;
+    }
+
+    function getDistinctProducts() {
+        const map = new Map();
+
+        productSupplierOptions.forEach(x => {
+            if (!map.has(x.productId)) {
+                map.set(x.productId, {
+                    productId: x.productId,
+                    productName: x.productName,
+                    barcode: x.barcode,
+                    stock: x.stock
+                });
+            }
+        });
+
+        return Array.from(map.values()).sort((a, b) =>
+            a.productName.localeCompare(b.productName, "tr")
+        );
+    }
+
+    function getSuppliersForProduct(productId) {
+        return productSupplierOptions
+            .filter(x => x.productId === productId)
+            .sort((a, b) => {
+                if (a.isDefault && !b.isDefault) return -1;
+                if (!a.isDefault && b.isDefault) return 1;
+                return a.supplierName.localeCompare(b.supplierName, "tr");
+            });
+    }
+
+    function addRow() {
+        const tbody = document.getElementById("orderRows");
+        const products = getDistinctProducts();
+
+        if (products.length === 0) {
+            alert("Siparişe eklenebilecek ürün bulunamadı. Önce ürün-tedarikçi ilişkisi olmalı.");
+            return;
+        }
+
+        const productOptions = products.map(p =>
+            `<option value="${p.productId}">${p.productName}</option>`
+        ).join("");
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>
+                <select name="Items[${rowIndex}].ProductId"
+                        class="form-control product-select"
+                        onchange="productChanged(this)"
+                        required>
+                    <option value="">Ürün seçiniz</option>
+                    ${productOptions}
+                </select>
+            </td>
+
+            <td class="barcode-cell text-muted">-</td>
+
+            <td class="stock-cell text-muted">-</td>
+
+            <td>
+                <select name="Items[${rowIndex}].SupplierId"
+                        class="form-control supplier-select"
+                        onchange="supplierChanged(this)"
+                        required>
+                    <option value="">Önce ürün seçiniz</option>
+                </select>
+                <br />
+                <small class="small-muted supplier-note"></small>
+            </td>
+
+            <td>
+                <input type="number"
+                       name="Items[${rowIndex}].Quantity"
+                       value="1"
+                       min="1"
+                       class="form-control quantity-input"
+                       oninput="calculateTotals()"
+                       required />
+            </td>
+
+            <td>
+                <span class="list-price-cell price-box">0,00 ₺</span>
+                <input type="hidden"
+                       name="Items[${rowIndex}].ListUnitPriceText"
+                       class="list-price-hidden"
+                       value="0,00" />
+            </td>
+
+            <td>
+                <span class="discount-cell badge bg-info text-dark">%0</span>
+            </td>
+
+            <td>
+                <strong class="net-price-cell">0,00 ₺</strong>
+            </td>
+
+            <td>
+                <strong class="row-total">0,00 ₺</strong>
+            </td>
+
+            <td>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                    Sil
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+        rowIndex++;
+        calculateTotals();
+    }
+
+    function productChanged(select) {
+        const productId = parseInt(select.value) || 0;
+        const row = select.closest("tr");
+
+        const barcodeCell = row.querySelector(".barcode-cell");
+        const stockCell = row.querySelector(".stock-cell");
+        const supplierSelect = row.querySelector(".supplier-select");
+        const supplierNote = row.querySelector(".supplier-note");
+
+        const listPriceCell = row.querySelector(".list-price-cell");
+        const listPriceHidden = row.querySelector(".list-price-hidden");
+        const discountCell = row.querySelector(".discount-cell");
+        const netPriceCell = row.querySelector(".net-price-cell");
+
+        supplierSelect.innerHTML = '<option value="">Tedarikçi seçiniz</option>';
+        supplierNote.innerText = "";
+
+        listPriceCell.innerText = "0,00 ₺";
+        listPriceHidden.value = "0,00";
+        discountCell.innerText = "%0";
+        netPriceCell.innerText = "0,00 ₺";
+
+        if (!productId) {
+            barcodeCell.innerText = "-";
+            stockCell.innerText = "-";
+            calculateTotals();
+            return;
+        }
+
+        const product = getDistinctProducts().find(x => x.productId === productId);
+
+        barcodeCell.innerText = product?.barcode || "-";
+        stockCell.innerText = product?.stock ?? "-";
+
+        const suppliers = getSuppliersForProduct(productId);
+
+        if (suppliers.length === 0) {
+            supplierSelect.innerHTML = '<option value="">Bu ürün için tedarikçi yok</option>';
+            calculateTotals();
+            return;
+        }
+
+        suppliers.forEach(s => {
+            const listPrice = safeNumber(s.listPrice);
+            const discountRate = safeNumber(s.discountRate);
+            const netPrice = safeNumber(s.netPrice);
+
+            const option = document.createElement("option");
+            option.value = s.supplierId;
+
+            if (s.isDefault) {
+                option.textContent =
+                    s.supplierName +
+                    " (Varsayılan) - Liste: " +
+                    formatCurrency(listPrice) +
+                    " - İskonto: %" +
+                    formatPercent(discountRate) +
+                    " - Net: " +
+                    formatCurrency(netPrice);
+            } else {
+                option.textContent =
+                    s.supplierName +
+                    " - Liste: " +
+                    formatCurrency(listPrice) +
+                    " - İskonto: %" +
+                    formatPercent(discountRate) +
+                    " - Net: " +
+                    formatCurrency(netPrice);
+            }
+
+            option.dataset.listPrice = listPrice;
+            option.dataset.discountRate = discountRate;
+            option.dataset.netPrice = netPrice;
+
+            supplierSelect.appendChild(option);
+        });
+
+        supplierNote.innerText = suppliers.length + " tedarikçi seçeneği var.";
+
+        supplierSelect.selectedIndex = 1;
+        supplierChanged(supplierSelect);
+    }
+
+    function supplierChanged(select) {
+        const selectedOption = select.options[select.selectedIndex];
+        const row = select.closest("tr");
+
+        const listPriceCell = row.querySelector(".list-price-cell");
+        const listPriceHidden = row.querySelector(".list-price-hidden");
+        const discountCell = row.querySelector(".discount-cell");
+        const netPriceCell = row.querySelector(".net-price-cell");
+
+        if (!selectedOption || !selectedOption.dataset.listPrice) {
+            listPriceCell.innerText = "0,00 ₺";
+            listPriceHidden.value = "0,00";
+            discountCell.innerText = "%0";
+            netPriceCell.innerText = "0,00 ₺";
+            calculateTotals();
+            return;
+        }
+
+        const listPrice = safeNumber(selectedOption.dataset.listPrice);
+        const discountRate = safeNumber(selectedOption.dataset.discountRate);
+        const netPrice = safeNumber(selectedOption.dataset.netPrice);
+
+        listPriceCell.innerText = formatCurrency(listPrice);
+        listPriceHidden.value = listPrice.toLocaleString("tr-TR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        discountCell.innerText = "%" + formatPercent(discountRate);
+        netPriceCell.innerText = formatCurrency(netPrice);
+
+        calculateTotals();
+    }
+
+    function removeRow(button) {
+        button.closest("tr").remove();
+        calculateTotals();
+    }
+
+    function parseNumber(value) {
+        if (!value) return 0;
+
+        value = value.toString().trim();
+        value = value.replace(/\./g, "").replace(",", ".");
+
+        return parseFloat(value) || 0;
+    }
+
+    function formatCurrency(value) {
+        return safeNumber(value).toLocaleString("tr-TR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + " ₺";
+    }
+
+    function formatPercent(value) {
+        return safeNumber(value).toLocaleString("tr-TR", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function getNetPriceFromRow(row) {
+        const supplierSelect = row.querySelector(".supplier-select");
+        const selectedOption = supplierSelect.options[supplierSelect.selectedIndex];
+
+        if (!selectedOption || !selectedOption.dataset.netPrice) {
+            return 0;
+        }
+
+        return safeNumber(selectedOption.dataset.netPrice);
+    }
+
+    function calculateTotals() {
+        let grandTotal = 0;
+
+        document.querySelectorAll("#orderRows tr").forEach(row => {
+            const quantityInput = row.querySelector(".quantity-input");
+            const totalCell = row.querySelector(".row-total");
+
+            const quantity = parseNumber(quantityInput.value);
+            const netPrice = getNetPriceFromRow(row);
+
+            const total = quantity * netPrice;
+
+            totalCell.innerText = formatCurrency(total);
+            grandTotal += total;
+        });
+
+        document.getElementById("grandTotal").innerText = formatCurrency(grandTotal);
+    }
+
+    function confirmPurchaseOrder() {
+        const rows = document.querySelectorAll("#orderRows tr");
+
+        if (rows.length === 0) {
+            alert("Sipariş oluşturmak için en az bir ürün satırı eklemelisiniz.");
+            return false;
+        }
+
+        let productLines = [];
+        let grandTotal = 0;
+        let validRowCount = 0;
+
+        rows.forEach(row => {
+            const productSelect = row.querySelector(".product-select");
+            const supplierSelect = row.querySelector(".supplier-select");
+            const quantityInput = row.querySelector(".quantity-input");
+
+            const productName = productSelect?.options[productSelect.selectedIndex]?.text || "";
+            const supplierText = supplierSelect?.options[supplierSelect.selectedIndex]?.text || "";
+            const quantity = parseNumber(quantityInput?.value);
+            const netPrice = getNetPriceFromRow(row);
+            const total = quantity * netPrice;
+
+            if (productSelect?.value && supplierSelect?.value && quantity > 0 && netPrice > 0) {
+                validRowCount++;
+                grandTotal += total;
+
+                productLines.push(
+                    "- " + productName +
+                    " | " + supplierText +
+                    " | " + quantity + " adet" +
+                    " | Ara Toplam: " + formatCurrency(total)
+                );
+            }
+        });
+
+        if (validRowCount === 0) {
+            alert("Sipariş oluşturmak için ürün, tedarikçi, miktar ve fiyat bilgilerini doldurmalısınız.");
+            return false;
+        }
+
+        const message =
+            "Satın alma siparişi oluşturulacak.\n\n" +
+            "Toplam ürün satırı: " + validRowCount + "\n" +
+            "Tahmini toplam: " + formatCurrency(grandTotal) + "\n\n" +
+            "Seçilen ürünler:\n" +
+            productLines.join("\n") +
+            "\n\nDevam etmek istiyor musunuz?";
+
+        return confirm(message);
+    }
+
+    addRow();
+</script>

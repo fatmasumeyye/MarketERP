@@ -32,10 +32,18 @@ namespace MarketERP.Models
         [Column("critical_stock")]
         public int CriticalStock { get; set; }
 
+        [Column("vat_rate_override")]
+        public decimal? VatRateOverride { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
-        public Category Category { get; set; }
-        public Supplier Supplier { get; set; }
+        public Category? Category { get; set; }
+
+        public Supplier? Supplier { get; set; }
+
+        public ICollection<ProductSupplier> ProductSuppliers { get; set; } = new List<ProductSupplier>();
+
+        public ICollection<PurchaseOrderItem> PurchaseOrderItems { get; set; } = new List<PurchaseOrderItem>();
     }
 }

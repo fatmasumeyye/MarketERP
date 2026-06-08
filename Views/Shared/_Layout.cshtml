@@ -160,6 +160,18 @@
                                     Tedarikçiler
                                 </a>
                             </li>
+
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="PurchaseOrders" asp-action="Index">
+                                    Siparişler
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="PurchaseOrders" asp-action="Suggestions">
+                                    Sipariş Önerileri
+                                </a>
+                            </li>
                         }
 
                         @if (isLoggedIn && Context.HasPermission("role.manage"))

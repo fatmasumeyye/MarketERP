@@ -1,0 +1,391 @@
+﻿@model List<MarketERP.Models.PurchaseOrder>
+
+@{
+    ViewData["Title"] = "Satın Alma Siparişleri";
+    string status = ViewBag.Status ?? "";
+
+    var groupedOrders = Model
+        .GroupBy(o => o.OrderDate.Date)
+        .OrderByDescending(g => g.Key)
+        .ToList();
+}
+
+<style>
+    .order-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .toolbar-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .selection-toolbar {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .date-summary {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .small-muted {
+        font-size: 13px;
+        color: #6c757d;
+    }
+</style>
+
+<h2 class="mb-4">Satın Alma Siparişleri</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="order-toolbar">
+    <div class="toolbar-group">
+        <a href="/PurchaseOrders/Create" class="btn btn-primary">
+            + Manuel Sipariş Oluştur
+        </a>
+        <a href="/PurchaseOrders/Suggestions" class="btn btn-outline-danger">
+            Kritik Stok Sipariş Önerileri
+        </a>
+
+        <form asp-action="ApproveAllPending" method="post"
+              onsubmit="return confirm('Tüm onay bekleyen siparişleri onaylamak istediğinize emin misiniz?')">
+            <button type="submit" class="btn btn-success">
+                Tüm Onay Bekleyenleri Onayla
+            </button>
+        </form>
+
+        <form asp-action="ReceiveAllApproved" method="post"
+              onsubmit="return confirm('Tüm onaylanmış siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.')">
+            <button type="submit" class="btn btn-outline-success">
+                Tüm Onaylananları Geldi İşaretle
+            </button>
+        </form>
+    </div>
+
+    <form method="get" class="toolbar-group">
+        <select name="status" class="form-control">
+            <option value="">Tüm durumlar</option>
+
+            @if (status == "Onay Bekliyor")
+            {
+                <option value="Onay Bekliyor" selected>Onay Bekliyor</option>
+            }
+            else
+            {
+                <option value="Onay Bekliyor">Onay Bekliyor</option>
+            }
+
+            @if (status == "Onaylandı")
+            {
+                <option value="Onaylandı" selected>Onaylandı</option>
+            }
+            else
+            {
+                <option value="Onaylandı">Onaylandı</option>
+            }
+
+            @if (status == "Kısmi Teslim Alındı")
+            {
+                <option value="Kısmi Teslim Alındı" selected>Kısmi Teslim Alındı</option>
+            }
+            else
+            {
+                <option value="Kısmi Teslim Alındı">Kısmi Teslim Alındı</option>
+            }
+
+            @if (status == "Teslim Alındı")
+            {
+                <option value="Teslim Alındı" selected>Teslim Alındı</option>
+            }
+            else
+            {
+                <option value="Teslim Alındı">Teslim Alındı</option>
+            }
+
+            @if (status == "İptal Edildi")
+            {
+                <option value="İptal Edildi" selected>İptal Edildi</option>
+            }
+            else
+            {
+                <option value="İptal Edildi">İptal Edildi</option>
+            }
+        </select>
+
+        <button type="submit" class="btn btn-dark">
+            Filtrele
+        </button>
+    </form>
+</div>
+
+<form method="post">
+    <div class="selection-toolbar">
+        <div class="toolbar-group">
+            <span class="fw-bold">Seçim:</span>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllPending(true)">
+                Onay Bekleyenleri Seç
+            </button>
+
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="selectAllApproved(true)">
+                Onaylananları Seç
+            </button>
+
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllSelections()">
+                Seçimi Temizle
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    formaction="/PurchaseOrders/ApproveSelected"
+                    formmethod="post"
+                    onclick="return confirm('Seçili onay bekleyen siparişleri onaylamak istediğinize emin misiniz?')">
+                Seçili Siparişleri Onayla
+            </button>
+
+            <button type="submit"
+                    class="btn btn-success btn-sm"
+                    formaction="/PurchaseOrders/ReceiveSelected"
+                    formmethod="post"
+                    onclick="return confirm('Seçili onaylı siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.')">
+                Seçili Siparişleri Geldi İşaretle
+            </button>
+        </div>
+    </div>
+
+    @if (groupedOrders.Count == 0)
+    {
+        <div class="alert alert-info">
+            Sipariş bulunamadı.
+        </div>
+    }
+    else
+    {
+        <div class="accordion" id="orderDateAccordion">
+            @for (int i = 0; i < groupedOrders.Count; i++)
+            {
+                var group = groupedOrders[i];
+                var groupId = "dateGroup" + i;
+                var totalAmount = group.Sum(o => o.TotalAmount);
+                var orderCount = group.Count();
+                var itemCount = group.Sum(o => o.Items.Count);
+
+                <div class="accordion-item mb-2">
+                    <h2 class="accordion-header" id="heading-@groupId">
+                        <button class="accordion-button @(i == 0 ? "" : "collapsed")"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapse-@groupId"
+                                aria-expanded="@(i == 0 ? "true" : "false")"
+                                aria-controls="collapse-@groupId">
+                            <div class="date-summary">
+                                <strong>@group.Key.ToString("dd.MM.yyyy")</strong>
+                                <span class="small-muted">@orderCount sipariş</span>
+                                <span class="small-muted">@itemCount ürün</span>
+                                <span class="small-muted">@totalAmount.ToString("N2") ₺</span>
+                            </div>
+                        </button>
+                    </h2>
+
+                    <div id="collapse-@groupId"
+                         class="accordion-collapse collapse @(i == 0 ? "show" : "")"
+                         aria-labelledby="heading-@groupId"
+                         data-bs-parent="#orderDateAccordion">
+
+                        <div class="accordion-body p-0">
+                            <table class="table table-bordered table-striped align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Seç</th>
+                                        <th>Sipariş No</th>
+                                        <th>Tedarikçi</th>
+                                        <th>Sipariş Tarihi</th>
+                                        <th>Onay Tarihi</th>
+                                        <th>Kontrol / Geliş Tarihi</th>
+                                        <th>Ürün Sayısı</th>
+                                        <th>Toplam</th>
+                                        <th>Durum</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var order in group.OrderByDescending(o => o.OrderDate))
+                                    {
+                                        <tr>
+                                            <td class="text-center">
+                                                @if (order.Status == "Onay Bekliyor")
+                                                {
+                                                    <input type="checkbox"
+                                                           name="selectedOrderIds"
+                                                           value="@order.Id"
+                                                           class="form-check-input pending-check"
+                                                           title="Onaylamak için seç" />
+                                                }
+                                                else if (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı")
+                                                {
+                                                    <input type="checkbox"
+                                                           name="selectedReceiveOrderIds"
+                                                           value="@order.Id"
+                                                           class="form-check-input approved-check"
+                                                           title="Geldi/kontrol edildi olarak işaretlemek için seç" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+
+                                            <td>PO-@order.Id.ToString("000000")</td>
+                                            <td>@order.Supplier?.CompanyName</td>
+                                            <td>@order.OrderDate.ToString("dd.MM.yyyy HH:mm")</td>
+
+                                            <td>
+                                                @if (order.ApprovedAt != null)
+                                                {
+                                                    @order.ApprovedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+
+                                            <td>
+                                                @if (order.CheckedAt != null)
+                                                {
+                                                    @order.CheckedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+
+                                            <td>@order.Items.Count</td>
+                                            <td>@order.TotalAmount.ToString("N2") ₺</td>
+
+                                            <td>
+                                                @if (order.Status == "Onay Bekliyor")
+                                                {
+                                                    <span class="badge bg-warning text-dark">Onay Bekliyor</span>
+                                                }
+                                                else if (order.Status == "Onaylandı")
+                                                {
+                                                    <span class="badge bg-primary">Onaylandı</span>
+                                                }
+                                                else if (order.Status == "Teslim Alındı")
+                                                {
+                                                    <span class="badge bg-success">Teslim Alındı</span>
+                                                }
+                                                else if (order.Status == "Kısmi Teslim Alındı")
+                                                {
+                                                    <span class="badge bg-info text-dark">Kısmi Teslim Alındı</span>
+                                                }
+                                                else if (order.Status == "İptal Edildi")
+                                                {
+                                                    <span class="badge bg-secondary">İptal Edildi</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-light text-dark">@order.Status</span>
+                                                }
+                                            </td>
+
+                                            <td>
+                                                <div class="action-buttons">
+                                                    <a href="/PurchaseOrders/Details/@order.Id" class="btn btn-info btn-sm">
+                                                        Ürün Detayı
+                                                    </a>
+
+                                                    @if (order.Status == "Onay Bekliyor")
+                                                    {
+                                                        <button type="submit"
+                                                                formaction="/PurchaseOrders/Approve/@order.Id"
+                                                                formmethod="post"
+                                                                class="btn btn-success btn-sm"
+                                                                onclick="return confirm('Bu siparişi onaylamak istiyor musunuz?')">
+                                                            Onayla
+                                                        </button>
+                                                    }
+
+                                                    @if (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı")
+                                                    {
+                                                        <button type="submit"
+                                                                formaction="/PurchaseOrders/ReceiveAll/@order.Id"
+                                                                formmethod="post"
+                                                                class="btn btn-outline-success btn-sm"
+                                                                onclick="return confirm('Bu sipariş geldi ve ürünler doğru mu? Onaylarsanız stoklar artacak.')">
+                                                            Geldi / Kontrol Edildi
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</form>
+
+<script>
+    function selectAllPending(value) {
+        document.querySelectorAll(".pending-check").forEach(function (checkbox) {
+            checkbox.checked = value;
+        });
+    }
+
+    function selectAllApproved(value) {
+        document.querySelectorAll(".approved-check").forEach(function (checkbox) {
+            checkbox.checked = value;
+        });
+    }
+
+    function clearAllSelections() {
+        document.querySelectorAll(".pending-check").forEach(function (checkbox) {
+            checkbox.checked = false;
+        });
+
+        document.querySelectorAll(".approved-check").forEach(function (checkbox) {
+            checkbox.checked = false;
+        });
+    }
+</script>

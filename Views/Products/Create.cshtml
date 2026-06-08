@@ -1,0 +1,124 @@
+﻿@{
+    ViewData["Title"] = "Yeni Ürün Ekle";
+
+    var mainCategories = ViewBag.MainCategories as List<MarketERP.Models.Category> ?? new List<MarketERP.Models.Category>();
+}
+
+<h2 class="mb-4">Yeni Ürün Ekle</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
+}
+
+<form asp-action="Create" method="post" class="card shadow-sm p-4">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label class="form-label">Barkod</label>
+            <input type="text" name="Barcode" class="form-control" required />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Ürün Adı</label>
+            <input type="text" name="Name" class="form-control" required />
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Tedarikçi</label>
+            <select name="SupplierId" class="form-control" asp-items="ViewBag.Suppliers">
+                <option value="">Tedarikçi seçiniz</option>
+            </select>
+            <small class="text-muted">
+                İstersen ürün eklendikten sonra düzenleyebilirsin.
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Ana Kategori</label>
+            <select id="mainCategorySelect" class="form-control" required>
+                <option value="">Ana kategori seçiniz</option>
+
+                @foreach (var main in mainCategories)
+                {
+                    <option value="@main.Id">@main.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Alt Kategori</label>
+            <select id="subCategorySelect" name="CategoryId" class="form-control" required>
+                <option value="">Alt kategori seçiniz</option>
+            </select>
+            <small class="text-muted">
+                KDV oranı seçilen alt kategoriye göre sistem tarafından uygulanır.
+            </small>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Stok Miktarı</label>
+            <input type="number" name="StockQuantity" class="form-control" min="0" required />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Alış Fiyatı</label>
+            <input type="number" step="0.01" name="PurchasePrice" class="form-control" required />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Satış Fiyatı</label>
+            <input type="number" step="0.01" name="SalePrice" class="form-control" required />
+            <small class="text-muted">
+                Raf/kasa fiyatı. KDV dahil düşünülür.
+            </small>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Kritik Stok</label>
+            <input type="number" name="CriticalStock" class="form-control" value="5" min="0" required />
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a href="/Products" class="btn btn-secondary">
+            Geri Dön
+        </a>
+
+        <button type="submit" class="btn btn-primary">
+            Ürünü Kaydet
+        </button>
+    </div>
+</form>
+
+<script>
+    const subCategories = @Html.Raw(ViewBag.SubCategoriesJson ?? "[]");
+
+    const mainCategorySelect = document.getElementById("mainCategorySelect");
+    const subCategorySelect = document.getElementById("subCategorySelect");
+
+    mainCategorySelect.addEventListener("change", function () {
+        const selectedMainId = parseInt(this.value);
+
+        subCategorySelect.innerHTML = '<option value="">Alt kategori seçiniz</option>';
+
+        if (!selectedMainId) {
+            return;
+        }
+
+        const filteredSubCategories = subCategories.filter(x => x.parentId === selectedMainId);
+
+        filteredSubCategories.forEach(function (sub) {
+            const option = document.createElement("option");
+            option.value = sub.id;
+            option.textContent = sub.name;
+            subCategorySelect.appendChild(option);
+        });
+    });
+</script>

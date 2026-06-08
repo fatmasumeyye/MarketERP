@@ -1,0 +1,192 @@
+﻿@model MarketERP.Models.PurchaseOrder
+
+@{
+    ViewData["Title"] = "Sipariş Detayı";
+}
+
+<h2 class="mb-4">Satın Alma Sipariş Detayı</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+        <strong>PO-@Model.Id.ToString("000000")</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Tedarikçi:</strong>
+                <br />
+                @Model.Supplier?.CompanyName
+            </div>
+
+            <div class="col-md-3">
+                <strong>Tarih:</strong>
+                <br />
+                @Model.OrderDate.ToString("dd.MM.yyyy HH:mm")
+            </div>
+
+            <div class="col-md-3">
+                <strong>Toplam:</strong>
+                <br />
+                @Model.TotalAmount.ToString("N2") ₺
+            </div>
+
+            <div class="col-md-3">
+                <strong>Durum:</strong>
+                <br />
+
+                @if (Model.Status == "Onay Bekliyor")
+                {
+                    <span class="badge bg-warning text-dark">Onay Bekliyor</span>
+                }
+                else if (Model.Status == "Onaylandı")
+                {
+                    <span class="badge bg-primary">Onaylandı</span>
+                }
+                else if (Model.Status == "Teslim Alındı")
+                {
+                    <span class="badge bg-success">Teslim Alındı</span>
+                }
+                else if (Model.Status == "Kısmi Teslim Alındı")
+                {
+                    <span class="badge bg-info text-dark">Kısmi Teslim Alındı</span>
+                }
+                else if (Model.Status == "İptal Edildi")
+                {
+                    <span class="badge bg-secondary">İptal Edildi</span>
+                }
+                else
+                {
+                    <span class="badge bg-light text-dark">@Model.Status</span>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Note))
+        {
+            <hr />
+            <strong>Not:</strong>
+            <p>@Model.Note</p>
+        }
+    </div>
+</div>
+
+<form asp-action="Receive" method="post">
+    <input type="hidden" name="id" value="@Model.Id" />
+
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Ürün</th>
+                <th>Sipariş Miktarı</th>
+                <th>Gelen Miktar</th>
+                <th>Kalan</th>
+                <th>Birim Fiyat</th>
+                <th>Ara Toplam</th>
+                <th>Mevcut Stok</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                var kalan = item.Quantity - item.ReceivedQuantity;
+
+                <tr>
+                    <td>
+                        <strong>@item.Product?.Name</strong>
+                        <br />
+                        <small class="text-muted">Barkod: @item.Product?.Barcode</small>
+                    </td>
+
+                    <td>@item.Quantity</td>
+
+                    <td>
+                        @if (Model.Status == "Onaylandı" || Model.Status == "Kısmi Teslim Alındı")
+                        {
+                            <input type="number"
+                                   name="receivedQuantities[@item.Id]"
+                                   value="@item.ReceivedQuantity"
+                                   min="0"
+                                   max="@item.Quantity"
+                                   class="form-control" />
+                        }
+                        else
+                        {
+                            <span>@item.ReceivedQuantity</span>
+                        }
+                    </td>
+
+                    <td>
+                        @if (kalan <= 0)
+                        {
+                            <span class="badge bg-success">Tamamlandı</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">@kalan kaldı</span>
+                        }
+                    </td>
+
+                    <td>@item.UnitPrice.ToString("N2") ₺</td>
+                    <td>@item.Subtotal.ToString("N2") ₺</td>
+                    <td>@item.Product?.StockQuantity</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between">
+        <a href="/PurchaseOrders" class="btn btn-secondary">
+            Siparişlere Dön
+        </a>
+
+        <div class="d-flex gap-2">
+            @if (Model.Status == "Onay Bekliyor")
+            {
+                <button type="submit"
+                        formaction="/PurchaseOrders/Approve/@Model.Id"
+                        formmethod="post"
+                        class="btn btn-primary"
+                        onclick="return confirm('Bu siparişi onaylamak istiyor musunuz?')">
+                    Siparişi Onayla
+                </button>
+
+                <button type="submit"
+                        formaction="/PurchaseOrders/Cancel/@Model.Id"
+                        formmethod="post"
+                        class="btn btn-outline-danger"
+                        onclick="return confirm('Bu siparişi iptal etmek istiyor musunuz?')">
+                    İptal Et
+                </button>
+            }
+
+            @if (Model.Status == "Onaylandı" || Model.Status == "Kısmi Teslim Alındı")
+            {
+                <button type="submit"
+                        formaction="/PurchaseOrders/ReceiveAll/@Model.Id"
+                        formmethod="post"
+                        class="btn btn-success"
+                        onclick="return confirm('Bu sipariş tam olarak geldi mi? Tüm ürünler sipariş miktarı kadar stoğa eklenecek.')">
+                    Sipariş Tam Geldi / Stoğa Ekle
+                </button>
+
+                <button type="submit"
+                        class="btn btn-outline-success"
+                        onclick="return confirm('Girilen gelen miktarlar stoğa eklensin mi?')">
+                    Kısmi Teslim Al / Stoğa Ekle
+                </button>
+            }
+        </div>
+    </div>
+</form>

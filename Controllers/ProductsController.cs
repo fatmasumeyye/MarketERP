@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using MarketERP.Helpers;
+using System.Text.Json;
 
 namespace MarketERP.Controllers
 {
@@ -17,50 +18,120 @@ namespace MarketERP.Controllers
             _context = context;
         }
 
-        public IActionResult Index(string search)
+        public IActionResult Index(string search, int? categoryId, int? supplierId, string stockStatus)
         {
             if (HttpContext.Session.GetString("Username") == null)
             {
                 return RedirectToAction("Index", "Login");
             }
 
-            ViewBag.Categories = new SelectList(_context.Categories.ToList(), "Id", "Name");
-            ViewBag.Suppliers = new SelectList(_context.Suppliers.ToList(), "Id", "CompanyName");
+            PrepareCategoryAndSupplierViewBags(supplierId);
 
             var products = _context.Products
                 .Include(p => p.Category)
+                    .ThenInclude(c => c.ParentCategory)
                 .Include(p => p.Supplier)
                 .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(search))
+            string selectedCategoryName = "Tüm Ürünler";
+
+            if (categoryId != null)
             {
-                products = products.Where(p => p.Name.Contains(search));
+                var selectedCategory = _context.Categories
+                    .FirstOrDefault(c => c.Id == categoryId.Value);
+
+                if (selectedCategory != null)
+                {
+                    selectedCategoryName = selectedCategory.Name;
+
+                    if (selectedCategory.ParentCategoryId == null)
+                    {
+                        products = products.Where(p =>
+                            p.Category != null &&
+                            p.Category.ParentCategoryId == selectedCategory.Id);
+                    }
+                    else
+                    {
+                        products = products.Where(p => p.CategoryId == selectedCategory.Id);
+                    }
+                }
             }
 
-            ViewBag.ProductIdsUsedInSales = _context.SaleDetails
-    .Select(sd => sd.ProductId)
-    .Distinct()
-    .ToList();
+            if (supplierId != null)
+            {
+                products = products.Where(p => p.SupplierId == supplierId.Value);
+            }
 
-            return View(products.ToList());
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                products = products.Where(p =>
+                    p.Name.Contains(search) ||
+                    p.Barcode.Contains(search));
+            }
+
+            if (stockStatus == "critical")
+            {
+                products = products.Where(p => p.StockQuantity <= p.CriticalStock);
+            }
+            else if (stockStatus == "low")
+            {
+                products = products.Where(p =>
+                    p.StockQuantity > p.CriticalStock &&
+                    p.StockQuantity <= p.CriticalStock + 5);
+            }
+            else if (stockStatus == "normal")
+            {
+                products = products.Where(p => p.StockQuantity > p.CriticalStock + 5);
+            }
+
+            ViewBag.SelectedCategoryId = categoryId;
+            ViewBag.SelectedCategoryName = selectedCategoryName;
+            ViewBag.SelectedSupplierId = supplierId;
+            ViewBag.Search = search;
+            ViewBag.StockStatus = stockStatus;
+
+            ViewBag.ProductIdsUsedInSales = _context.SaleDetails
+                .Select(sd => sd.ProductId)
+                .Distinct()
+                .ToList();
+
+            return View(products.OrderBy(p => p.Name).ToList());
+        }
+
+        [PermissionAuthorize("product.create")]
+        public IActionResult Create()
+        {
+            if (HttpContext.Session.GetString("Username") == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            PrepareCategoryAndSupplierViewBags();
+
+            return View();
         }
 
         [HttpPost]
-        public IActionResult Add(Product product)
+        [PermissionAuthorize("product.create")]
+        public IActionResult Create(Product product)
         {
+            if (!IsValidSubCategory(product.CategoryId))
+            {
+                TempData["Error"] = "Ürün eklemek için ana kategori değil, alt kategori seçmelisiniz.";
+                return RedirectToAction("Create");
+            }
+
             var existingProduct = _context.Products
                 .FirstOrDefault(p => p.Barcode == product.Barcode);
 
             if (existingProduct != null)
             {
-                // Aynı barkod farklı ürüne aitse hata ver
                 if (existingProduct.Name.ToLower() != product.Name.ToLower())
                 {
                     TempData["Error"] = "Bu barkod başka bir ürüne ait. Aynı barkodla farklı ürün eklenemez.";
-                    return RedirectToAction("Index");
+                    return RedirectToAction("Create");
                 }
 
-                // Aynı ürünse güncelle
                 existingProduct.CategoryId = product.CategoryId;
                 existingProduct.SupplierId = product.SupplierId;
                 existingProduct.PurchasePrice = product.PurchasePrice;
@@ -70,6 +141,7 @@ namespace MarketERP.Controllers
 
                 _context.SaveChanges();
 
+                TempData["Success"] = "Ürün zaten vardı. Bilgileri güncellendi ve stok miktarı artırıldı.";
                 return RedirectToAction("Index");
             }
 
@@ -78,6 +150,7 @@ namespace MarketERP.Controllers
             _context.Products.Add(product);
             _context.SaveChanges();
 
+            TempData["Success"] = "Ürün başarıyla eklendi.";
             return RedirectToAction("Index");
         }
 
@@ -116,19 +189,23 @@ namespace MarketERP.Controllers
 
             if (product == null)
             {
-                return Content("Ürün bulunamadı.");
+                TempData["Error"] = "Ürün bulunamadı.";
+                return RedirectToAction("Index");
             }
 
             if (quantity <= 0)
             {
-                return Content("Eklenecek stok miktarı 0'dan büyük olmalıdır.");
+                TempData["Error"] = "Eklenecek stok miktarı 0'dan büyük olmalıdır.";
+                return RedirectToAction("Index");
             }
 
             product.StockQuantity += quantity;
             _context.SaveChanges();
 
+            TempData["Success"] = "Stok başarıyla güncellendi.";
             return RedirectToAction("Index");
         }
+
         public IActionResult Edit(int id)
         {
             var product = _context.Products.Find(id);
@@ -138,11 +215,17 @@ namespace MarketERP.Controllers
                 return NotFound();
             }
 
-            ViewBag.Categories = new SelectList(_context.Categories.ToList(), "Id", "Name");
-            ViewBag.Suppliers = new SelectList(_context.Suppliers.ToList(), "Id", "CompanyName");
+            ViewBag.Categories = GetSubCategorySelectList(product.CategoryId);
+            ViewBag.Suppliers = new SelectList(
+                _context.Suppliers.ToList(),
+                "Id",
+                "CompanyName",
+                product.SupplierId
+            );
 
             return View(product);
         }
+
         [HttpPost]
         public IActionResult Edit(Product product)
         {
@@ -151,6 +234,12 @@ namespace MarketERP.Controllers
             if (existingProduct == null)
             {
                 return NotFound();
+            }
+
+            if (!IsValidSubCategory(product.CategoryId))
+            {
+                TempData["Error"] = "Ürün için ana kategori değil, KDV oranı belli olan alt kategori seçmelisiniz.";
+                return RedirectToAction("Edit", new { id = product.Id });
             }
 
             existingProduct.Name = product.Name;
@@ -163,7 +252,69 @@ namespace MarketERP.Controllers
 
             _context.SaveChanges();
 
+            TempData["Success"] = "Ürün başarıyla güncellendi.";
             return RedirectToAction("Index");
+        }
+
+        private void PrepareCategoryAndSupplierViewBags(int? selectedSupplierId = null)
+        {
+            var mainCategories = _context.Categories
+                .Include(c => c.SubCategories)
+                .Where(c => c.ParentCategoryId == null)
+                .OrderBy(c => c.Name)
+                .ToList();
+
+            ViewBag.MainCategories = mainCategories;
+
+            var subCategories = _context.Categories
+                .Include(c => c.ParentCategory)
+                .Where(c => c.ParentCategoryId != null && c.DefaultVatRate != null)
+                .OrderBy(c => c.ParentCategory.Name)
+                .ThenBy(c => c.Name)
+                .Select(c => new
+                {
+                    id = c.Id,
+                    name = c.Name,
+                    parentId = c.ParentCategoryId
+                })
+                .ToList();
+
+            ViewBag.SubCategoriesJson = JsonSerializer.Serialize(subCategories);
+
+            ViewBag.Suppliers = new SelectList(
+                _context.Suppliers.OrderBy(s => s.CompanyName).ToList(),
+                "Id",
+                "CompanyName",
+                selectedSupplierId
+            );
+        }
+
+        private SelectList GetSubCategorySelectList(int? selectedCategoryId = null)
+        {
+            var categories = _context.Categories
+                .Include(c => c.ParentCategory)
+                .Where(c => c.ParentCategoryId != null && c.DefaultVatRate != null)
+                .OrderBy(c => c.ParentCategory.Name)
+                .ThenBy(c => c.Name)
+                .Select(c => new
+                {
+                    c.Id,
+                    DisplayName = c.ParentCategory.Name + " > " + c.Name
+                })
+                .ToList();
+
+            return new SelectList(categories, "Id", "DisplayName", selectedCategoryId);
+        }
+
+        private bool IsValidSubCategory(int? categoryId)
+        {
+            if (categoryId == null)
+                return false;
+
+            return _context.Categories.Any(c =>
+                c.Id == categoryId.Value &&
+                c.ParentCategoryId != null &&
+                c.DefaultVatRate != null);
         }
     }
 }

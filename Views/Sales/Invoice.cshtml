@@ -3,104 +3,546 @@
 @{
     ViewData["Title"] = "Fatura";
 
-    var details = ViewBag.SaleDetails as List<MarketERP.Models.SaleDetail>;
+    var details = ViewBag.SaleDetails as List<MarketERP.Models.SaleDetail> ?? new List<MarketERP.Models.SaleDetail>();
 
     decimal araToplam = details.Sum(x => x.Subtotal);
-    decimal kdv = araToplam * 0.10M;
+    decimal kdvOrani = 0.10M;
+    decimal kdv = araToplam * kdvOrani;
     decimal genelToplam = araToplam + kdv;
+
+    string odemeTipi = string.IsNullOrWhiteSpace(Model.PaymentType) ? "Belirtilmedi" : Model.PaymentType;
+    string returnUrl = ViewBag.ReturnUrl ?? "/Sales/MySales";
+
+    string faturaNo = $"FTR-{Model.Id.ToString("D8")}";
+    string belgeKodu = $"ETTN-{Model.Id.ToString("D8")}-{Model.SaleDate.ToString("yyyyMMddHHmmss")}";
+    string satisKanali = "Mağaza / Kasa Satışı";
+    string paraBirimi = "TRY";
 }
 
-<div class="card shadow p-4">
-    <div class="d-flex justify-content-between mb-4">
+<style>
+    .invoice-paper {
+        background: white;
+        color: #111;
+        border: 1px solid #aaa;
+        padding: 18px;
+        max-width: 1050px;
+        margin: auto;
+        font-size: 12px;
+    }
+
+    .invoice-top {
+        display: grid;
+        grid-template-columns: 1.3fr 0.7fr;
+        gap: 14px;
+        border-bottom: 2px solid #222;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+    }
+
+    .company-name {
+        font-size: 24px;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+
+    .muted-small {
+        font-size: 11px;
+        color: #555;
+    }
+
+    .invoice-title-box {
+        border: 1px solid #999;
+        padding: 10px;
+        text-align: center;
+    }
+
+        .invoice-title-box h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+    .qr-placeholder {
+        width: 72px;
+        height: 72px;
+        border: 1px solid #333;
+        margin: 8px auto 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        text-align: center;
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .section-box {
+        border: 1px solid #999;
+        padding: 10px;
+    }
+
+    .section-title {
+        font-weight: 800;
+        font-size: 13px;
+        border-bottom: 1px solid #999;
+        padding-bottom: 5px;
+        margin-bottom: 7px;
+        text-align: center;
+        background: #f6f6f6;
+    }
+
+    .info-row {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 6px;
+        margin-bottom: 4px;
+        line-height: 1.25;
+    }
+
+    .info-label {
+        font-weight: 700;
+    }
+
+    .sales-info {
+        border: 1px solid #999;
+        margin-bottom: 12px;
+    }
+
+    .sales-info-title {
+        text-align: center;
+        font-weight: 800;
+        padding: 5px;
+        background: #f6f6f6;
+        border-bottom: 1px solid #999;
+    }
+
+    .sales-info-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .sales-info-cell {
+        border-right: 1px solid #999;
+        padding: 6px;
+        min-height: 42px;
+    }
+
+        .sales-info-cell:last-child {
+            border-right: none;
+        }
+
+        .sales-info-cell strong {
+            display: block;
+            margin-bottom: 3px;
+        }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+        margin-bottom: 10px;
+    }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #999;
+            padding: 5px;
+            vertical-align: middle;
+        }
+
+        .items-table th {
+            background: #f1f1f1;
+            font-weight: 800;
+            text-align: center;
+        }
+
+    .bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 0.45fr;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .notes-box {
+        border: 1px solid #999;
+        padding: 8px;
+        font-size: 10.5px;
+        line-height: 1.5;
+    }
+
+    .notes-title {
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+
+    .totals-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+        .totals-table th,
+        .totals-table td {
+            border: 1px solid #999;
+            padding: 6px;
+        }
+
+        .totals-table th {
+            background: #f7f7f7;
+            text-align: left;
+        }
+
+    .grand-total {
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .return-section-title {
+        text-align: center;
+        font-weight: 800;
+        border: 1px solid #999;
+        border-bottom: none;
+        background: #f7f7f7;
+        padding: 5px;
+        margin-top: 12px;
+    }
+
+    .return-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+        .return-table th,
+        .return-table td {
+            border: 1px solid #999;
+            padding: 7px;
+            height: 28px;
+        }
+
+    .no-print {
+        margin-top: 18px;
+    }
+
+    @@media print {
+        @@page {
+            size: A4;
+            margin: 7mm;
+        }
+
+        body {
+            background: white !important;
+        }
+
+        .navbar,
+        footer,
+        .no-print {
+            display: none !important;
+        }
+
+        .container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .invoice-paper {
+            border: none;
+            padding: 0;
+            max-width: 100%;
+            font-size: 10px;
+        }
+
+        .company-name {
+            font-size: 20px;
+        }
+
+        .invoice-title-box h2 {
+            font-size: 20px;
+        }
+
+        .qr-placeholder {
+            width: 60px;
+            height: 60px;
+            font-size: 8px;
+        }
+
+        .section-title,
+        .sales-info-title {
+            font-size: 11px;
+            padding: 4px;
+        }
+
+        .info-row {
+            grid-template-columns: 105px 1fr;
+            margin-bottom: 2px;
+            line-height: 1.15;
+        }
+
+        .items-table,
+        .totals-table,
+        .return-table {
+            font-size: 9.5px;
+        }
+
+            .items-table th,
+            .items-table td,
+            .totals-table th,
+            .totals-table td {
+                padding: 4px;
+            }
+
+        .notes-box {
+            font-size: 9px;
+            line-height: 1.35;
+        }
+
+        .sales-info-cell {
+            padding: 4px;
+            min-height: 34px;
+        }
+    }
+</style>
+
+<div class="invoice-paper">
+
+    <div class="invoice-top">
         <div>
-            <h2>Market ERP</h2>
-            <p>Market Otomasyon Sistemi</p>
-            <p>Adres: Merkez / Türkiye</p>
-            <p>Telefon: 0555 000 00 00</p>
+            <div class="company-name">MarketERP Satış A.Ş.</div>
+            <div class="muted-small">Market Otomasyon ve Satış Yönetim Sistemi</div>
+
+            <div class="mt-2">
+                <div><strong>Adres:</strong> Merkez Mah. Cumhuriyet Cad. No:10 Türkiye</div>
+                <div><strong>Telefon:</strong> 0555 000 00 00</div>
+                <div><strong>E-posta:</strong> info@marketerp.com</div>
+                <div><strong>Web:</strong> www.marketerp.com</div>
+            </div>
+
+            <div class="mt-2">
+                <div><strong>Vergi Dairesi:</strong> Merkez Vergi Dairesi</div>
+                <div><strong>Vergi Kimlik No:</strong> 1234567890</div>
+                <div><strong>Ticaret Sicil No:</strong> 987654</div>
+                <div><strong>MERSİS No:</strong> 012345678900001</div>
+            </div>
         </div>
 
-        <div class="text-end">
-            <h4>FATURA</h4>
-            <p><strong>Fatura No:</strong> FTR-@Model.Id</p>
-            <p><strong>Tarih:</strong> @Model.SaleDate.ToString("dd.MM.yyyy HH:mm")</p>
+        <div class="invoice-title-box">
+            <h2>FATURA</h2>
+            <div><strong>@faturaNo</strong></div>
+            <div class="muted-small mt-1">Belge Kodu / ETTN</div>
+            <div class="muted-small">@belgeKodu</div>
+
+            <div class="qr-placeholder">
+                QR<br />ALANI
+            </div>
         </div>
     </div>
 
-    <hr />
+    <div class="main-grid">
+        <div class="section-box">
+            <div class="section-title">ALICI BİLGİLERİ</div>
 
-    <div class="mb-4">
-        <h5>Müşteri Bilgileri</h5>
+            <div class="info-row">
+                <div class="info-label">Ad Soyad / Ünvan</div>
+                <div>@(Model.Customer?.FullName ?? "Nihai Tüketici")</div>
+            </div>
 
-        <p>
-            <strong>Ad Soyad:</strong>
-            @Model.Customer?.FullName
-        </p>
+            <div class="info-row">
+                <div class="info-label">Adres</div>
+                <div>@(string.IsNullOrWhiteSpace(Model.Customer?.Address) ? "-" : Model.Customer.Address)</div>
+            </div>
 
-        <p>
-            <strong>Telefon:</strong>
-            @Model.Customer?.Phone
-        </p>
+            <div class="info-row">
+                <div class="info-label">Telefon</div>
+                <div>@(string.IsNullOrWhiteSpace(Model.Customer?.Phone) ? "-" : Model.Customer.Phone)</div>
+            </div>
 
-        <p>
-            <strong>E-posta:</strong>
-            @Model.Customer?.Email
-        </p>
+            <div class="info-row">
+                <div class="info-label">E-posta</div>
+                <div>@(string.IsNullOrWhiteSpace(Model.Customer?.Email) ? "-" : Model.Customer.Email)</div>
+            </div>
 
-        <p>
-            <strong>Adres:</strong>
-            @Model.Customer?.Address
-        </p>
+            <div class="info-row">
+                <div class="info-label">Vergi Dairesi</div>
+                <div>-</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">VKN / TCKN</div>
+                <div>-</div>
+            </div>
+        </div>
+
+        <div class="section-box">
+            <div class="section-title">BELGE BİLGİLERİ</div>
+
+            <div class="info-row">
+                <div class="info-label">Fatura No</div>
+                <div>@faturaNo</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Fatura Tarihi</div>
+                <div>@Model.SaleDate.ToString("dd.MM.yyyy")</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Fatura Saati</div>
+                <div>@Model.SaleDate.ToString("HH:mm")</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Fatura Tipi</div>
+                <div>Satış</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Senaryo</div>
+                <div>Perakende Satış / e-Arşiv Benzeri</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Para Birimi</div>
+                <div>@paraBirimi</div>
+            </div>
+        </div>
     </div>
 
-    <table class="table table-bordered">
-        <thead class="table-dark">
+    <div class="sales-info">
+        <div class="sales-info-title">SATIŞ / İŞLEM BİLGİLERİ</div>
+
+        <div class="sales-info-grid">
+            <div class="sales-info-cell">
+                <strong>Satış No</strong>
+                @Model.Id
+            </div>
+
+            <div class="sales-info-cell">
+                <strong>Satış Kanalı</strong>
+                @satisKanali
+            </div>
+
+            <div class="sales-info-cell">
+                <strong>Kasiyer</strong>
+                @(Model.Employee?.FullName ?? "-")
+            </div>
+
+            <div class="sales-info-cell">
+                <strong>Ödeme Tipi</strong>
+                @odemeTipi
+            </div>
+
+            <div class="sales-info-cell">
+                <strong>Teslimat Şekli</strong>
+                Mağaza Teslim
+            </div>
+        </div>
+    </div>
+
+    <table class="items-table">
+        <thead>
             <tr>
-                <th>Ürün</th>
-                <th>Adet</th>
-                <th>Birim Fiyat</th>
-                <th>Ara Toplam</th>
+                <th style="width: 34%;">Ürün/Hizmet Adı</th>
+                <th style="width: 12%;">Barkod</th>
+                <th style="width: 8%;">Miktar</th>
+                <th style="width: 8%;">Birim</th>
+                <th style="width: 12%;">Birim Fiyat</th>
+                <th style="width: 8%;">KDV</th>
+                <th style="width: 10%;">KDV Tutarı</th>
+                <th style="width: 12%;">Tutar</th>
             </tr>
         </thead>
 
         <tbody>
             @foreach (var item in details)
             {
+                decimal satirKdv = item.Subtotal * kdvOrani;
+
                 <tr>
                     <td>@item.Product?.Name</td>
-                    <td>@item.Quantity</td>
-                    <td>@item.UnitPrice ₺</td>
-                    <td>@item.Subtotal ₺</td>
+                    <td>@(item.Product?.Barcode ?? "-")</td>
+                    <td class="text-end">@item.Quantity</td>
+                    <td>Adet</td>
+                    <td class="text-end">@item.UnitPrice.ToString("N2") TL</td>
+                    <td class="text-end">%@((kdvOrani * 100).ToString("N0"))</td>
+                    <td class="text-end">@satirKdv.ToString("N2") TL</td>
+                    <td class="text-end">@item.Subtotal.ToString("N2") TL</td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <div class="row justify-content-end">
-        <div class="col-md-4">
-            <table class="table table-bordered">
-                <tr>
-                    <th>Ara Toplam</th>
-                    <td>@araToplam ₺</td>
-                </tr>
-                <tr>
-                    <th>KDV %10</th>
-                    <td>@kdv ₺</td>
-                </tr>
-                <tr>
-                    <th>Genel Toplam</th>
-                    <td><strong>@genelToplam ₺</strong></td>
-                </tr>
-            </table>
+    <div class="bottom-grid">
+        <div class="notes-box">
+            <div class="notes-title">Notlar</div>
+            <div>* Bu belge MarketERP sistemi üzerinden oluşturulmuştur.</div>
+            <div>* Ürün iade işlemleri fatura/fiş ibrazı ile yapılır.</div>
+            <div>* Garanti kapsamındaki ürünlerde üretici / servis şartları geçerlidir.</div>
+            <div>* Resmî e-Fatura/e-Arşiv entegrasyonu ayrıca yapılandırılmalıdır.</div>
         </div>
+
+        <table class="totals-table">
+            <tr>
+                <th>Mal/Hizmet Toplamı</th>
+                <td class="text-end">@araToplam.ToString("N2") TL</td>
+            </tr>
+
+            <tr>
+                <th>KDV Matrahı</th>
+                <td class="text-end">@araToplam.ToString("N2") TL</td>
+            </tr>
+
+            <tr>
+                <th>Hesaplanan KDV</th>
+                <td class="text-end">@kdv.ToString("N2") TL</td>
+            </tr>
+
+            <tr>
+                <th>Vergiler Dahil Toplam</th>
+                <td class="text-end">@genelToplam.ToString("N2") TL</td>
+            </tr>
+
+            <tr>
+                <th>Ödenecek Tutar</th>
+                <td class="text-end grand-total">@genelToplam.ToString("N2") TL</td>
+            </tr>
+        </table>
     </div>
 
-    <div class="text-end mt-3">
+    <div class="return-section-title">İADE BİLGİLERİ</div>
+
+    <table class="return-table">
+        <tr>
+            <th>İade Eden Adı Soyadı</th>
+            <th>Adres</th>
+            <th>Malın Cinsi</th>
+            <th>Miktarı</th>
+            <th>Birim Fiyatı</th>
+            <th>Tutarı</th>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </table>
+
+    <div class="d-flex justify-content-between align-items-center no-print">
+        <a href="@returnUrl" class="btn btn-secondary">
+            Geri Dön
+        </a>
+
         <button onclick="window.print()" class="btn btn-primary">
             Yazdır
         </button>
-
-        <a href="@ViewBag.ReturnUrl" class="btn btn-secondary">
-            Geri Dön
-        </a>
     </div>
 </div>

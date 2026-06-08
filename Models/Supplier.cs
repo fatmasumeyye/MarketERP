@@ -19,5 +19,13 @@ namespace MarketERP.Models
 
         [Column("address")]
         public string Address { get; set; }
+
+        [Column("discount_rate")]
+        public decimal DiscountRate { get; set; }
+
+        public ICollection<ProductSupplier> ProductSuppliers { get; set; } = new List<ProductSupplier>();
+
+        public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
+
     }
 }

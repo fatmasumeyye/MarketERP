@@ -4,6 +4,7 @@ using MarketERP.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketERP.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260608175508_AddPurchaseOrderModule")]
+    partial class AddPurchaseOrderModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -481,14 +484,6 @@ namespace MarketERP.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("approved_at");
-
-                    b.Property<DateTime?>("CheckedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("checked_at");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
@@ -504,10 +499,6 @@ namespace MarketERP.Migrations
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("order_date");
-
-                    b.Property<DateTime?>("ReceivedAt")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("received_at");
 
                     b.Property<string>("Status")
                         .IsRequired()

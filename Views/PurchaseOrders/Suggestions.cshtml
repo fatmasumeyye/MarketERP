@@ -1,0 +1,329 @@
+﻿@model MarketERP.Controllers.PurchaseOrderSuggestionsViewModel
+
+@{
+    ViewData["Title"] = "Kritik Stok Sipariş Önerileri";
+    var trCulture = new System.Globalization.CultureInfo("tr-TR");
+}
+
+<style>
+    .suggestion-card {
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 18px;
+        background: #fff;
+    }
+
+    .summary-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+
+    .suggestion-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .toolbar-left {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .total-panel {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: #f8f9fa;
+        min-width: 260px;
+        text-align: right;
+    }
+
+    .table input,
+    .table select {
+        min-width: 120px;
+    }
+
+    .product-name {
+        font-weight: 700;
+    }
+
+    .price-input,
+    .quantity-input {
+        max-width: 140px;
+    }
+
+    .action-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+    }
+</style>
+
+<h2 class="mb-4">Kritik Stok Sipariş Önerileri</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Success"]
+    </div>
+}
+
+<div class="suggestion-card">
+
+    <div class="summary-box">
+        <strong>Bu ekran ne yapar?</strong>
+        <br />
+        Kritik stok seviyesine düşen ürünleri otomatik listeler. Sipariş miktarını, tedarikçiyi ve alış fiyatını değiştirebilirsin.
+        Onayladığında sistem ürünleri tedarikçiye göre gruplayıp satın alma siparişi oluşturur.
+    </div>
+
+    @if (Model.Items == null || Model.Items.Count == 0)
+    {
+        <div class="alert alert-success">
+            Kritik stok seviyesinde ürün bulunmuyor.
+        </div>
+
+        <a href="/Products" class="btn btn-secondary">
+            Ürünlere Dön
+        </a>
+    }
+    else
+    {
+        <form asp-action="CreateFromSuggestions" method="post">
+
+            <div class="suggestion-toolbar">
+                <div class="toolbar-left">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllRows(true)">
+                        Tümünü Seç
+                    </button>
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllRows(false)">
+                        Tümünü Kaldır
+                    </button>
+                </div>
+
+                <div class="total-panel">
+                    <strong>Seçili Tahmini Toplam:</strong>
+                    <span id="grandTotal">0,00 ₺</span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Seç</th>
+                            <th>Ürün</th>
+                            <th>Kategori</th>
+                            <th>Mevcut Stok</th>
+                            <th>Kritik Stok</th>
+                            <th>Hedef Stok</th>
+                            <th>Sipariş Miktarı</th>
+                            <th>Tedarikçi</th>
+                            <th>Alış Fiyatı</th>
+                            <th>Ara Toplam</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @for (int i = 0; i < Model.Items.Count; i++)
+                        {
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox"
+                                           name="Items[@i].Selected"
+                                           value="true"
+                                           class="form-check-input row-check"
+                                           checked />
+
+                                    <input type="hidden" name="Items[@i].Selected" value="false" />
+                                    <input type="hidden" name="Items[@i].ProductId" value="@Model.Items[i].ProductId" />
+                                    <input type="hidden" name="Items[@i].ProductName" value="@Model.Items[i].ProductName" />
+                                    <input type="hidden" name="Items[@i].Barcode" value="@Model.Items[i].Barcode" />
+                                    <input type="hidden" name="Items[@i].CategoryName" value="@Model.Items[i].CategoryName" />
+                                    <input type="hidden" name="Items[@i].CurrentStock" value="@Model.Items[i].CurrentStock" />
+                                    <input type="hidden" name="Items[@i].CriticalStock" value="@Model.Items[i].CriticalStock" />
+                                    <input type="hidden" name="Items[@i].TargetStock" value="@Model.Items[i].TargetStock" />
+                                </td>
+
+                                <td>
+                                    <span class="product-name">@Model.Items[i].ProductName</span>
+                                    <br />
+                                    <small class="text-muted">Barkod: @Model.Items[i].Barcode</small>
+                                </td>
+
+                                <td>@Model.Items[i].CategoryName</td>
+
+                                <td>
+                                    <span class="badge bg-danger">
+                                        @Model.Items[i].CurrentStock
+                                    </span>
+                                </td>
+
+                                <td>@Model.Items[i].CriticalStock</td>
+
+                                <td>@Model.Items[i].TargetStock</td>
+
+                                <td>
+                                    <input type="number"
+                                           name="Items[@i].SuggestedQuantity"
+                                           value="@Model.Items[i].SuggestedQuantity"
+                                           min="1"
+                                           class="form-control quantity-input"
+                                           oninput="calculateTotals()" />
+                                </td>
+
+                                <td>
+                                    <select name="Items[@i].SupplierId" class="form-control">
+                                        <option value="">Tedarikçi seçiniz</option>
+
+                                        @foreach (var supplier in Model.Suppliers)
+                                        {
+                                            if (supplier.Id == Model.Items[i].SupplierId)
+                                            {
+                                                <option value="@supplier.Id" selected>
+                                                    @supplier.CompanyName
+                                                </option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@supplier.Id">
+                                                    @supplier.CompanyName
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                </td>
+
+                                <td>
+                                    <input type="text"
+                                           inputmode="decimal"
+                                           name="Items[@i].UnitPrice"
+                                           value="@Model.Items[i].UnitPrice.ToString("N2", trCulture)"
+                                           class="form-control price-input"
+                                           oninput="calculateTotals()" />
+                                    <small class="text-muted">
+                                        Örn: 60,00
+                                    </small>
+                                </td>
+
+                                <td>
+                                    <strong class="row-total">0,00 ₺</strong>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="action-footer">
+                <a href="/Products" class="btn btn-secondary">
+                    Ürünlere Dön
+                </a>
+
+                <a href="/PurchaseOrders" class="btn btn-outline-dark">
+                    Siparişlere Git
+                </a>
+
+                <button type="submit"
+                        class="btn btn-success"
+                        onclick="return confirm('Seçili ürünlerden satın alma siparişi oluşturulsun mu?')">
+                    Seçili Ürünlerden Sipariş Oluştur
+                </button>
+            </div>
+        </form>
+    }
+</div>
+
+<script>
+    function parseNumber(value) {
+        if (!value) return 0;
+
+        value = value.toString().trim();
+
+        /*
+            Kullanıcı 60,00 yazarsa 60.00 yapar.
+            Kullanıcı 60.00 yazarsa da 60.00 kabul eder.
+            Böylece ekrandaki toplam hesabı doğru çalışır.
+        */
+        value = value.replace(/\./g, "").replace(",", ".");
+
+        return parseFloat(value) || 0;
+    }
+
+    function formatCurrency(value) {
+        return value.toLocaleString("tr-TR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + " ₺";
+    }
+
+    function calculateTotals() {
+        let grandTotal = 0;
+
+        const rows = document.querySelectorAll("tbody tr");
+
+        rows.forEach(row => {
+            const checkbox = row.querySelector(".row-check");
+            const quantityInput = row.querySelector(".quantity-input");
+            const priceInput = row.querySelector(".price-input");
+            const totalCell = row.querySelector(".row-total");
+
+            const quantity = parseNumber(quantityInput.value);
+            const price = parseNumber(priceInput.value);
+
+            const total = quantity * price;
+
+            totalCell.innerText = formatCurrency(total);
+
+            if (checkbox && checkbox.checked) {
+                grandTotal += total;
+            }
+        });
+
+        document.getElementById("grandTotal").innerText = formatCurrency(grandTotal);
+    }
+
+    function selectAllRows(value) {
+        document.querySelectorAll(".row-check").forEach(x => {
+            x.checked = value;
+        });
+
+        calculateTotals();
+    }
+
+    document.querySelectorAll(".row-check").forEach(x => {
+        x.addEventListener("change", calculateTotals);
+    });
+
+    document.querySelectorAll(".price-input").forEach(x => {
+        x.addEventListener("blur", function () {
+            const value = parseNumber(this.value);
+
+            this.value = value.toLocaleString("tr-TR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            calculateTotals();
+        });
+    });
+
+    calculateTotals();
+</script>

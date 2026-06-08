@@ -12,6 +12,7 @@ namespace MarketERP.Data
 
             await EnsureRolesAsync(context);
             await EnsurePermissionsAsync(context);
+            await EnsureCategoryTreeAsync(context);
             await EnsureRolePermissionsAsync(context);
             await EnsureDefaultUsersAsync(context);
         }
@@ -119,6 +120,98 @@ namespace MarketERP.Data
             }
 
             await context.SaveChangesAsync();
+        }
+
+        private static async Task EnsureCategoryTreeAsync(AppDbContext context)
+        {
+            var food = await EnsureMainCategoryAsync(context, "Gıda");
+            await EnsureSubCategoryAsync(context, food, "Et & Tavuk", 1);
+            await EnsureSubCategoryAsync(context, food, "Balık & Deniz Ürünleri", 1);
+            await EnsureSubCategoryAsync(context, food, "Süt & Süt Ürünleri", 1);
+            await EnsureSubCategoryAsync(context, food, "Yumurta", 1);
+            await EnsureSubCategoryAsync(context, food, "Meyve & Sebze", 1);
+            await EnsureSubCategoryAsync(context, food, "Tahıl & Bakliyat", 1);
+            await EnsureSubCategoryAsync(context, food, "Un / Pirinç / Bulgur / Makarna", 1);
+            await EnsureSubCategoryAsync(context, food, "Ekmek & Unlu Mamuller", 1);
+            await EnsureSubCategoryAsync(context, food, "Yağ & Zeytin", 1);
+            await EnsureSubCategoryAsync(context, food, "Çay / Kahve / Baharat", 1);
+            await EnsureSubCategoryAsync(context, food, "Şekerleme & Çikolata", 1);
+            await EnsureSubCategoryAsync(context, food, "Konserve / Reçel / Salça / Sos", 1);
+
+            var drinks = await EnsureMainCategoryAsync(context, "İçecek");
+            await EnsureSubCategoryAsync(context, drinks, "Su & Sade Maden Suyu", 1);
+            await EnsureSubCategoryAsync(context, drinks, "%100 Meyve / Sebze Suyu", 1);
+            await EnsureSubCategoryAsync(context, drinks, "Şalgam / Sirke / Üzüm Şırası / Meyveli Soda", 1);
+            await EnsureSubCategoryAsync(context, drinks, "Meyve Nektarı & Meyveli İçecek", 10);
+            await EnsureSubCategoryAsync(context, drinks, "Gazoz / Kola / Alkolsüz Bira", 10);
+
+            var readyConsumption = await EnsureMainCategoryAsync(context, "Hazır Tüketim Hizmeti");
+            await EnsureSubCategoryAsync(context, readyConsumption, "Market İçi Yeme-İçme Hizmeti", 10);
+
+            var personalCare = await EnsureMainCategoryAsync(context, "Kişisel Bakım & Hijyen");
+            await EnsureSubCategoryAsync(context, personalCare, "Diş Bakım Ürünleri", 10);
+            await EnsureSubCategoryAsync(context, personalCare, "Hijyenik Ped / Bebek Bezi / 9619 Ürünleri", 10);
+            await EnsureSubCategoryAsync(context, personalCare, "Bebek Maması / İnsan Gıdası Maması", 10);
+
+            var cleaning = await EnsureMainCategoryAsync(context, "Temizlik");
+            await EnsureSubCategoryAsync(context, cleaning, "Sabun / Şampuan / Dezenfektan / Islak Mendil", 20);
+            await EnsureSubCategoryAsync(context, cleaning, "Deterjan & Yüzey Temizlik", 20);
+            await EnsureSubCategoryAsync(context, cleaning, "Kağıt Hijyen Ürünleri", 20);
+            await EnsureSubCategoryAsync(context, cleaning, "Kozmetik & Makyaj", 20);
+
+            var other = await EnsureMainCategoryAsync(context, "Diğer Market Ürünleri");
+            await EnsureSubCategoryAsync(context, other, "Diğer Ürünler", 20);
+
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task<Category> EnsureMainCategoryAsync(AppDbContext context, string name)
+        {
+            var category = await context.Categories
+                .FirstOrDefaultAsync(c => c.Name == name && c.ParentCategoryId == null);
+
+            if (category == null)
+            {
+                category = new Category
+                {
+                    Name = name,
+                    ParentCategoryId = null,
+                    DefaultVatRate = null
+                };
+
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
+            }
+
+            return category;
+        }
+
+        private static async Task EnsureSubCategoryAsync(
+            AppDbContext context,
+            Category parentCategory,
+            string name,
+            decimal defaultVatRate)
+        {
+            var category = await context.Categories
+                .FirstOrDefaultAsync(c =>
+                    c.Name == name &&
+                    c.ParentCategoryId == parentCategory.Id);
+
+            if (category == null)
+            {
+                category = new Category
+                {
+                    Name = name,
+                    ParentCategoryId = parentCategory.Id,
+                    DefaultVatRate = defaultVatRate
+                };
+
+                context.Categories.Add(category);
+            }
+            else
+            {
+                category.DefaultVatRate = defaultVatRate;
+            }
         }
 
         private static async Task EnsureRolePermissionsAsync(AppDbContext context)

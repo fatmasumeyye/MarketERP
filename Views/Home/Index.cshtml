@@ -1,19 +1,26 @@
 ﻿@{
     ViewData["Title"] = "Dashboard";
+
+    var lowStockProducts = ViewBag.LowStockProducts as List<MarketERP.Models.Product> ?? new List<MarketERP.Models.Product>();
+    var recentSales = ViewBag.RecentSales as List<MarketERP.Models.Sale> ?? new List<MarketERP.Models.Sale>();
 }
 
 <style>
     .dashboard-card {
+        display: block;
         border: none;
         border-radius: 18px;
         color: white;
         padding: 10px;
         box-shadow: 0 6px 18px rgba(0,0,0,0.10);
         transition: 0.3s;
+        text-decoration: none;
+        min-height: 125px;
     }
 
         .dashboard-card:hover {
             transform: translateY(-3px);
+            color: white;
         }
 
         .dashboard-card h5 {
@@ -23,9 +30,13 @@
         }
 
         .dashboard-card h2 {
-            font-size: 32px;
+            font-size: 28px;
             margin-top: 10px;
             font-weight: bold;
+        }
+
+        .dashboard-card small {
+            opacity: 0.85;
         }
 
     .bg-card-blue {
@@ -48,6 +59,14 @@
         background: linear-gradient(135deg, #374151, #4b5563);
     }
 
+    .bg-card-purple {
+        background: linear-gradient(135deg, #4c1d95, #7c3aed);
+    }
+
+    .bg-card-teal {
+        background: linear-gradient(135deg, #115e59, #0f766e);
+    }
+
     .section-title {
         font-weight: 600;
         margin-bottom: 15px;
@@ -58,158 +77,309 @@
         overflow: hidden;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
+
+    .dashboard-note {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 14px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
+    }
+
+    .healthy-stock-box {
+        background: #e9f7ef;
+        border: 1px solid #badbcc;
+        color: #0f5132;
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 30px;
+    }
+
+    .chart-card {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        min-height: 360px;
+    }
+
+        .chart-card h5 {
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+    .chart-description {
+        color: #6c757d;
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
 </style>
 
-<h2 class="mb-4">Dashboard</h2>
+<h2 class="mb-4">Admin Dashboard</h2>
+
+<div class="dashboard-note">
+    <strong>Yönetici ekranı:</strong>
+    Satış, ciro, stok, ödeme tipi ve bekleyen yönetim işlemlerini bu ekrandan takip edebilirsiniz.
+</div>
+
 @if (ViewBag.CriticalStockCount > 0)
 {
     <div class="alert alert-danger shadow-sm">
         ⚠ @ViewBag.CriticalStockCount ürün kritik stok seviyesinde!
+        <a href="/PurchaseOrders/Suggestions" class="btn btn-sm btn-outline-danger ms-2">
+            Sipariş Önerilerine Git
+        </a>
     </div>
 }
 
 <div class="row mb-4">
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-blue mb-3">
+        <a href="/Sales?dateFilter=today" class="dashboard-card bg-card-blue mb-3">
             <div class="card-body">
-                <h5>Toplam Ciro</h5>
-                <h2>@ViewBag.TotalRevenue ₺</h2>
+                <h5>Bugünkü Satış</h5>
+                <h2>@ViewBag.TodaySalesCount</h2>
+                <small>Bugün yapılan satış adedi</small>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-green mb-3">
+        <a href="/Sales?dateFilter=today" class="dashboard-card bg-card-green mb-3">
             <div class="card-body">
-                <h5>Satış Sayısı</h5>
-                <h2>@ViewBag.SaleCount</h2>
+                <h5>Bugünkü Ciro</h5>
+                <h2>@ViewBag.TodayRevenue.ToString("N2") ₺</h2>
+                <small>Bugünün satış geliri</small>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-gray mb-3">
+        <a href="/Sales?dateFilter=week" class="dashboard-card bg-card-gray mb-3">
+            <div class="card-body">
+                <h5>Haftalık Ciro</h5>
+                <h2>@ViewBag.WeeklyRevenue.ToString("N2") ₺</h2>
+                <small>Bu haftanın satış geliri</small>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/Sales?dateFilter=month" class="dashboard-card bg-card-purple mb-3">
+            <div class="card-body">
+                <h5>Aylık Ciro</h5>
+                <h2>@ViewBag.MonthlyRevenue.ToString("N2") ₺</h2>
+                <small>Bu ayın satış geliri</small>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/Sales?dateFilter=year" class="dashboard-card bg-card-teal mb-3">
+            <div class="card-body">
+                <h5>Yıllık Ciro</h5>
+                <h2>@ViewBag.YearlyRevenue.ToString("N2") ₺</h2>
+                <small>Bu yılın satış geliri</small>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/Products" class="dashboard-card bg-card-gray mb-3">
             <div class="card-body">
                 <h5>Ürün Sayısı</h5>
                 <h2>@ViewBag.ProductCount</h2>
+                <small>Sistemde kayıtlı ürünler</small>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-red mb-3">
+        <a href="/Products?stockStatus=critical" class="dashboard-card bg-card-red mb-3">
             <div class="card-body">
                 <h5>Kritik Stok</h5>
                 <h2>@ViewBag.CriticalStockCount</h2>
+                <small>Kritik seviyedeki ürünler</small>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-orange mb-3">
+        <a href="/EmployeeLeaves" class="dashboard-card bg-card-orange mb-3">
             <div class="card-body">
-                <h5>Bekleyen İzin</h5>
-                <h2>@ViewBag.PendingLeaveCount</h2>
+                <h5>Bekleyen İzinler</h5>
+                <h2>@ViewBag.PendingLeavesCount</h2>
+                <small>Onay bekleyen izin talepleri</small>
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card dashboard-card bg-card-blue mb-3">
-            <div class="card-body">
-                <h5>Bugünkü Satış</h5>
-                <h2>@ViewBag.TodaySaleCount</h2>
-            </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-green mb-3">
+        <a href="/SupportTickets" class="dashboard-card bg-card-purple mb-3">
             <div class="card-body">
-                <h5>Bugünkü Ciro</h5>
-                <h2>@ViewBag.TodayRevenue ₺</h2>
+                <h5>Bekleyen Destek Talepleri</h5>
+                <h2>@ViewBag.PendingSupportTicketsCount</h2>
+                <small>Açık veya bekleyen destek kayıtları</small>
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card dashboard-card bg-card-gray mb-3">
-            <div class="card-body">
-                <h5>Aylık Ciro</h5>
-                <h2>@ViewBag.MonthlyRevenue ₺</h2>
-            </div>
-        </div>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card dashboard-card bg-card-orange mb-3">
+        <a href="/Returns/MyRequests" class="dashboard-card bg-card-red mb-3">
             <div class="card-body">
-                <h5>Yıllık Ciro</h5>
-                <h2>@ViewBag.YearlyRevenue ₺</h2>
+                <h5>İade Talepleri</h5>
+                <h2>@ViewBag.PendingReturnRequestsCount</h2>
+                <small>Bekleyen iade talepleri</small>
             </div>
-        </div>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/EmployeeBonuses" class="dashboard-card bg-card-orange mb-3">
+            <div class="card-body">
+                <h5>Prim Kayıtları</h5>
+                <h2>@ViewBag.PendingBonusesCount</h2>
+                <small>Prim ekranına git</small>
+            </div>
+        </a>
     </div>
 
 </div>
 
-<h4 class="section-title">Kritik Stoktaki Ürünler</h4>
+<h4 class="section-title">Kritik Stok Durumu</h4>
 
-<div class="custom-table mb-4">
-    <table class="table table-bordered table-striped mb-0">
-        <thead class="table-dark">
-            <tr>
-                <th>Ürün</th>
-                <th>Stok</th>
-                <th>Kritik Stok</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach (var product in ViewBag.CriticalProducts)
-            {
+@if (lowStockProducts.Any())
+{
+    <div class="custom-table mb-4">
+        <table class="table table-bordered table-striped mb-0 align-middle">
+            <thead class="table-dark">
                 <tr>
-                    <td>@product.Name</td>
-                    <td>@product.StockQuantity</td>
-                    <td>@product.CriticalStock</td>
+                    <th>Ürün</th>
+                    <th>Stok</th>
+                    <th>Kritik Stok</th>
+                    <th>İşlem</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-</div>
+            </thead>
+
+            <tbody>
+                @foreach (var product in lowStockProducts)
+                {
+                    <tr>
+                        <td>@product.Name</td>
+                        <td>
+                            <span class="badge bg-danger">@product.StockQuantity</span>
+                        </td>
+                        <td>@product.CriticalStock</td>
+                        <td>
+                            <a href="/PurchaseOrders/Suggestions" class="btn btn-sm btn-outline-danger">
+                                Sipariş Önerisine Git
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="healthy-stock-box">
+        ✅ Kritik stokta ürün bulunmuyor. Stok durumu normal görünüyor.
+    </div>
+}
 
 <h4 class="section-title">Son Satışlar</h4>
 
-<div class="custom-table">
-    <table class="table table-bordered table-striped mb-0">
+<div class="custom-table mb-5">
+    <table class="table table-bordered table-striped mb-0 align-middle">
         <thead class="table-dark">
             <tr>
                 <th>Satış ID</th>
+                <th>Müşteri</th>
                 <th>Toplam Tutar</th>
+                <th>Ödeme Tipi</th>
                 <th>Tarih</th>
+                <th>İşlem</th>
             </tr>
         </thead>
 
         <tbody>
-            @foreach (var sale in ViewBag.LastSales)
+            @if (recentSales.Any())
+            {
+                foreach (var sale in recentSales)
+                {
+                    <tr>
+                        <td>@sale.Id</td>
+                        <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
+                        <td>@sale.TotalAmount.ToString("N2") ₺</td>
+                        <td>@(string.IsNullOrWhiteSpace(sale.PaymentType) ? "-" : sale.PaymentType)</td>
+                        <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <a href="/Sales/Invoice/@sale.Id?returnUrl=/" class="btn btn-sm btn-info">
+                                Fatura
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
             {
                 <tr>
-                    <td>@sale.Id</td>
-                    <td>@sale.TotalAmount ₺</td>
-                    <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td colspan="6" class="text-center text-muted">
+                        Henüz satış kaydı bulunmuyor.
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
+
 <div class="mt-5">
 
     <h4 class="section-title">
-        Genel Sistem Özeti
+        Satış ve Ciro Analizi
     </h4>
 
-    <div class="card p-4 shadow-sm border-0"
-         style="border-radius:18px;">
+    <div class="row">
 
-        <canvas id="erpChart" height="110"></canvas>
+        <div class="col-md-6 mb-4">
+            <div class="card p-4 chart-card">
+                <h5>Son 7 Günlük Ciro</h5>
+                <div class="chart-description">
+                    Gün bazında toplam satış gelirini gösterir.
+                </div>
+                <canvas id="revenueChart" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card p-4 chart-card">
+                <h5>Son 7 Günlük Satış Adedi</h5>
+                <div class="chart-description">
+                    Gün bazında kaç satış yapıldığını gösterir.
+                </div>
+                <canvas id="salesCountChart" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card p-4 chart-card">
+                <h5>Bu Ay Ödeme Tipi Dağılımı</h5>
+                <div class="chart-description">
+                    Nakit, kart veya diğer ödeme tiplerinin toplam cirodaki dağılımını gösterir.
+                </div>
+                <canvas id="paymentTypeChart" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card p-4 chart-card">
+                <h5>En Çok Satan 5 Ürün</h5>
+                <div class="chart-description">
+                    Satılan adet miktarına göre en çok satılan ürünleri gösterir.
+                </div>
+                <canvas id="topProductsChart" height="150"></canvas>
+            </div>
+        </div>
 
     </div>
 
@@ -218,28 +388,24 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    const ctx = document.getElementById('erpChart');
+    const revenueCtx = document.getElementById('revenueChart');
 
-    new Chart(ctx, {
-    type: 'bar',
+    new Chart(revenueCtx, {
+    type: 'line',
 
     data: {
-    labels: @Html.Raw(Json.Serialize(ViewBag.ChartLabels)),
+    labels: @Html.Raw(Json.Serialize(ViewBag.RevenueChartLabels)),
 
     datasets: [{
-    label: 'ERP Verileri',
+    label: 'Günlük Ciro',
 
-    data: @Html.Raw(Json.Serialize(ViewBag.ChartData)),
+    data: @Html.Raw(Json.Serialize(ViewBag.RevenueChartData)),
 
-    backgroundColor: [
-    '#355c9a',
-    '#2d6a4f',
-    '#ca8a04',
-    '#7f1d1d'
-    ],
-
-    borderRadius: 12,
-    borderSkipped: false
+    tension: 0.35,
+    fill: true,
+    borderWidth: 3,
+    pointRadius: 5,
+    pointHoverRadius: 7
     }]
     },
 
@@ -248,7 +414,68 @@
 
     plugins: {
     legend: {
+    display: true
+    },
+
+    tooltip: {
+    callbacks: {
+    label: function(context) {
+    let value = context.raw || 0;
+    return 'Ciro: ' + value.toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+    }) + ' ₺';
+    }
+    }
+    }
+    },
+
+    scales: {
+    y: {
+    beginAtZero: true,
+
+    ticks: {
+    callback: function(value) {
+    return value.toLocaleString('tr-TR') + ' ₺';
+    }
+    },
+
+    grid: {
+    color: 'rgba(0,0,0,0.05)'
+    }
+    },
+
+    x: {
+    grid: {
     display: false
+    }
+    }
+    }
+    }
+    });
+
+
+    const salesCountCtx = document.getElementById('salesCountChart');
+
+    new Chart(salesCountCtx, {
+    type: 'bar',
+
+    data: {
+    labels: @Html.Raw(Json.Serialize(ViewBag.RevenueChartLabels)),
+
+    datasets: [{
+    label: 'Satış Adedi',
+    data: @Html.Raw(Json.Serialize(ViewBag.SalesCountChartData)),
+    borderRadius: 10
+    }]
+    },
+
+    options: {
+    responsive: true,
+
+    plugins: {
+    legend: {
+    display: true
     }
     },
 
@@ -266,6 +493,94 @@
     },
 
     x: {
+    grid: {
+    display: false
+    }
+    }
+    }
+    }
+    });
+
+
+    const paymentTypeCtx = document.getElementById('paymentTypeChart');
+
+    new Chart(paymentTypeCtx, {
+    type: 'doughnut',
+
+    data: {
+    labels: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeLabels)),
+
+    datasets: [{
+    label: 'Ödeme Tipi',
+    data: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeData))
+    }]
+    },
+
+    options: {
+    responsive: true,
+
+    plugins: {
+    legend: {
+    display: true,
+    position: 'bottom'
+    },
+
+    tooltip: {
+    callbacks: {
+    label: function(context) {
+    let value = context.raw || 0;
+
+    return context.label + ': ' + value.toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+    }) + ' ₺';
+    }
+    }
+    }
+    }
+    }
+    });
+
+
+    const topProductsCtx = document.getElementById('topProductsChart');
+
+    new Chart(topProductsCtx, {
+    type: 'bar',
+
+    data: {
+    labels: @Html.Raw(Json.Serialize(ViewBag.TopProductLabels)),
+
+    datasets: [{
+    label: 'Satılan Adet',
+    data: @Html.Raw(Json.Serialize(ViewBag.TopProductData)),
+    borderRadius: 10
+    }]
+    },
+
+    options: {
+    indexAxis: 'y',
+    responsive: true,
+
+    plugins: {
+    legend: {
+    display: true
+    }
+    },
+
+    scales: {
+    x: {
+    beginAtZero: true,
+
+    ticks: {
+    precision: 0
+    },
+
+    grid: {
+    color: 'rgba(0,0,0,0.05)'
+    }
+    },
+
+    y: {
     grid: {
     display: false
     }

@@ -15,6 +15,35 @@ namespace MarketERP.Controllers
             _context = context;
         }
 
+        [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
+        public IActionResult Index(string status)
+        {
+            if (HttpContext.Session.GetString("Username") == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            var requests = _context.ReturnRequests
+                .Include(r => r.Sale)
+                    .ThenInclude(s => s.Customer)
+                .Include(r => r.Product)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                requests = requests.Where(r => r.Status == status);
+            }
+
+            ViewBag.Status = status;
+
+            ViewBag.PendingCount = _context.ReturnRequests.Count(r => r.Status == "Beklemede");
+            ViewBag.ApprovedCount = _context.ReturnRequests.Count(r => r.Status == "Onaylandı");
+            ViewBag.RejectedCount = _context.ReturnRequests.Count(r => r.Status == "Reddedildi");
+            ViewBag.TotalCount = _context.ReturnRequests.Count();
+
+            return View(requests.OrderByDescending(r => r.RequestedAt).ToList());
+        }
+
         [PermissionAuthorize("return.request")]
         public IActionResult MyRequests()
         {
@@ -106,6 +135,17 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Create", new { id = saleId });
             }
 
+            bool samePendingRequestExists = _context.ReturnRequests.Any(r =>
+                r.SaleDetailId == saleDetailId &&
+                r.EmployeeId == employeeId.Value &&
+                r.Status == "Beklemede");
+
+            if (samePendingRequestExists)
+            {
+                TempData["Error"] = "Bu ürün için zaten bekleyen bir iade talebiniz var.";
+                return RedirectToAction("MyRequests");
+            }
+
             var request = new ReturnRequest
             {
                 SaleId = saleId,
@@ -121,9 +161,70 @@ namespace MarketERP.Controllers
             _context.ReturnRequests.Add(request);
             _context.SaveChanges();
 
-            TempData["Success"] = "İade talebi oluşturuldu. Onay için mağaza müdürüne/admin'e gönderildi.";
+            TempData["Success"] = "İade talebi oluşturuldu. Onay için yöneticiye gönderildi.";
 
             return RedirectToAction("MyRequests");
+        }
+
+        [HttpPost]
+        [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
+        public IActionResult Approve(int id)
+        {
+            var request = _context.ReturnRequests
+                .Include(r => r.Product)
+                .FirstOrDefault(r => r.Id == id);
+
+            if (request == null)
+            {
+                TempData["Error"] = "İade talebi bulunamadı.";
+                return RedirectToAction("Index");
+            }
+
+            if (request.Status != "Beklemede")
+            {
+                TempData["Error"] = "Sadece bekleyen iade talepleri onaylanabilir.";
+                return RedirectToAction("Index");
+            }
+
+            if (request.Product != null)
+            {
+                request.Product.StockQuantity += request.Quantity;
+            }
+
+            request.Status = "Onaylandı";
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "İade talebi onaylandı ve ürün stoğa geri eklendi.";
+
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
+        public IActionResult Reject(int id)
+        {
+            var request = _context.ReturnRequests.Find(id);
+
+            if (request == null)
+            {
+                TempData["Error"] = "İade talebi bulunamadı.";
+                return RedirectToAction("Index");
+            }
+
+            if (request.Status != "Beklemede")
+            {
+                TempData["Error"] = "Sadece bekleyen iade talepleri reddedilebilir.";
+                return RedirectToAction("Index");
+            }
+
+            request.Status = "Reddedildi";
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "İade talebi reddedildi.";
+
+            return RedirectToAction("Index");
         }
     }
 }

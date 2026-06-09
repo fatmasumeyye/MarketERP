@@ -2,6 +2,7 @@
 using MarketERP.Helpers;
 using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP.Controllers
 {
@@ -12,6 +13,56 @@ namespace MarketERP.Controllers
         public CashRegisterController(AppDbContext context)
         {
             _context = context;
+        }
+
+        [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
+        public IActionResult Index(string status)
+        {
+            if (HttpContext.Session.GetString("Username") == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            var closingsQuery = _context.CashRegisterClosings
+                .Include(c => c.Employee)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                closingsQuery = closingsQuery.Where(c => c.Status == status);
+            }
+
+            var closings = closingsQuery
+                .OrderByDescending(c => c.ClosingDate)
+                .ToList();
+
+            ViewBag.Status = status;
+
+            ViewBag.TodayClosingCount = _context.CashRegisterClosings
+                .Count(c => c.ClosingDate >= today && c.ClosingDate < tomorrow);
+
+            ViewBag.PendingCount = _context.CashRegisterClosings
+                .Count(c => c.Status == "Beklemede");
+
+            ViewBag.ApprovedCount = _context.CashRegisterClosings
+                .Count(c => c.Status == "Onaylandı");
+
+            ViewBag.RejectedCount = _context.CashRegisterClosings
+                .Count(c => c.Status == "Reddedildi");
+
+            ViewBag.TotalExpectedCash = closings
+                .Sum(c => c.CashSalesTotal);
+
+            ViewBag.TotalDeclaredCash = closings
+                .Sum(c => c.DeclaredCashAmount);
+
+            ViewBag.TotalCashDifference = closings
+                .Sum(c => c.CashDifference);
+
+            return View(closings);
         }
 
         [PermissionAuthorize("cash.closing.create")]
@@ -145,9 +196,67 @@ namespace MarketERP.Controllers
             _context.CashRegisterClosings.Add(closing);
             _context.SaveChanges();
 
-            TempData["Success"] = "Kasa kapanışı oluşturuldu. Onay için mağaza müdürüne/admin'e gönderildi.";
+            TempData["Success"] = "Kasa kapanışı oluşturuldu. Onay için yöneticiye gönderildi.";
 
             return RedirectToAction("MyClosings");
+        }
+
+        [HttpPost]
+        [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
+        public IActionResult Approve(int id, string? reviewNote)
+        {
+            var closing = _context.CashRegisterClosings.Find(id);
+
+            if (closing == null)
+            {
+                TempData["Error"] = "Kasa kapanışı bulunamadı.";
+                return RedirectToAction("Index");
+            }
+
+            if (closing.Status != "Beklemede")
+            {
+                TempData["Error"] = "Sadece bekleyen kasa kapanışları onaylanabilir.";
+                return RedirectToAction("Index");
+            }
+
+            closing.Status = "Onaylandı";
+            closing.ReviewedAt = DateTime.Now;
+            closing.ReviewNote = reviewNote;
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Kasa kapanışı onaylandı.";
+
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
+        public IActionResult Reject(int id, string? reviewNote)
+        {
+            var closing = _context.CashRegisterClosings.Find(id);
+
+            if (closing == null)
+            {
+                TempData["Error"] = "Kasa kapanışı bulunamadı.";
+                return RedirectToAction("Index");
+            }
+
+            if (closing.Status != "Beklemede")
+            {
+                TempData["Error"] = "Sadece bekleyen kasa kapanışları reddedilebilir.";
+                return RedirectToAction("Index");
+            }
+
+            closing.Status = "Reddedildi";
+            closing.ReviewedAt = DateTime.Now;
+            closing.ReviewNote = reviewNote;
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Kasa kapanışı reddedildi.";
+
+            return RedirectToAction("Index");
         }
     }
 }

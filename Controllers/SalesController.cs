@@ -18,8 +18,20 @@ namespace MarketERP.Controllers
         }
 
         [PermissionAuthorize("sale.view.all", "sale.view.branch")]
-        public IActionResult Index(string search)
+        public IActionResult Index(string search, string dateFilter)
         {
+            if (HttpContext.Session.GetString("Username") == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            DateTime today = DateTime.Today;
+            DateTime tomorrow = today.AddDays(1);
+
+            DateTime weekStart = today.AddDays(-((int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1));
+            DateTime monthStart = new DateTime(today.Year, today.Month, 1);
+            DateTime yearStart = new DateTime(today.Year, 1, 1);
+
             var sales = _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.Employee)
@@ -32,10 +44,41 @@ namespace MarketERP.Controllers
                     s.Customer.FullName.Contains(search));
             }
 
-            ViewBag.TotalSalesRevenue = _context.Sales.Sum(s => s.TotalAmount);
-            ViewBag.TotalSalesCount = _context.Sales.Count();
+            if (dateFilter == "today")
+            {
+                sales = sales.Where(s => s.SaleDate >= today && s.SaleDate < tomorrow);
+                ViewBag.FilterTitle = "Bugünkü Satışlar";
+            }
+            else if (dateFilter == "week")
+            {
+                sales = sales.Where(s => s.SaleDate >= weekStart && s.SaleDate < tomorrow);
+                ViewBag.FilterTitle = "Bu Haftaki Satışlar";
+            }
+            else if (dateFilter == "month")
+            {
+                sales = sales.Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow);
+                ViewBag.FilterTitle = "Bu Aydaki Satışlar";
+            }
+            else if (dateFilter == "year")
+            {
+                sales = sales.Where(s => s.SaleDate >= yearStart && s.SaleDate < tomorrow);
+                ViewBag.FilterTitle = "Bu Yıldaki Satışlar";
+            }
+            else
+            {
+                ViewBag.FilterTitle = "Tüm Satışlar";
+            }
 
-            return View(sales.OrderByDescending(s => s.SaleDate).ToList());
+            var filteredSales = sales
+                .OrderByDescending(s => s.SaleDate)
+                .ToList();
+
+            ViewBag.DateFilter = dateFilter;
+            ViewBag.Search = search;
+            ViewBag.TotalSalesRevenue = filteredSales.Sum(s => s.TotalAmount);
+            ViewBag.TotalSalesCount = filteredSales.Count;
+
+            return View(filteredSales);
         }
 
         [PermissionAuthorize("sale.retail.create")]

@@ -15,6 +15,13 @@
     @{
         var isLoggedIn = Context.Session.GetInt32("EmployeeId") != null;
         var fullName = Context.Session.GetString("FullName");
+
+        var isAdminOrManager =
+            Context.HasPermission("sale.view.all")
+            || Context.HasPermission("sale.view.branch")
+            || Context.HasPermission("role.manage")
+            || Context.HasPermission("user.manage")
+            || Context.HasPermission("reports.sales");
     }
 
     <header>
@@ -54,7 +61,7 @@
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("sale.retail.create"))
+                        @if (isLoggedIn && Context.HasPermission("sale.retail.create") && !isAdminOrManager)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Sales" asp-action="Retail">
@@ -63,7 +70,7 @@
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("sale.view.own"))
+                        @if (isLoggedIn && Context.HasPermission("sale.view.own") && !isAdminOrManager)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Sales" asp-action="MySales">
@@ -72,7 +79,7 @@
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("return.request"))
+                        @if (isLoggedIn && Context.HasPermission("return.request") && !isAdminOrManager)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Returns" asp-action="MyRequests">
@@ -81,7 +88,16 @@
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("cash.closing.create"))
+                        @if (isLoggedIn && isAdminOrManager)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Returns" asp-action="Index">
+                                    İade Yönetimi
+                                </a>
+                            </li>
+                        }
+
+                        @if (isLoggedIn && Context.HasPermission("cash.closing.create") && !isAdminOrManager)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="CashRegister" asp-action="MyClosings">
@@ -90,7 +106,16 @@
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("sale.wholesale.create"))
+                        @if (isLoggedIn && isAdminOrManager)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="CashRegister" asp-action="Index">
+                                    Kasa Kapanış Yönetimi
+                                </a>
+                            </li>
+                        }
+
+                        @if (isLoggedIn && Context.HasPermission("sale.wholesale.create") && !isAdminOrManager)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-controller="Sales" asp-action="Wholesale">

@@ -20,84 +20,149 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            var roles = HttpContext.Session.GetString("Roles");
+            DateTime today = DateTime.Today;
+            DateTime tomorrow = today.AddDays(1);
 
-            if (!string.IsNullOrEmpty(roles) && roles.Contains("Kasiyer"))
-            {
-                return CashierDashboard();
-            }
+            DateTime weekStart = today.AddDays(-((int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1));
+            DateTime monthStart = new DateTime(today.Year, today.Month, 1);
+            DateTime yearStart = new DateTime(today.Year, 1, 1);
 
-            var today = DateTime.Today;
-            var tomorrow = today.AddDays(1);
-            var currentMonth = DateTime.Today.Month;
-            var currentYear = DateTime.Today.Year;
-
-            ViewBag.CategoryCount = _context.Categories.Count();
-            ViewBag.ProductCount = _context.Products.Count();
-            ViewBag.CustomerCount = _context.Customers.Count();
-
-            ViewBag.TotalRevenue = _context.Sales
-                .Select(s => (decimal?)s.TotalAmount)
-                .Sum() ?? 0;
-
-            ViewBag.SaleCount = _context.Sales.Count();
-
-            ViewBag.CriticalStockCount = _context.Products
-                .Count(p => p.StockQuantity <= p.CriticalStock);
-
-            ViewBag.TodaySaleCount = _context.Sales
+            // Satış / Ciro Kartları
+            ViewBag.TodaySalesCount = _context.Sales
                 .Count(s => s.SaleDate >= today && s.SaleDate < tomorrow);
 
             ViewBag.TodayRevenue = _context.Sales
                 .Where(s => s.SaleDate >= today && s.SaleDate < tomorrow)
-                .Select(s => (decimal?)s.TotalAmount)
-                .Sum() ?? 0;
+                .Sum(s => (decimal?)s.TotalAmount) ?? 0;
+
+            ViewBag.WeeklyRevenue = _context.Sales
+                .Where(s => s.SaleDate >= weekStart && s.SaleDate < tomorrow)
+                .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
             ViewBag.MonthlyRevenue = _context.Sales
-                .Where(s => s.SaleDate.Month == currentMonth
-                         && s.SaleDate.Year == currentYear)
-                .Select(s => (decimal?)s.TotalAmount)
-                .Sum() ?? 0;
+                .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
+                .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
             ViewBag.YearlyRevenue = _context.Sales
-                .Where(s => s.SaleDate.Year == currentYear)
-                .Select(s => (decimal?)s.TotalAmount)
-                .Sum() ?? 0;
+                .Where(s => s.SaleDate >= yearStart && s.SaleDate < tomorrow)
+                .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            ViewBag.LastSales = _context.Sales
+            // Genel Sistem Kartları
+            ViewBag.ProductCount = _context.Products.Count();
+
+            ViewBag.CriticalStockCount = _context.Products
+                .Count(p => p.StockQuantity <= p.CriticalStock);
+
+            // Admin Bekleyen İşlem Kartları
+            ViewBag.PendingLeavesCount = _context.EmployeeLeaves
+                .Count(l => l.Status == "Beklemede" || l.Status == "Onay Bekliyor");
+
+            ViewBag.PendingSupportTicketsCount = _context.SupportTickets
+                .Count(t => t.Status == "Açık" || t.Status == "Beklemede");
+
+            ViewBag.PendingReturnRequestsCount = _context.ReturnRequests
+                .Count(r => r.Status == "Beklemede" || r.Status == "Onay Bekliyor");
+
+            // EmployeeBonus modelinde Status alanı olmadığı için şimdilik toplam prim kaydı gösteriyoruz.
+            ViewBag.PendingBonusesCount = _context.EmployeeBonuses.Count();
+
+            // Kritik stok ürünleri
+            ViewBag.LowStockProducts = _context.Products
+                .Where(p => p.StockQuantity <= p.CriticalStock)
+                .OrderBy(p => p.StockQuantity)
+                .Take(5)
+                .ToList();
+
+            // Son satışlar
+            ViewBag.RecentSales = _context.Sales
+                .Include(s => s.Customer)
+                .Include(s => s.Employee)
                 .OrderByDescending(s => s.SaleDate)
                 .Take(5)
                 .ToList();
 
-            ViewBag.TopSellingProducts = _context.SaleDetails
-                .GroupBy(s => s.Product.Name)
+            // Son 7 günlük ciro ve satış adedi grafikleri
+            DateTime sevenDaysAgo = today.AddDays(-6);
+
+            var last7DaysLabels = new List<string>();
+            var last7DaysRevenue = new List<decimal>();
+            var last7DaysSalesCount = new List<int>();
+
+            for (int i = 0; i < 7; i++)
+            {
+                DateTime day = sevenDaysAgo.AddDays(i);
+                DateTime nextDay = day.AddDays(1);
+
+                decimal dayRevenue = _context.Sales
+                    .Where(s => s.SaleDate >= day && s.SaleDate < nextDay)
+                    .Sum(s => (decimal?)s.TotalAmount) ?? 0;
+
+                int daySalesCount = _context.Sales
+                    .Count(s => s.SaleDate >= day && s.SaleDate < nextDay);
+
+                last7DaysLabels.Add(day.ToString("dd.MM"));
+                last7DaysRevenue.Add(dayRevenue);
+                last7DaysSalesCount.Add(daySalesCount);
+            }
+
+            ViewBag.RevenueChartLabels = last7DaysLabels;
+            ViewBag.RevenueChartData = last7DaysRevenue;
+            ViewBag.SalesCountChartData = last7DaysSalesCount;
+
+            // Bu ay ödeme tipi dağılımı
+            var paymentTypeData = _context.Sales
+                .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
+                .GroupBy(s => string.IsNullOrWhiteSpace(s.PaymentType) ? "Belirtilmedi" : s.PaymentType)
+                .Select(g => new
+                {
+                    PaymentType = g.Key,
+                    TotalAmount = g.Sum(x => x.TotalAmount)
+                })
+                .OrderByDescending(x => x.TotalAmount)
+                .ToList();
+
+            ViewBag.PaymentTypeLabels = paymentTypeData
+                .Select(x => x.PaymentType)
+                .ToList();
+
+            ViewBag.PaymentTypeData = paymentTypeData
+                .Select(x => x.TotalAmount)
+                .ToList();
+
+            // En çok satan 5 ürün
+            var topSellingProducts = _context.SaleDetails
+                .Include(sd => sd.Product)
+                .Where(sd => sd.Product != null)
+                .GroupBy(sd => sd.Product.Name)
                 .Select(g => new
                 {
                     ProductName = g.Key,
-                    TotalQuantity = g.Sum(x => x.Quantity),
-                    TotalRevenue = g.Sum(x => x.Subtotal)
+                    TotalQuantity = g.Sum(x => x.Quantity)
                 })
                 .OrderByDescending(x => x.TotalQuantity)
                 .Take(5)
                 .ToList();
 
-            ViewBag.CriticalProducts = _context.Products
-                .Where(p => p.StockQuantity <= p.CriticalStock)
+            ViewBag.TopProductLabels = topSellingProducts
+                .Select(x => x.ProductName)
                 .ToList();
 
+            ViewBag.TopProductData = topSellingProducts
+                .Select(x => x.TotalQuantity)
+                .ToList();
+
+            // Eski view tarafında kalmış olabilecek isimler hata vermesin diye bırakıyoruz.
+            ViewBag.CategoryCount = _context.Categories.Count();
+            ViewBag.CustomerCount = _context.Customers.Count();
             ViewBag.EmployeeCount = _context.Employees.Count();
 
+            ViewBag.TotalRevenue = _context.Sales
+                .Sum(s => (decimal?)s.TotalAmount) ?? 0;
+
+            ViewBag.SaleCount = _context.Sales.Count();
+
             ViewBag.TotalBonus = _context.EmployeeBonuses
-                .Select(b => (decimal?)b.BonusAmount)
-                .Sum() ?? 0;
-
-            ViewBag.PendingLeaveCount = _context.EmployeeLeaves
-                .Count(l => l.Status == "Beklemede");
-
-            ViewBag.LastEmployees = _context.Employees
-                .OrderByDescending(e => e.Id)
-                .Take(5)
-                .ToList();
+                .Sum(b => (decimal?)b.BonusAmount) ?? 0;
 
             ViewBag.OpenTicketCount = _context.SupportTickets
                 .Count(t => t.Status == "Açık");
@@ -105,73 +170,7 @@ namespace MarketERP.Controllers
             ViewBag.ResolvedTicketCount = _context.SupportTickets
                 .Count(t => t.Status == "Çözüldü");
 
-            ViewBag.ChartLabels = new string[]
-            {
-                "Ürün",
-                "Müşteri",
-                "Satış",
-                "Çalışan"
-            };
-
-            ViewBag.ChartData = new int[]
-            {
-                _context.Products.Count(),
-                _context.Customers.Count(),
-                _context.Sales.Count(),
-                _context.Employees.Count()
-            };
-
             return View();
-        }
-
-        private IActionResult CashierDashboard()
-        {
-            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
-            var fullName = HttpContext.Session.GetString("FullName");
-
-            if (employeeId == null)
-            {
-                return RedirectToAction("Index", "Login");
-            }
-
-            var today = DateTime.Today;
-            var tomorrow = today.AddDays(1);
-
-            var todaySales = _context.Sales
-                .Where(s =>
-                    s.EmployeeId == employeeId.Value &&
-                    s.SaleDate >= today &&
-                    s.SaleDate < tomorrow);
-
-            var todaySaleCount = todaySales.Count();
-
-            var todayTotal = todaySales
-                .Select(s => (decimal?)s.TotalAmount)
-                .Sum() ?? 0;
-
-            var averageSaleAmount = todaySaleCount > 0
-                ? todayTotal / todaySaleCount
-                : 0;
-
-            var lastSale = _context.Sales
-                .Where(s => s.EmployeeId == employeeId.Value)
-                .OrderByDescending(s => s.SaleDate)
-                .FirstOrDefault();
-
-            ViewBag.FullName = fullName;
-            ViewBag.TodaySaleCount = todaySaleCount;
-            ViewBag.TodayTotal = todayTotal;
-            ViewBag.AverageSaleAmount = averageSaleAmount;
-            ViewBag.LastSale = lastSale;
-
-            ViewBag.LastMySales = _context.Sales
-                .Include(s => s.Customer)
-                .Where(s => s.EmployeeId == employeeId.Value)
-                .OrderByDescending(s => s.SaleDate)
-                .Take(5)
-                .ToList();
-
-            return View("CashierDashboard");
         }
 
         public IActionResult Privacy()

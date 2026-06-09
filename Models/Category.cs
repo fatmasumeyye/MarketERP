@@ -9,7 +9,7 @@ namespace MarketERP.Models
         public int Id { get; set; }
 
         [Column("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Column("parent_category_id")]
         public int? ParentCategoryId { get; set; }

@@ -1,0 +1,319 @@
+﻿@model List<MarketERP.Models.CashRegisterClosing>
+
+@{
+    ViewData["Title"] = "Kasa Kapanış Yönetimi";
+    var activeStatus = ViewBag.Status as string;
+    decimal totalDifference = ViewBag.TotalCashDifference;
+}
+
+<style>
+    .summary-card {
+        border: none;
+        border-radius: 16px;
+        color: white;
+        padding: 18px;
+        box-shadow: 0 5px 14px rgba(0,0,0,0.12);
+        min-height: 110px;
+        text-decoration: none;
+        display: block;
+    }
+
+        .summary-card:hover {
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .summary-card h6 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .summary-card h3 {
+            font-weight: 800;
+            margin: 0;
+        }
+
+    .bg-blue {
+        background: linear-gradient(135deg, #1f3b73, #355c9a);
+    }
+
+    .bg-green {
+        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+    }
+
+    .bg-orange {
+        background: linear-gradient(135deg, #9a6700, #ca8a04);
+    }
+
+    .bg-red {
+        background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+    }
+
+    .bg-gray {
+        background: linear-gradient(135deg, #374151, #4b5563);
+    }
+
+    .admin-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 22px;
+    }
+
+    .custom-table {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .review-note {
+        min-width: 160px;
+    }
+</style>
+
+<h2 class="mb-4">Kasa Kapanış Yönetimi</h2>
+
+<div class="admin-box">
+    <strong>Yönetici ekranı:</strong>
+    Bu ekranda tüm kasiyerlerin kasa kapanışlarını görebilir, nakit farklarını kontrol edebilir,
+    bekleyen kapanışları onaylayabilir veya reddedebilirsiniz.
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <a href="/CashRegister" class="summary-card bg-blue mb-3">
+            <h6>Bugünkü Kapanış Sayısı</h6>
+            <h3>@ViewBag.TodayClosingCount</h3>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/CashRegister?status=Beklemede" class="summary-card bg-orange mb-3">
+            <h6>Bekleyen Onay</h6>
+            <h3>@ViewBag.PendingCount</h3>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/CashRegister?status=Onaylandı" class="summary-card bg-green mb-3">
+            <h6>Onaylanan</h6>
+            <h3>@ViewBag.ApprovedCount</h3>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/CashRegister?status=Reddedildi" class="summary-card bg-red mb-3">
+            <h6>Reddedilen</h6>
+            <h3>@ViewBag.RejectedCount</h3>
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="summary-card bg-gray mb-3">
+            <h6>Beklenen Nakit</h6>
+            <h3>@ViewBag.TotalExpectedCash.ToString("N2") ₺</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="summary-card bg-gray mb-3">
+            <h6>Sayılan / Beyan Edilen Nakit</h6>
+            <h3>@ViewBag.TotalDeclaredCash.ToString("N2") ₺</h3>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        @if (totalDifference == 0)
+        {
+            <div class="summary-card bg-green mb-3">
+                <h6>Toplam Nakit Farkı</h6>
+                <h3>0,00 ₺</h3>
+            </div>
+        }
+        else if (totalDifference > 0)
+        {
+            <div class="summary-card bg-blue mb-3">
+                <h6>Toplam Nakit Farkı</h6>
+                <h3>Fazla: @totalDifference.ToString("N2") ₺</h3>
+            </div>
+        }
+        else
+        {
+            <div class="summary-card bg-red mb-3">
+                <h6>Toplam Nakit Farkı</h6>
+                <h3>Eksik: @Math.Abs(totalDifference).ToString("N2") ₺</h3>
+            </div>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(activeStatus))
+{
+    <div class="alert alert-info">
+        Şu an filtrelenen durum: <strong>@activeStatus</strong>
+        <a href="/CashRegister" class="btn btn-sm btn-outline-primary ms-2">Tümünü Göster</a>
+    </div>
+}
+
+<div class="custom-table">
+    <table class="table table-bordered table-striped align-middle mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Kasiyer</th>
+                <th>Tarih</th>
+                <th>Nakit Satış</th>
+                <th>Kart Satış</th>
+                <th>Toplam Satış</th>
+                <th>Beyan Nakit</th>
+                <th>Fark</th>
+                <th>Durum</th>
+                <th>İnceleme Notu</th>
+                <th width="260">İşlem</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (Model.Any())
+            {
+                foreach (var closing in Model)
+                {
+                    <tr>
+                        <td>@closing.Id</td>
+                        <td>@(closing.Employee?.FullName ?? "Bilinmiyor")</td>
+                        <td>@closing.ClosingDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@closing.CashSalesTotal.ToString("N2") ₺</td>
+                        <td>@closing.CardSalesTotal.ToString("N2") ₺</td>
+                        <td>@closing.TotalSalesAmount.ToString("N2") ₺</td>
+                        <td>@closing.DeclaredCashAmount.ToString("N2") ₺</td>
+
+                        <td>
+                            @if (closing.CashDifference == 0)
+                            {
+                                <span class="badge bg-success">Tam</span>
+                            }
+                            else if (closing.CashDifference > 0)
+                            {
+                                <span class="badge bg-info text-dark">
+                                    Fazla: @closing.CashDifference.ToString("N2") ₺
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">
+                                    Eksik: @Math.Abs(closing.CashDifference).ToString("N2") ₺
+                                </span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (closing.Status == "Beklemede")
+                            {
+                                <span class="badge bg-warning text-dark">Beklemede</span>
+                            }
+                            else if (closing.Status == "Onaylandı")
+                            {
+                                <span class="badge bg-success">Onaylandı</span>
+                            }
+                            else if (closing.Status == "Reddedildi")
+                            {
+                                <span class="badge bg-danger">Reddedildi</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@closing.Status</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(closing.ReviewNote))
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                            else
+                            {
+                                <span>@closing.ReviewNote</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (closing.Status == "Beklemede")
+                            {
+                                <form asp-action="Approve"
+                                      method="post"
+                                      class="d-inline">
+                                    <input type="hidden" name="id" value="@closing.Id" />
+                                    <input type="text"
+                                           name="reviewNote"
+                                           class="form-control form-control-sm d-inline-block review-note"
+                                           placeholder="Not" />
+                                    <button type="submit"
+                                            class="btn btn-success btn-sm mt-1"
+                                            onclick="return confirm('Bu kasa kapanışı onaylanacak. Devam edilsin mi?');">
+                                        Onayla
+                                    </button>
+                                </form>
+
+                                <form asp-action="Reject"
+                                      method="post"
+                                      class="d-inline">
+                                    <input type="hidden" name="id" value="@closing.Id" />
+                                    <input type="text"
+                                           name="reviewNote"
+                                           class="form-control form-control-sm d-inline-block review-note"
+                                           placeholder="Red notu" />
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm mt-1"
+                                            onclick="return confirm('Bu kasa kapanışı reddedilecek. Devam edilsin mi?');">
+                                        Reddet
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted">
+                                    @if (closing.ReviewedAt.HasValue)
+                                    {
+                                        @closing.ReviewedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                                    }
+                                    else
+                                    {
+                                        @:İşlem tamamlandı
+                                    }
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="11" class="text-center text-muted">
+                        Kasa kapanışı bulunmuyor.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

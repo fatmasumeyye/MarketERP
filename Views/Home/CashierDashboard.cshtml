@@ -1,199 +1,250 @@
 ﻿@{
     ViewData["Title"] = "Kasiyer Dashboard";
-    var lastSale = ViewBag.LastSale as MarketERP.Models.Sale;
+
+    var todayClosing = ViewBag.TodayClosing as MarketERP.Models.CashRegisterClosing;
+    bool hasTodayClosing = ViewBag.HasTodayClosing == true;
 }
 
 <style>
-    .cashier-card {
+    .dashboard-card {
         border: none;
         border-radius: 18px;
         color: white;
-        padding: 10px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.10);
-        transition: 0.3s;
+        padding: 20px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        min-height: 135px;
+        text-decoration: none;
+        display: block;
+        transition: 0.2s;
     }
 
-    .cashier-card:hover {
-        transform: translateY(-3px);
-    }
+        .dashboard-card:hover {
+            color: white;
+            transform: translateY(-2px);
+        }
 
-    .cashier-card h5 {
-        font-size: 14px;
-        opacity: 0.9;
-        font-weight: 500;
-    }
+        .dashboard-card h5 {
+            font-size: 15px;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
 
-    .cashier-card h2 {
-        font-size: 32px;
-        margin-top: 10px;
-        font-weight: bold;
-    }
+        .dashboard-card h2 {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0;
+        }
 
-    .bg-card-blue {
+        .dashboard-card p {
+            margin-top: 10px;
+            margin-bottom: 0;
+            opacity: 0.9;
+        }
+
+    .bg-blue {
         background: linear-gradient(135deg, #1f3b73, #355c9a);
     }
 
-    .bg-card-green {
+    .bg-green {
         background: linear-gradient(135deg, #1b4332, #2d6a4f);
     }
 
-    .bg-card-orange {
+    .bg-orange {
         background: linear-gradient(135deg, #9a6700, #ca8a04);
     }
 
-    .bg-card-gray {
+    .bg-red {
+        background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+    }
+
+    .bg-purple {
+        background: linear-gradient(135deg, #5b21b6, #7c3aed);
+    }
+
+    .bg-gray {
         background: linear-gradient(135deg, #374151, #4b5563);
     }
 
-    .quick-action-card {
-        border-radius: 18px;
-        border: none;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    .info-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 22px;
     }
 
-    .section-title {
-        font-weight: 600;
-        margin-bottom: 15px;
+    .custom-table {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
 </style>
 
-<h2 class="mb-2">Kasiyer Dashboard</h2>
+<h2 class="mb-4">Kasiyer Dashboard</h2>
 
-<p class="text-muted mb-4">
-    Hoş geldin, <strong>@ViewBag.FullName</strong>. Bu ekran sadece senin bugünkü kasa işlemlerini gösterir.
-</p>
+<div class="info-box">
+    <strong>Kasiyer ekranı:</strong>
+    Bu ekranda sadece kendi satışların, bugünkü ödeme dağılımın, iade taleplerin ve kasa kapanış durumun gösterilir.
+</div>
 
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="card cashier-card bg-card-blue mb-3">
-            <div class="card-body">
-                <h5>Bugünkü Satış Sayım</h5>
-                <h2>@ViewBag.TodaySaleCount</h2>
-            </div>
+        <a href="/Sales/MySales" class="dashboard-card bg-blue mb-3">
+            <h5>Bugünkü Satış Adedi</h5>
+            <h2>@ViewBag.TodaySalesCount</h2>
+            <p>Bugün yaptığın satış sayısı</p>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <a href="/Sales/MySales" class="dashboard-card bg-green mb-3">
+            <h5>Bugünkü Ciro</h5>
+            <h2>@ViewBag.TodayRevenue.ToString("N2") ₺</h2>
+            <p>Bugünkü toplam satış gelirin</p>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <div class="dashboard-card bg-orange mb-3">
+            <h5>Nakit Satış</h5>
+            <h2>@ViewBag.TodayCashRevenue.ToString("N2") ₺</h2>
+            <p>Bugünkü nakit tahsilat</p>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="card cashier-card bg-card-green mb-3">
-            <div class="card-body">
-                <h5>Bugünkü Satış Toplamım</h5>
-                <h2>@ViewBag.TodayTotal ₺</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card cashier-card bg-card-orange mb-3">
-            <div class="card-body">
-                <h5>Ortalama Satış Tutarım</h5>
-                <h2>@ViewBag.AverageSaleAmount ₺</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card cashier-card bg-card-gray mb-3">
-            <div class="card-body">
-                <h5>Son Satışım</h5>
-
-                @if (lastSale != null)
-                {
-                    <h2>@lastSale.TotalAmount ₺</h2>
-                }
-                else
-                {
-                    <h2>Yok</h2>
-                }
-            </div>
+        <div class="dashboard-card bg-purple mb-3">
+            <h5>Kart Satış</h5>
+            <h2>@ViewBag.TodayCardRevenue.ToString("N2") ₺</h2>
+            <p>Bugünkü kartlı satış toplamı</p>
         </div>
     </div>
 </div>
 
-<h4 class="section-title">Hızlı İşlemler</h4>
-
-<div class="row mb-5">
+<div class="row mb-4">
     <div class="col-md-3">
-        <div class="card quick-action-card p-3 mb-3">
+        <a href="/Sales/Retail" class="dashboard-card bg-green mb-3">
             <h5>Perakende Satış</h5>
-            <p class="text-muted">Barkod okut, ürün ekle ve satışı tamamla.</p>
-            <a href="/Sales/Retail" class="btn btn-primary w-100">
-                Satışa Git
-            </a>
-        </div>
+            <h2>Satış Yap</h2>
+            <p>Yeni satış işlemi başlat</p>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card quick-action-card p-3 mb-3">
-            <h5>Kendi Satışlarım</h5>
-            <p class="text-muted">Bugünkü ve geçmiş kendi satışlarını görüntüle.</p>
-            <a href="/Sales/MySales" class="btn btn-primary w-100">
-                Satışlarımı Gör
-            </a>
-        </div>
+        <a href="/Returns/MyRequests" class="dashboard-card bg-gray mb-3">
+            <h5>Bekleyen İade Taleplerim</h5>
+            <h2>@ViewBag.MyPendingReturnCount</h2>
+            <p>Kendi iade taleplerini görüntüle</p>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card quick-action-card p-3 mb-3">
-            <h5>İade Taleplerim</h5>
-            <p class="text-muted">Oluşturduğun iade taleplerini görüntüle.</p>
-            <a href="/Returns/MyRequests" class="btn btn-warning w-100">
-                İade Taleplerime Git
-            </a>
-        </div>
+        <a href="/Sales/MySales" class="dashboard-card bg-blue mb-3">
+            <h5>Toplam Satışlarım</h5>
+            <h2>@ViewBag.MyTotalSalesCount</h2>
+            <p>Bugüne kadar yaptığın satışlar</p>
+        </a>
     </div>
 
     <div class="col-md-3">
-        <div class="card quick-action-card p-3 mb-3">
-            <h5>Kasa Kapanışı</h5>
-            <p class="text-muted">Kendi kasa kapanışını gün sonunda gönder.</p>
-            <a href="/CashRegister/MyClosings" class="btn btn-primary w-100">
-                Kasa Kapanışına Git
-            </a>
+        <div class="dashboard-card bg-purple mb-3">
+            <h5>Toplam Ciro</h5>
+            <h2>@ViewBag.MyTotalRevenue.ToString("N2") ₺</h2>
+            <p>Senin yaptığın toplam satış geliri</p>
         </div>
     </div>
 </div>
 
-<h4 class="section-title">Son Satışlarım</h4>
-
-<div class="card shadow-sm border-0" style="border-radius:18px;">
-    <div class="card-body">
-        @if (ViewBag.LastMySales == null || ViewBag.LastMySales.Count == 0)
+<div class="row mb-4">
+    <div class="col-md-12">
+        @if (hasTodayClosing && todayClosing != null)
         {
-            <div class="alert alert-warning mb-0">
-                Henüz sana ait satış kaydı bulunmuyor.
-            </div>
+            <a href="/CashRegister/MyClosings" class="dashboard-card bg-blue mb-3">
+                <h5>Bugünkü Kasa Kapanışı</h5>
+                <h2>@todayClosing.Status</h2>
+
+                <p>
+                    Beklenen nakit:
+                    <strong>@todayClosing.CashSalesTotal.ToString("N2") ₺</strong>
+                    |
+                    Beyan edilen nakit:
+                    <strong>@todayClosing.DeclaredCashAmount.ToString("N2") ₺</strong>
+                    |
+                    Fark:
+                    @if (todayClosing.CashDifference == 0)
+                    {
+                        <strong>0,00 ₺</strong>
+                    }
+                    else if (todayClosing.CashDifference > 0)
+                    {
+                        <strong>Fazla @todayClosing.CashDifference.ToString("N2") ₺</strong>
+                    }
+                    else
+                    {
+                        <strong>Eksik @Math.Abs(todayClosing.CashDifference).ToString("N2") ₺</strong>
+                    }
+                </p>
+            </a>
         }
         else
         {
-            <table class="table table-bordered table-striped mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Satış ID</th>
-                        <th>Müşteri</th>
-                        <th>Toplam Tutar</th>
-                        <th>Tarih</th>
-                        <th>İşlem</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @foreach (var sale in ViewBag.LastMySales)
-                    {
-                        <tr>
-                            <td>@sale.Id</td>
-                            <td>@sale.Customer?.FullName</td>
-                            <td>@sale.TotalAmount ₺</td>
-                            <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
-                            <td>
-                                <a href="/Sales/Invoice/@sale.Id"
-                                       class="btn btn-info btn-sm">
-                                    Fatura
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <a href="/CashRegister/Create" class="dashboard-card bg-red mb-3">
+                <h5>Bugünkü Kasa Kapanışı</h5>
+                <h2>Yapılmadı</h2>
+                <p>Vardiya sonunda kasa kapanışını oluşturman gerekiyor.</p>
+            </a>
         }
     </div>
+</div>
+
+<h4 class="mb-3">Son Satışlarım</h4>
+
+<div class="custom-table">
+    <table class="table table-bordered table-striped align-middle mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Satış ID</th>
+                <th>Müşteri</th>
+                <th>Ödeme Tipi</th>
+                <th>Toplam Tutar</th>
+                <th>Tarih</th>
+                <th width="170">İşlem</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (ViewBag.LastSales != null && ViewBag.LastSales.Count > 0)
+            {
+                foreach (var sale in ViewBag.LastSales)
+                {
+                    <tr>
+                        <td>@sale.Id</td>
+                        <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
+                        <td>@sale.PaymentType</td>
+                        <td>@sale.TotalAmount.ToString("N2") ₺</td>
+                        <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            <a href="/Sales/Invoice/@sale.Id?returnUrl=/"
+                                   class="btn btn-info btn-sm">
+                                Fatura
+                            </a>
+
+                            <a href="/Returns/Create/@sale.Id"
+                                   class="btn btn-warning btn-sm">
+                                İade Talebi
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        Henüz satış kaydın bulunmuyor.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>

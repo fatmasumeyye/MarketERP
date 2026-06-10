@@ -132,6 +132,14 @@
                                 </a>
                             </li>
                         }
+                        @if (isLoggedIn && isAdminOrManager)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="WholesaleSales" asp-action="Index">
+                                    Toptan Satış Yönetimi
+                                </a>
+                            </li>
+                        }
 
                         @if (isLoggedIn && Context.HasPermission("customer.view"))
                         {

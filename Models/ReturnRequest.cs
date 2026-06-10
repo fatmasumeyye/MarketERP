@@ -8,6 +8,9 @@ namespace MarketERP.Models
         [Column("id")]
         public int Id { get; set; }
 
+        [Column("request_no")]
+        public string RequestNo { get; set; } = string.Empty;
+
         [Column("sale_id")]
         public int SaleId { get; set; }
 
@@ -22,6 +25,9 @@ namespace MarketERP.Models
 
         [Column("quantity")]
         public int Quantity { get; set; }
+
+        [Column("reason_type")]
+        public string ReasonType { get; set; } = string.Empty;
 
         [Column("reason")]
         public string Reason { get; set; } = string.Empty;

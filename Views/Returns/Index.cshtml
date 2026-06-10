@@ -3,6 +3,11 @@
 @{
     ViewData["Title"] = "İade Yönetimi";
     var activeStatus = ViewBag.Status as string;
+
+    var groupedRequests = Model
+        .GroupBy(r => string.IsNullOrWhiteSpace(r.RequestNo) ? $"RT-{r.Id:D6}" : r.RequestNo)
+        .OrderByDescending(g => g.Max(x => x.RequestedAt))
+        .ToList();
 }
 
 <style>
@@ -57,10 +62,13 @@
         margin-bottom: 22px;
     }
 
-    .custom-table {
-        border-radius: 14px;
+    .return-card {
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .stock-select {
+        min-width: 230px;
     }
 </style>
 
@@ -68,8 +76,8 @@
 
 <div class="admin-box">
     <strong>Yönetici ekranı:</strong>
-    Bu ekranda tüm iade taleplerini görebilir, bekleyen iadeleri onaylayabilir veya reddedebilirsiniz.
-    Onaylanan iade taleplerinde ilgili ürün stoğa geri eklenir.
+    Bu ekranda iade belgelerini belge bazlı görebilir, her ürün için ayrı stok kararı verebilirsiniz.
+    Hasarlı/kırık ürünler normal stoğa eklenmez.
 </div>
 
 @if (TempData["Error"] != null)
@@ -91,7 +99,7 @@
 <div class="row mb-4">
     <div class="col-md-3">
         <a href="/Returns" class="summary-card bg-blue mb-3">
-            <h6>Tüm İade Talepleri</h6>
+            <h6>Tüm İade Belgeleri</h6>
             <h3>@ViewBag.TotalCount</h3>
         </a>
     </div>
@@ -126,90 +134,173 @@
     </div>
 }
 
-<div class="custom-table">
-    <table class="table table-bordered table-striped align-middle mb-0">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>Satış ID</th>
-                <th>Ürün</th>
-                <th>Adet</th>
-                <th>Sebep</th>
-                <th>Durum</th>
-                <th>Talep Tarihi</th>
-                <th width="220">İşlem</th>
-            </tr>
-        </thead>
+@if (!groupedRequests.Any())
+{
+    <div class="alert alert-warning">
+        İade talebi bulunmuyor.
+    </div>
+}
+else
+{
+    foreach (var group in groupedRequests)
+    {
+        var first = group.First();
 
-        <tbody>
-            @if (Model.Any())
-            {
-                foreach (var item in Model)
+        var documentStatus = group.All(x => x.Status == "Onaylandı")
+            ? "Onaylandı"
+            : group.All(x => x.Status == "Reddedildi")
+                ? "Reddedildi"
+                : group.Any(x => x.Status == "Beklemede")
+                    ? "Beklemede"
+                    : "Karışık";
+
+        <div class="card shadow-sm mb-4 return-card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>İade Belgesi:</strong> @group.Key
+                    <span class="ms-3">Satış ID: @first.SaleId</span>
+                    <span class="ms-3">Talep Eden: @(first.Employee?.FullName ?? "-")</span>
+                    <span class="ms-3">Talep Tarihi: @first.RequestedAt.ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+
+                <div>
+                    @if (documentStatus == "Beklemede")
+                    {
+                        <span class="badge bg-warning text-dark">Beklemede</span>
+                    }
+                    else if (documentStatus == "Onaylandı")
+                    {
+                        <span class="badge bg-success">Onaylandı</span>
+                    }
+                    else if (documentStatus == "Reddedildi")
+                    {
+                        <span class="badge bg-danger">Reddedildi</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@documentStatus</span>
+                    }
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="mb-3">
+                    <a href="/Returns/ReturnInvoice/@first.Id" class="btn btn-info btn-sm">
+                        İade Faturası
+                    </a>
+                </div>
+
+                @if (documentStatus == "Beklemede")
                 {
-                    <tr>
-                        <td>@item.Id</td>
-                        <td>@item.SaleId</td>
-                        <td>@(item.Product?.Name ?? "-")</td>
-                        <td>@item.Quantity</td>
-                        <td>@item.Reason</td>
-                        <td>
-                            @if (item.Status == "Beklemede")
-                            {
-                                <span class="badge bg-warning text-dark">Beklemede</span>
-                            }
-                            else if (item.Status == "Onaylandı")
-                            {
-                                <span class="badge bg-success">Onaylandı</span>
-                            }
-                            else if (item.Status == "Reddedildi")
-                            {
-                                <span class="badge bg-danger">Reddedildi</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">@item.Status</span>
-                            }
-                        </td>
-                        <td>@item.RequestedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                        <td>
-                            @if (item.Status == "Beklemede")
-                            {
-                                <form asp-action="Approve"
-                                      method="post"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Bu iade talebi onaylanacak ve ürün stoğa eklenecek. Devam edilsin mi?');">
-                                    <input type="hidden" name="id" value="@item.Id" />
-                                    <button type="submit" class="btn btn-success btn-sm">
-                                        Onayla
-                                    </button>
-                                </form>
+                    <form asp-action="ApproveDocument"
+                          method="post"
+                          onsubmit="return confirm('Bu iade belgesi onaylanacak. Her ürün için seçilen stok işlemine göre işlem yapılacak. Devam edilsin mi?');">
 
-                                <form asp-action="Reject"
-                                      method="post"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Bu iade talebi reddedilecek. Devam edilsin mi?');">
-                                    <input type="hidden" name="id" value="@item.Id" />
-                                    <button type="submit" class="btn btn-danger btn-sm">
-                                        Reddet
-                                    </button>
-                                </form>
-                            }
-                            else
-                            {
-                                <span class="text-muted">İşlem tamamlandı</span>
-                            }
-                        </td>
-                    </tr>
+                        <input type="hidden" name="requestNo" value="@group.Key" />
+
+                        <table class="table table-bordered table-striped align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th>Adet</th>
+                                    <th>Sebep</th>
+                                    <th>Açıklama</th>
+                                    <th>Stok İşlemi</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (var item in group)
+                                {
+                                    <tr>
+                                        <td>@(item.Product?.Name ?? "-")</td>
+                                        <td>@item.Quantity</td>
+                                        <td>@item.ReasonType</td>
+                                        <td>@item.Reason</td>
+                                        <td>
+                                            <select name="stockAction_@item.Id"
+                                                    class="form-control form-control-sm stock-select"
+                                                    required>
+                                                <option value="">Stok işlemi seç</option>
+                                                <option value="Satılabilir stoğa ekle">Satılabilir stoğa ekle</option>
+                                                <option value="Hasarlı / fire, stoğa ekleme">Hasarlı / fire, stoğa ekleme</option>
+                                                <option value="İnceleme bekliyor, stoğa ekleme">İnceleme bekliyor, stoğa ekleme</option>
+                                                <option value="Tedarikçiye iade edilecek, stoğa ekleme">Tedarikçiye iade edilecek, stoğa ekleme</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <input type="text"
+                                       name="reviewNote"
+                                       class="form-control"
+                                       placeholder="Genel yönetici notu" />
+                            </div>
+
+                            <div class="col-md-4 text-end">
+                                <button type="submit" class="btn btn-success">
+                                    Belgeyi Onayla
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <form asp-action="RejectDocument"
+                          method="post"
+                          class="mt-2"
+                          onsubmit="return confirm('Bu iade belgesi tamamen reddedilecek. Devam edilsin mi?');">
+                        <input type="hidden" name="requestNo" value="@group.Key" />
+
+                        <div class="row">
+                            <div class="col-md-8">
+                                <input type="text"
+                                       name="reviewNote"
+                                       class="form-control"
+                                       placeholder="Red notu" />
+                            </div>
+
+                            <div class="col-md-4 text-end">
+                                <button type="submit" class="btn btn-danger">
+                                    Belgeyi Reddet
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="8" class="text-center text-muted">
-                        İade talebi bulunmuyor.
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+                else
+                {
+                    <table class="table table-bordered table-striped align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Ürün</th>
+                                <th>Adet</th>
+                                <th>Sebep</th>
+                                <th>Açıklama</th>
+                                <th>Durum</th>
+                                <th>Yönetici Notu</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var item in group)
+                            {
+                                <tr>
+                                    <td>@(item.Product?.Name ?? "-")</td>
+                                    <td>@item.Quantity</td>
+                                    <td>@item.ReasonType</td>
+                                    <td>@item.Reason</td>
+                                    <td>@item.Status</td>
+                                    <td>@(string.IsNullOrWhiteSpace(item.ReviewNote) ? "-" : item.ReviewNote)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    }
+}

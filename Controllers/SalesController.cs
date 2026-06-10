@@ -127,7 +127,115 @@ namespace MarketERP.Controllers
         [PermissionAuthorize("sale.wholesale.create")]
         public IActionResult Wholesale()
         {
+            ViewBag.Customers = new SelectList(
+                _context.Customers
+                    .Where(c => c.FullName != "Nihai Tüketici")
+                    .OrderBy(c => c.FullName)
+                    .ToList(),
+                "Id",
+                "FullName"
+            );
+
+            ViewBag.Products = _context.Products
+                .OrderBy(p => p.Name)
+                .ToList();
+
             return View();
+        }
+
+        [HttpPost]
+        [PermissionAuthorize("sale.wholesale.create")]
+        public IActionResult Wholesale(int customerId, DateTime? dueDate, decimal discountRate, string? note, List<int> productIds, List<int> quantities)
+        {
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+
+            if (employeeId == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            if (customerId <= 0)
+            {
+                TempData["Error"] = "Toptan satış talebi için müşteri/firma seçmelisiniz.";
+                return RedirectToAction("Wholesale");
+            }
+
+            if (productIds == null || quantities == null || productIds.Count == 0 || quantities.Count == 0)
+            {
+                TempData["Error"] = "Toptan satış talebi için en az bir ürün seçmelisiniz.";
+                return RedirectToAction("Wholesale");
+            }
+
+            var items = new List<WholesaleSaleRequestItem>();
+
+            for (int i = 0; i < productIds.Count; i++)
+            {
+                int productId = productIds[i];
+                int quantity = quantities.Count > i ? quantities[i] : 0;
+
+                if (productId <= 0 || quantity <= 0)
+                {
+                    continue;
+                }
+
+                var product = _context.Products.Find(productId);
+
+                if (product == null)
+                {
+                    continue;
+                }
+
+                items.Add(new WholesaleSaleRequestItem
+                {
+                    ProductId = product.Id,
+                    Quantity = quantity,
+                    UnitPrice = product.SalePrice,
+                    Subtotal = product.SalePrice * quantity
+                });
+            }
+
+            if (!items.Any())
+            {
+                TempData["Error"] = "Geçerli ürün ve miktar bilgisi girilmedi.";
+                return RedirectToAction("Wholesale");
+            }
+
+            decimal subtotal = items.Sum(i => i.Subtotal);
+
+            if (discountRate < 0)
+            {
+                discountRate = 0;
+            }
+
+            if (discountRate > 100)
+            {
+                discountRate = 100;
+            }
+
+            decimal discountAmount = subtotal * discountRate / 100;
+            decimal totalAmount = subtotal - discountAmount;
+
+            var request = new WholesaleSaleRequest
+            {
+                CustomerId = customerId,
+                EmployeeId = employeeId.Value,
+                RequestDate = DateTime.Now,
+                DueDate = dueDate,
+                DiscountRate = discountRate,
+                SubtotalAmount = subtotal,
+                DiscountAmount = discountAmount,
+                TotalAmount = totalAmount,
+                Status = "Onay Bekliyor",
+                Note = note,
+                Items = items
+            };
+
+            _context.WholesaleSaleRequests.Add(request);
+            _context.SaveChanges();
+
+            TempData["Success"] = "Toptan satış talebi oluşturuldu. Yönetici onayına gönderildi.";
+
+            return RedirectToAction("Wholesale");
         }
 
         [HttpGet]

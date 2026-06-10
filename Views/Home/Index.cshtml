@@ -224,7 +224,7 @@
     </div>
 
     <div class="col-md-3">
-        <a href="/Returns/MyRequests" class="dashboard-card bg-card-red mb-3">
+        <a href="/Returns" class="dashboard-card bg-card-red mb-3">
             <div class="card-body">
                 <h5>İade Talepleri</h5>
                 <h2>@ViewBag.PendingReturnRequestsCount</h2>
@@ -398,9 +398,7 @@ else
 
     datasets: [{
     label: 'Günlük Ciro',
-
     data: @Html.Raw(Json.Serialize(ViewBag.RevenueChartData)),
-
     tension: 0.35,
     fill: true,
     borderWidth: 3,

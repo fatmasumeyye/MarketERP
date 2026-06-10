@@ -1,0 +1,340 @@
+﻿@model List<MarketERP.Models.ReturnRequest>
+
+@{
+    Layout = null;
+
+    ViewData["Title"] = "İade Faturası";
+
+    var first = Model.FirstOrDefault();
+
+    var sale = first?.Sale;
+    var customer = sale?.Customer;
+    var employee = first?.Employee;
+
+    string documentNo = ViewBag.DocumentNo as string
+        ?? (first != null && !string.IsNullOrWhiteSpace(first.RequestNo)
+            ? first.RequestNo
+            : "RT-000000");
+
+    string documentStatus = Model.All(x => x.Status == "Onaylandı")
+        ? "Onaylandı"
+        : Model.All(x => x.Status == "Reddedildi")
+            ? "Reddedildi"
+            : Model.Any(x => x.Status == "Beklemede")
+                ? "Beklemede"
+                : "Karışık";
+
+    bool isApproved = documentStatus == "Onaylandı";
+
+    decimal totalReturnAmount = Model.Sum(x =>
+        (x.SaleDetail != null ? x.SaleDetail.UnitPrice : 0) * x.Quantity
+    );
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>İade Faturası - MarketERP</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+    <style>
+            body {
+                background: #f1f3f5;
+                font-family: Arial, sans-serif;
+                font-size: 13px;
+            }
+
+            .invoice-page {
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0 auto;
+                background: white;
+                padding: 12mm;
+            }
+
+            .invoice-header {
+                border-bottom: 2px solid #212529;
+                padding-bottom: 10px;
+                margin-bottom: 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+
+            .invoice-title {
+                font-size: 26px;
+                font-weight: 800;
+                margin: 0;
+                line-height: 1.15;
+            }
+
+            .invoice-muted {
+                color: #6c757d;
+                font-size: 13px;
+            }
+
+            .document-no {
+                font-size: 20px;
+                font-weight: 700;
+                text-align: right;
+            }
+
+            .status-stamp {
+                border: 2px solid #198754;
+                color: #198754;
+                padding: 6px 16px;
+                border-radius: 8px;
+                font-weight: 800;
+                display: inline-block;
+                transform: rotate(-2deg);
+                margin-top: 6px;
+                font-size: 14px;
+            }
+
+            .status-stamp-warning {
+                border-color: #ca8a04;
+                color: #ca8a04;
+            }
+
+            .status-stamp-danger {
+                border-color: #dc3545;
+                color: #dc3545;
+            }
+
+            .info-box {
+                border: 1px solid #dee2e6;
+                border-radius: 10px;
+                padding: 10px 12px;
+                background: #f8f9fa;
+                height: 100%;
+                margin-bottom: 10px;
+            }
+
+                .info-box h5 {
+                    font-size: 16px;
+                    font-weight: 700;
+                    margin-bottom: 8px;
+                }
+
+                .info-box p {
+                    margin-bottom: 4px;
+                }
+
+            .table th,
+            .table td {
+                padding: 7px;
+                vertical-align: middle;
+            }
+
+            .signature-area {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 30px;
+                gap: 30px;
+            }
+
+            .signature-box {
+                width: 48%;
+                border-top: 1px solid #333;
+                padding-top: 8px;
+                font-weight: 600;
+            }
+
+            .no-print {
+                width: 210mm;
+                margin: 12px auto;
+            }
+
+            .warning-note {
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+
+            @@media print {
+                @@page {
+                    size: A4 portrait;
+                    margin: 8mm;
+                }
+
+                body {
+                    background: white;
+                    margin: 0;
+                }
+
+                .no-print {
+                    display: none !important;
+                }
+
+                .invoice-page {
+                    width: auto;
+                    min-height: auto;
+                    margin: 0;
+                    padding: 0;
+                    box-shadow: none;
+                }
+
+                .info-box {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
+
+                table {
+                    page-break-inside: avoid;
+                }
+            }
+    </style>
+</head>
+
+<body>
+
+    <div class="no-print">
+        <a href="@(ViewBag.BackUrl ?? "/Returns")" class="btn btn-secondary">
+            Geri Dön
+        </a>
+
+        <button onclick="window.print()" class="btn btn-primary">
+            Yazdır / PDF Al
+        </button>
+    </div>
+
+    <div class="invoice-page">
+
+        <div class="invoice-header">
+            <div>
+                <h1 class="invoice-title">İade Faturası / İade Belgesi</h1>
+                <div class="invoice-muted">MarketERP Satış İade Belgesi</div>
+            </div>
+
+            <div>
+                <div class="document-no">@documentNo</div>
+
+                @if (documentStatus == "Onaylandı")
+                {
+                    <span class="status-stamp">ONAYLANDI</span>
+                }
+                else if (documentStatus == "Beklemede")
+                {
+                    <span class="status-stamp status-stamp-warning">BEKLEMEDE</span>
+                }
+                else if (documentStatus == "Reddedildi")
+                {
+                    <span class="status-stamp status-stamp-danger">REDDEDİLDİ</span>
+                }
+                else
+                {
+                    <span class="status-stamp status-stamp-warning">@documentStatus</span>
+                }
+            </div>
+        </div>
+
+        @if (!isApproved)
+        {
+            <div class="alert alert-warning warning-note">
+                Bu belge henüz kesin iade faturası değildir. Talep durumu:
+                <strong>@documentStatus</strong>. Yönetici onayından sonra iade faturası niteliği kazanır.
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-6">
+                <div class="info-box">
+                    <h5>Satış / Fatura Bilgileri</h5>
+
+                    <p><strong>Bağlı Satış No:</strong> @(first?.SaleId.ToString() ?? "-")</p>
+                    <p><strong>Satış Tarihi:</strong> @(sale != null ? sale.SaleDate.ToString("dd.MM.yyyy HH:mm") : "-")</p>
+                    <p><strong>Ödeme Tipi:</strong> @(sale?.PaymentType ?? "-")</p>
+                    <p><strong>Satış Toplamı:</strong> @(sale != null ? sale.TotalAmount.ToString("N2") : "0,00") ₺</p>
+                </div>
+            </div>
+
+            <div class="col-6">
+                <div class="info-box">
+                    <h5>Müşteri Bilgileri</h5>
+
+                    <p><strong>Müşteri:</strong> @(customer?.FullName ?? "Nihai Tüketici")</p>
+                    <p><strong>Telefon:</strong> @(customer?.Phone ?? "-")</p>
+                    <p><strong>Adres:</strong> @(customer?.Address ?? "-")</p>
+                </div>
+            </div>
+
+            <div class="col-6">
+                <div class="info-box">
+                    <h5>İade Talep Bilgileri</h5>
+
+                    <p><strong>Talep No:</strong> @documentNo</p>
+                    <p><strong>Talep Eden:</strong> @(employee?.FullName ?? "-")</p>
+                    <p><strong>Talep Tarihi:</strong> @(first != null ? first.RequestedAt.ToString("dd.MM.yyyy HH:mm") : "-")</p>
+                    <p><strong>İnceleme Tarihi:</strong> @(first?.ReviewedAt != null ? first.ReviewedAt.Value.ToString("dd.MM.yyyy HH:mm") : "-")</p>
+                </div>
+            </div>
+
+            <div class="col-6">
+                <div class="info-box">
+                    <h5>Belge Özeti</h5>
+
+                    <p><strong>Ürün Satırı:</strong> @Model.Count</p>
+                    <p><strong>Toplam İade Tutarı:</strong> @totalReturnAmount.ToString("N2") ₺</p>
+                    <p><strong>Durum:</strong> @documentStatus</p>
+                    <p><strong>Yönetici Notu:</strong> @(string.IsNullOrWhiteSpace(first?.ReviewNote) ? "-" : first.ReviewNote)</p>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="mt-2 mb-2">İade Edilen Ürünler</h5>
+
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Ürün</th>
+                    <th width="90">Adet</th>
+                    <th width="120">Birim Fiyat</th>
+                    <th width="130">İade Tutarı</th>
+                    <th>Sebep</th>
+                    <th>Açıklama</th>
+                    <th>Yönetici Notu</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    decimal unitPrice = item.SaleDetail?.UnitPrice ?? 0;
+                    decimal lineTotal = unitPrice * item.Quantity;
+
+                    <tr>
+                        <td>@(item.Product?.Name ?? "-")</td>
+                        <td>@item.Quantity</td>
+                        <td>@unitPrice.ToString("N2") ₺</td>
+                        <td>@lineTotal.ToString("N2") ₺</td>
+                        <td>@item.ReasonType</td>
+                        <td>@item.Reason</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.ReviewNote) ? "-" : item.ReviewNote)</td>
+                    </tr>
+                }
+            </tbody>
+
+            <tfoot>
+                <tr>
+                    <th colspan="3" class="text-end">Toplam İade Tutarı</th>
+                    <th>@totalReturnAmount.ToString("N2") ₺</th>
+                    <th colspan="3"></th>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="signature-area">
+            <div class="signature-box">
+                Talep Eden Personel İmzası
+            </div>
+
+            <div class="signature-box text-end">
+                Yönetici / Onay İmzası
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

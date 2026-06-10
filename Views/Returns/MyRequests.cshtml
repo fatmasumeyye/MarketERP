@@ -2,9 +2,18 @@
 
 @{
     ViewData["Title"] = "İade Taleplerim";
+
+    var groupedRequests = Model
+        .GroupBy(r => string.IsNullOrWhiteSpace(r.RequestNo) ? $"RT-{r.Id:D6}" : r.RequestNo)
+        .OrderByDescending(g => g.Max(x => x.RequestedAt))
+        .ToList();
 }
 
 <h2 class="mb-4">İade Taleplerim</h2>
+
+<div class="alert alert-info">
+    Bu ekranda oluşturduğun iade belgelerini ve onay durumlarını takip edebilirsin.
+</div>
 
 @if (TempData["Success"] != null)
 {
@@ -13,7 +22,14 @@
     </div>
 }
 
-@if (Model == null || Model.Count == 0)
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (!groupedRequests.Any())
 {
     <div class="alert alert-warning">
         Henüz oluşturduğun iade talebi yok.
@@ -21,45 +37,100 @@
 }
 else
 {
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                <th>Talep ID</th>
-                <th>Satış ID</th>
-                <th>Ürün</th>
-                <th>Adet</th>
-                <th>Sebep</th>
-                <th>Durum</th>
-                <th>Tarih</th>
-            </tr>
-        </thead>
+    foreach (var group in groupedRequests)
+    {
+        var first = group.First();
+        var documentStatus = group.All(x => x.Status == "Onaylandı")
+            ? "Onaylandı"
+            : group.All(x => x.Status == "Reddedildi")
+                ? "Reddedildi"
+                : group.Any(x => x.Status == "Beklemede")
+                    ? "Beklemede"
+                    : "Karışık";
 
-        <tbody>
-            @foreach (var request in Model)
-            {
-                <tr>
-                    <td>@request.Id</td>
-                    <td>@request.SaleId</td>
-                    <td>@request.Product?.Name</td>
-                    <td>@request.Quantity</td>
-                    <td>@request.Reason</td>
-                    <td>
-                        @if (request.Status == "Beklemede")
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>İade Belgesi:</strong> @group.Key
+                    <span class="ms-3">Satış ID: @first.SaleId</span>
+                </div>
+
+                <div>
+                    @if (documentStatus == "Beklemede")
+                    {
+                        <span class="badge bg-warning text-dark">Beklemede</span>
+                    }
+                    else if (documentStatus == "Onaylandı")
+                    {
+                        <span class="badge bg-success">Onaylandı</span>
+                    }
+                    else if (documentStatus == "Reddedildi")
+                    {
+                        <span class="badge bg-danger">Reddedildi</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@documentStatus</span>
+                    }
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Talep Tarihi:</strong> @first.RequestedAt.ToString("dd.MM.yyyy HH:mm")
+                    <a href="/Returns/ReturnInvoice/@first.Id" class="btn btn-info btn-sm ms-3">
+                        İade Faturası
+                    </a>
+                </div>
+
+                <table class="table table-bordered table-striped align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Ürün</th>
+                            <th>Adet</th>
+                            <th>Sebep</th>
+                            <th>Açıklama</th>
+                            <th>Durum</th>
+                            <th>Yönetici Notu</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var request in group)
                         {
-                            <span class="badge bg-warning text-dark">Beklemede</span>
+                            <tr>
+                                <td>@(request.Product?.Name ?? "-")</td>
+                                <td>@request.Quantity</td>
+                                <td>@request.ReasonType</td>
+                                <td>@request.Reason</td>
+
+                                <td>
+                                    @if (request.Status == "Beklemede")
+                                    {
+                                        <span class="badge bg-warning text-dark">Beklemede</span>
+                                    }
+                                    else if (request.Status == "Onaylandı")
+                                    {
+                                        <span class="badge bg-success">Onaylandı</span>
+                                    }
+                                    else if (request.Status == "Reddedildi")
+                                    {
+                                        <span class="badge bg-danger">Reddedildi</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@request.Status</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @(string.IsNullOrWhiteSpace(request.ReviewNote) ? "-" : request.ReviewNote)
+                                </td>
+                            </tr>
                         }
-                        else if (request.Status == "Onaylandı")
-                        {
-                            <span class="badge bg-success">Onaylandı</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-danger">Reddedildi</span>
-                        }
-                    </td>
-                    <td>@request.RequestedAt.ToString("dd.MM.yyyy HH:mm")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 }

@@ -1,4 +1,5 @@
 using MarketERP.Data;
+using MarketERP.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,25 @@ namespace MarketERP.Controllers
             if (HttpContext.Session.GetString("Username") == null)
             {
                 return RedirectToAction("Index", "Login");
+            }
+
+            var isAdminOrManager =
+                HttpContext.HasPermission("sale.view.all")
+                || HttpContext.HasPermission("sale.view.branch")
+                || HttpContext.HasPermission("role.manage")
+                || HttpContext.HasPermission("user.manage")
+                || HttpContext.HasPermission("reports.sales");
+
+            var isCashierOrSalesStaff =
+                HttpContext.HasPermission("sale.retail.create")
+                || HttpContext.HasPermission("sale.view.own")
+                || HttpContext.HasPermission("cash.closing.create");
+
+            // Admin / yönetici değilse ve kasiyer-satış personeli yetkileri varsa
+            // admin dashboard yerine kasiyer dashboard gösterilir.
+            if (!isAdminOrManager && isCashierOrSalesStaff)
+            {
+                return CashierDashboard();
             }
 
             DateTime today = DateTime.Today;
@@ -133,7 +153,7 @@ namespace MarketERP.Controllers
             var topSellingProducts = _context.SaleDetails
                 .Include(sd => sd.Product)
                 .Where(sd => sd.Product != null)
-                .GroupBy(sd => sd.Product.Name)
+                .GroupBy(sd => sd.Product!.Name)
                 .Select(g => new
                 {
                     ProductName = g.Key,
@@ -171,6 +191,68 @@ namespace MarketERP.Controllers
                 .Count(t => t.Status == "Çözüldü");
 
             return View();
+        }
+
+        private IActionResult CashierDashboard()
+        {
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+
+            if (employeeId == null)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            DateTime today = DateTime.Today;
+            DateTime tomorrow = today.AddDays(1);
+
+            var todaySales = _context.Sales
+                .Include(s => s.Customer)
+                .Where(s =>
+                    s.EmployeeId == employeeId.Value &&
+                    s.SaleDate >= today &&
+                    s.SaleDate < tomorrow)
+                .ToList();
+
+            ViewBag.TodaySalesCount = todaySales.Count;
+            ViewBag.TodayRevenue = todaySales.Sum(s => s.TotalAmount);
+
+            ViewBag.TodayCashRevenue = todaySales
+                .Where(s => s.PaymentType == "Nakit")
+                .Sum(s => s.TotalAmount);
+
+            ViewBag.TodayCardRevenue = todaySales
+                .Where(s => s.PaymentType == "Kart")
+                .Sum(s => s.TotalAmount);
+
+            ViewBag.LastSales = _context.Sales
+                .Include(s => s.Customer)
+                .Where(s => s.EmployeeId == employeeId.Value)
+                .OrderByDescending(s => s.SaleDate)
+                .Take(5)
+                .ToList();
+
+            var todayClosing = _context.CashRegisterClosings
+                .FirstOrDefault(c =>
+                    c.EmployeeId == employeeId.Value &&
+                    c.ClosingDate >= today &&
+                    c.ClosingDate < tomorrow);
+
+            ViewBag.TodayClosing = todayClosing;
+            ViewBag.HasTodayClosing = todayClosing != null;
+
+            ViewBag.MyPendingReturnCount = _context.ReturnRequests
+                .Count(r =>
+                    r.EmployeeId == employeeId.Value &&
+                    r.Status == "Beklemede");
+
+            ViewBag.MyTotalSalesCount = _context.Sales
+                .Count(s => s.EmployeeId == employeeId.Value);
+
+            ViewBag.MyTotalRevenue = _context.Sales
+                .Where(s => s.EmployeeId == employeeId.Value)
+                .Sum(s => (decimal?)s.TotalAmount) ?? 0;
+
+            return View("CashierDashboard");
         }
 
         public IActionResult Privacy()

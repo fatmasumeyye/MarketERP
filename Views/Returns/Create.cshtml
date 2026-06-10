@@ -1,10 +1,50 @@
 ﻿@{
-    ViewData["Title"] = "İade Talebi Oluştur";
+    ViewData["Title"] = "İade Talep Belgesi Oluştur";
+
     var sale = ViewBag.Sale as MarketERP.Models.Sale;
-    var details = ViewBag.Details as List<MarketERP.Models.SaleDetail>;
+    var details = ViewBag.Details as List<MarketERP.Models.SaleDetail> ?? new List<MarketERP.Models.SaleDetail>();
+    var availableQuantities = ViewBag.AvailableQuantities as Dictionary<int, int> ?? new Dictionary<int, int>();
 }
 
-<h2 class="mb-4">İade Talebi Oluştur</h2>
+<style>
+    .document-box {
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        padding: 20px;
+        background: #f8f9fa;
+        margin-bottom: 22px;
+    }
+
+    .custom-table {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .small-muted {
+        color: #6c757d;
+        font-size: 13px;
+    }
+
+    .quantity-input {
+        max-width: 100px;
+    }
+
+    .total-box {
+        background: #fff3cd;
+        border: 1px solid #ffecb5;
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+
+    .reason-area {
+        min-width: 230px;
+    }
+</style>
+
+<h2 class="mb-4">İade Talep Belgesi Oluştur</h2>
 
 @if (TempData["Error"] != null)
 {
@@ -13,52 +53,336 @@
     </div>
 }
 
-<div class="alert alert-info">
-    <strong>Satış No:</strong> @sale?.Id |
-    <strong>Tarih:</strong> @sale?.SaleDate.ToString("dd.MM.yyyy HH:mm") |
-    <strong>Toplam:</strong> @sale?.TotalAmount ₺
+<div class="document-box">
+    <h5 class="mb-3">Bağlı Satış / Fatura Bilgileri</h5>
+
+    <div class="row">
+        <div class="col-md-3">
+            <strong>Satış No:</strong>
+            <div>@sale?.Id</div>
+        </div>
+
+        <div class="col-md-3">
+            <strong>Müşteri:</strong>
+            <div>@(sale?.Customer?.FullName ?? "Nihai Tüketici")</div>
+        </div>
+
+        <div class="col-md-3">
+            <strong>Satış Tarihi:</strong>
+            <div>@sale?.SaleDate.ToString("dd.MM.yyyy HH:mm")</div>
+        </div>
+
+        <div class="col-md-3">
+            <strong>Toplam Tutar:</strong>
+            <div>@sale?.TotalAmount.ToString("N2") ₺</div>
+        </div>
+    </div>
+
+    <div class="mt-3 small-muted">
+        Bu iade talebi tek fatura üzerinden oluşturulur. Seçilen ürünler aynı iade belgesine bağlanır.
+    </div>
 </div>
 
 <form asp-action="Create" method="post">
     <input type="hidden" name="saleId" value="@sale?.Id" />
 
     <div class="mb-3">
-        <label class="form-label">İade Edilecek Ürün</label>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllReturnItems()">
+            Tümünü Seç
+        </button>
 
-        <select name="saleDetailId" class="form-control" required>
-            <option value="">Ürün seçiniz</option>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllReturnItems()">
+            Seçimi Temizle
+        </button>
+    </div>
 
-            @if (details != null)
-            {
-                foreach (var detail in details)
+    <div class="total-box">
+        Seçilen ürünlerin iade toplamı:
+        <span id="returnGrandTotal">0,00 ₺</span>
+    </div>
+
+    <div class="custom-table mb-4">
+        <table class="table table-bordered table-striped align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th width="60">Seç</th>
+                    <th>Ürün</th>
+                    <th>Satılan</th>
+                    <th>İade Edilebilir</th>
+                    <th>İade Adedi</th>
+                    <th>Birim Fiyat</th>
+                    <th>İade Ara Toplam</th>
+                    <th>İade Sebebi</th>
+                    <th>Açıklama</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var detail in details)
                 {
-                    <option value="@detail.Id">
-                        @detail.Product?.Name - Satılan Adet: @detail.Quantity - Birim Fiyat: @detail.UnitPrice ₺
-                    </option>
+                    int available = availableQuantities.ContainsKey(detail.Id)
+                        ? availableQuantities[detail.Id]
+                        : detail.Quantity;
+
+                    <tr>
+                        <td>
+                            @if (available > 0)
+                            {
+                                <input type="checkbox"
+                                       class="return-checkbox"
+                                       name="selectedSaleDetailIds"
+                                       value="@detail.Id"
+                                       data-detail-id="@detail.Id"
+                                       onchange="toggleReturnRow(@detail.Id)" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+
+                        <td>
+                            <strong>@(detail.Product?.Name ?? "-")</strong>
+                            <div class="small-muted">Ürün ID: @detail.ProductId</div>
+                        </td>
+
+                        <td>@detail.Quantity</td>
+
+                        <td>
+                            @if (available > 0)
+                            {
+                                <span class="badge bg-success">@available adet</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">İade hakkı yok</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (available > 0)
+                            {
+                                <input type="number"
+                                       id="quantity_@detail.Id"
+                                       name="quantity_@detail.Id"
+                                       class="form-control quantity-input"
+                                       min="1"
+                                       max="@available"
+                                       value="1"
+                                       disabled
+                                       oninput="updateLineTotal(@detail.Id)" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+
+                        <td>@detail.UnitPrice.ToString("N2") ₺</td>
+
+                        <td>
+                            <span id="lineTotal_@detail.Id"
+                                  class="line-total"
+                                  data-detail-id="@detail.Id"
+                                  data-unit-price="@detail.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                0,00 ₺
+                            </span>
+                        </td>
+
+                        <td class="reason-area">
+                            @if (available > 0)
+                            {
+                                <select id="reasonType_@detail.Id"
+                                        name="reasonType_@detail.Id"
+                                        class="form-control form-control-sm"
+                                        disabled>
+                                    <option value="">Sebep seç</option>
+                                    <option value="Ürün Hatalı">Ürün Hatalı</option>
+                                    <option value="Müşteri Vazgeçti">Müşteri Vazgeçti</option>
+                                    <option value="Yanlış Ürün Geçildi">Yanlış Ürün Geçildi</option>
+                                    <option value="Fiyat / Kasa Hatası">Fiyat / Kasa Hatası</option>
+                                    <option value="Ambalaj Hasarlı">Ambalaj Hasarlı</option>
+                                    <option value="Kırık / Bozuk Ürün">Kırık / Bozuk Ürün</option>
+                                    <option value="Diğer">Diğer</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+
+                        <td class="reason-area">
+                            @if (available > 0)
+                            {
+                                <textarea id="reason_@detail.Id"
+                                          name="reason_@detail.Id"
+                                          class="form-control form-control-sm"
+                                          rows="2"
+                                          placeholder="Ürün bazlı açıklama..."
+                                          disabled></textarea>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                    </tr>
                 }
-            }
-        </select>
+            </tbody>
+        </table>
     </div>
 
-    <div class="mb-3">
-        <label class="form-label">İade Adedi</label>
-        <input type="number" name="quantity" class="form-control" min="1" value="1" required />
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">İade Sebebi</label>
-        <textarea name="reason"
-                  class="form-control"
-                  rows="4"
-                  placeholder="İade sebebini yazınız..."
-                  required></textarea>
-    </div>
-
-    <button type="submit" class="btn btn-warning">
-        İade Talebi Oluştur
+    <button type="submit"
+            class="btn btn-warning"
+            onclick="return validateReturnSelection();">
+        İade Talep Belgesi Oluştur
     </button>
 
     <a href="/Sales/MySales" class="btn btn-secondary">
         Geri Dön
     </a>
 </form>
+
+<script>
+    function formatMoney(value) {
+        return value.toLocaleString('tr-TR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + ' ₺';
+    }
+
+    function toggleReturnRow(detailId) {
+        const checkbox = document.querySelector(`input[data-detail-id="${detailId}"]`);
+        const quantityInput = document.getElementById(`quantity_${detailId}`);
+        const reasonType = document.getElementById(`reasonType_${detailId}`);
+        const reason = document.getElementById(`reason_${detailId}`);
+
+        if (!checkbox) {
+            return;
+        }
+
+        const enabled = checkbox.checked;
+
+        if (quantityInput) {
+            quantityInput.disabled = !enabled;
+            if (!enabled) {
+                quantityInput.value = 1;
+            }
+        }
+
+        if (reasonType) {
+            reasonType.disabled = !enabled;
+            if (!enabled) {
+                reasonType.value = "";
+            }
+        }
+
+        if (reason) {
+            reason.disabled = !enabled;
+            if (!enabled) {
+                reason.value = "";
+            }
+        }
+
+        updateLineTotal(detailId);
+    }
+
+    function updateLineTotal(detailId) {
+        const checkbox = document.querySelector(`input[data-detail-id="${detailId}"]`);
+        const quantityInput = document.getElementById(`quantity_${detailId}`);
+        const lineTotalSpan = document.getElementById(`lineTotal_${detailId}`);
+
+        if (!checkbox || !quantityInput || !lineTotalSpan) {
+            return;
+        }
+
+        const unitPrice = parseFloat(lineTotalSpan.getAttribute("data-unit-price")) || 0;
+        const quantity = parseInt(quantityInput.value) || 0;
+
+        let lineTotal = 0;
+
+        if (checkbox.checked) {
+            lineTotal = unitPrice * quantity;
+        }
+
+        lineTotalSpan.innerText = formatMoney(lineTotal);
+        updateGrandTotal();
+    }
+
+    function updateGrandTotal() {
+        let grandTotal = 0;
+
+        const checkboxes = document.querySelectorAll(".return-checkbox");
+
+        checkboxes.forEach(function (checkbox) {
+            const detailId = checkbox.getAttribute("data-detail-id");
+            const quantityInput = document.getElementById(`quantity_${detailId}`);
+            const lineTotalSpan = document.getElementById(`lineTotal_${detailId}`);
+
+            if (checkbox.checked && quantityInput && lineTotalSpan) {
+                const unitPrice = parseFloat(lineTotalSpan.getAttribute("data-unit-price")) || 0;
+                const quantity = parseInt(quantityInput.value) || 0;
+
+                grandTotal += unitPrice * quantity;
+            }
+        });
+
+        document.getElementById("returnGrandTotal").innerText = formatMoney(grandTotal);
+    }
+
+    function selectAllReturnItems() {
+        const checkboxes = document.querySelectorAll(".return-checkbox");
+
+        checkboxes.forEach(function (checkbox) {
+            checkbox.checked = true;
+
+            const detailId = checkbox.getAttribute("data-detail-id");
+            toggleReturnRow(detailId);
+        });
+    }
+
+    function clearAllReturnItems() {
+        const checkboxes = document.querySelectorAll(".return-checkbox");
+
+        checkboxes.forEach(function (checkbox) {
+            checkbox.checked = false;
+
+            const detailId = checkbox.getAttribute("data-detail-id");
+            toggleReturnRow(detailId);
+        });
+
+        updateGrandTotal();
+    }
+
+    function validateReturnSelection() {
+        const checkedItems = document.querySelectorAll(".return-checkbox:checked");
+
+        if (checkedItems.length === 0) {
+            alert("İade talebi oluşturmak için en az bir ürün seçmelisiniz.");
+            return false;
+        }
+
+        for (let checkbox of checkedItems) {
+            const detailId = checkbox.getAttribute("data-detail-id");
+            const reasonType = document.getElementById(`reasonType_${detailId}`);
+            const reason = document.getElementById(`reason_${detailId}`);
+
+            if (!reasonType || reasonType.value.trim() === "") {
+                alert("Seçilen her ürün için iade sebebi seçmelisiniz.");
+                return false;
+            }
+
+            if (!reason || reason.value.trim() === "") {
+                alert("Seçilen her ürün için açıklama yazmalısınız.");
+                return false;
+            }
+        }
+
+        return confirm("Seçilen ürünler tek iade belgesi altında oluşturulacak. Devam edilsin mi?");
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateGrandTotal();
+    });
+</script>

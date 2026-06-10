@@ -37,6 +37,8 @@ namespace MarketERP.Data
         public DbSet<ProductSupplier> ProductSuppliers { get; set; }
         public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
         public DbSet<PurchaseOrderItem> PurchaseOrderItems { get; set; }
+        public DbSet<WholesaleSaleRequest> WholesaleSaleRequests { get; set; }
+        public DbSet<WholesaleSaleRequestItem> WholesaleSaleRequestItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -110,6 +112,59 @@ namespace MarketERP.Data
                 .HasOne(poi => poi.Product)
                 .WithMany(p => p.PurchaseOrderItems)
                 .HasForeignKey(poi => poi.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<WholesaleSaleRequest>()
+    .Property(w => w.DiscountRate)
+    .HasPrecision(5, 2);
+
+            modelBuilder.Entity<WholesaleSaleRequest>()
+                .Property(w => w.SubtotalAmount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<WholesaleSaleRequest>()
+                .Property(w => w.DiscountAmount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<WholesaleSaleRequest>()
+                .Property(w => w.TotalAmount)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<WholesaleSaleRequest>()
+                .HasOne(w => w.Customer)
+                .WithMany()
+                .HasForeignKey(w => w.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WholesaleSaleRequest>()
+                .HasOne(w => w.Employee)
+                .WithMany()
+                .HasForeignKey(w => w.EmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<WholesaleSaleRequest>()
+                .HasOne(w => w.Sale)
+                .WithMany()
+                .HasForeignKey(w => w.SaleId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<WholesaleSaleRequestItem>()
+                .Property(i => i.UnitPrice)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<WholesaleSaleRequestItem>()
+                .Property(i => i.Subtotal)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<WholesaleSaleRequestItem>()
+                .HasOne(i => i.WholesaleSaleRequest)
+                .WithMany(w => w.Items)
+                .HasForeignKey(i => i.WholesaleSaleRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WholesaleSaleRequestItem>()
+                .HasOne(i => i.Product)
+                .WithMany()
+                .HasForeignKey(i => i.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

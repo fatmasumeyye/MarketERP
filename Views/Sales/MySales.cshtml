@@ -7,7 +7,7 @@
 <h2 class="mb-4">Kendi Satışlarım</h2>
 
 <div class="alert alert-info">
-    Bu ekranda sadece senin yaptığın satışlar listelenir.
+    Bu ekranda sadece senin yaptığın satışlar listelenir. İade talepleri satış/fatura üzerinden oluşturulur.
 </div>
 
 @if (Model == null || Model.Count == 0)
@@ -18,14 +18,15 @@
 }
 else
 {
-    <table class="table table-bordered table-striped">
+    <table class="table table-bordered table-striped align-middle">
         <thead class="table-dark">
             <tr>
                 <th>Satış ID</th>
                 <th>Müşteri</th>
+                <th>Ödeme Tipi</th>
                 <th>Toplam Tutar</th>
                 <th>Tarih</th>
-                <th>İşlem</th>
+                <th width="230">İşlem</th>
             </tr>
         </thead>
 
@@ -34,8 +35,9 @@ else
             {
                 <tr>
                     <td>@sale.Id</td>
-                    <td>@sale.Customer?.FullName</td>
-                    <td>@sale.TotalAmount ₺</td>
+                    <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
+                    <td>@sale.PaymentType</td>
+                    <td>@sale.TotalAmount.ToString("N2") ₺</td>
                     <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
                     <td>
                         <a href="/Sales/Invoice/@sale.Id?returnUrl=/Sales/MySales"
@@ -45,7 +47,7 @@ else
 
                         <a href="/Returns/Create/@sale.Id"
                                class="btn btn-warning btn-sm">
-                            İade Talebi
+                            İade Talep Belgesi
                         </a>
                     </td>
                 </tr>

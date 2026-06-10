@@ -4,6 +4,7 @@ using MarketERP.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketERP.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609214400_AddWholesaleSalesModule")]
+    partial class AddWholesaleSalesModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -601,16 +604,6 @@ namespace MarketERP.Migrations
                         .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("reason");
-
-                    b.Property<string>("ReasonType")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("reason_type");
-
-                    b.Property<string>("RequestNo")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("request_no");
 
                     b.Property<DateTime>("RequestedAt")
                         .HasColumnType("datetime(6)")

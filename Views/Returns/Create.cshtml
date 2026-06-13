@@ -83,7 +83,13 @@
     </div>
 </div>
 
-<form asp-action="Create" method="post">
+<form asp-action="Create"
+      method="post"
+      class="js-confirm"
+      data-confirm-title="İade Talebi Oluştur"
+      data-confirm-message="Seçilen ürünler tek iade belgesi altında oluşturulacak. Devam etmek istiyor musunuz?"
+      data-confirm-button="Talebi Oluştur"
+      data-confirm-type="warning">
     <input type="hidden" name="saleId" value="@sale?.Id" />
 
     <div class="mb-3">
@@ -359,7 +365,7 @@
         const checkedItems = document.querySelectorAll(".return-checkbox:checked");
 
         if (checkedItems.length === 0) {
-            alert("İade talebi oluşturmak için en az bir ürün seçmelisiniz.");
+            window.erpNotify("İade talebi oluşturmak için en az bir ürün seçmelisiniz.", "warning");
             return false;
         }
 
@@ -369,17 +375,17 @@
             const reason = document.getElementById(`reason_${detailId}`);
 
             if (!reasonType || reasonType.value.trim() === "") {
-                alert("Seçilen her ürün için iade sebebi seçmelisiniz.");
+                window.erpNotify("Seçilen her ürün için iade sebebi seçmelisiniz.", "warning");
                 return false;
             }
 
             if (!reason || reason.value.trim() === "") {
-                alert("Seçilen her ürün için açıklama yazmalısınız.");
+                window.erpNotify("Seçilen her ürün için açıklama yazmalısınız.", "warning");
                 return false;
             }
         }
 
-        return confirm("Seçilen ürünler tek iade belgesi altında oluşturulacak. Devam edilsin mi?");
+        return true;
     }
 
     document.addEventListener("DOMContentLoaded", function () {

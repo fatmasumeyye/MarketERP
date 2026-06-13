@@ -1,12 +1,9 @@
-﻿using MarketERP.Data;
-using MarketERP.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using MySqlConnector;
-using System.Data;
-using MarketERP.Models;
 using MarketERP.Data;
 using MarketERP.Helpers;
+using MarketERP.Models;
+using Microsoft.AspNetCore.Mvc;
+using MySqlConnector;
+using System.Data;
 
 namespace MarketERP.Controllers
 {
@@ -17,8 +14,8 @@ namespace MarketERP.Controllers
         private readonly AppDbContext _context;
 
         public SqlEditorController(
-    IConfiguration configuration,
-    AppDbContext context)
+            IConfiguration configuration,
+            AppDbContext context)
         {
             _configuration = configuration;
             _context = context;
@@ -31,6 +28,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Execute(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -39,12 +37,32 @@ namespace MarketERP.Controllers
                 return View("Index");
             }
 
-            string upperQuery = query.ToUpper();
+            var normalizedQuery = query.TrimStart();
+            var upperQuery = normalizedQuery.ToUpperInvariant();
+            var queryWithoutTrailingSemicolon = normalizedQuery
+                .TrimEnd()
+                .TrimEnd(';')
+                .TrimEnd();
+            var isReadOnlyQuery =
+                upperQuery.StartsWith("SELECT ")
+                || upperQuery.StartsWith("SELECT\n")
+                || upperQuery.StartsWith("SHOW ")
+                || upperQuery.StartsWith("SHOW\n")
+                || upperQuery.StartsWith("DESCRIBE ")
+                || upperQuery.StartsWith("DESCRIBE\n")
+                || upperQuery.StartsWith("DESC ")
+                || upperQuery.StartsWith("DESC\n")
+                || upperQuery.StartsWith("EXPLAIN ")
+                || upperQuery.StartsWith("EXPLAIN\n");
 
-            if (upperQuery.Contains("DROP") ||
-                upperQuery.Contains("TRUNCATE"))
+            if (!isReadOnlyQuery
+                || queryWithoutTrailingSemicolon.Contains(';')
+                || upperQuery.Contains("INTO OUTFILE")
+                || upperQuery.Contains("INTO DUMPFILE")
+                || upperQuery.Contains("LOAD_FILE("))
             {
-                ViewBag.Error = "Tehlikeli SQL komutlarına izin verilmez.";
+                ViewBag.Error = "Yalnızca SELECT, SHOW, DESCRIBE ve EXPLAIN sorgularına izin verilir.";
+                ViewBag.Query = query;
                 return View("Index");
             }
 
@@ -52,31 +70,32 @@ namespace MarketERP.Controllers
 
             try
             {
-                string connectionString = _configuration.GetConnectionString("DefaultConnection");
+                var connectionString = _configuration.GetConnectionString("DefaultConnection");
 
                 using var connection = new MySqlConnection(connectionString);
                 connection.Open();
 
                 using var command = new MySqlCommand(query, connection);
-
                 using var adapter = new MySqlDataAdapter(command);
                 adapter.Fill(table);
 
                 ViewBag.Query = query;
-
                 return View("Result", table);
             }
             catch (Exception ex)
             {
                 ViewBag.Error = ex.Message;
+                ViewBag.Query = query;
                 return View("Index");
             }
         }
+
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult SaveQuery(string title, string query)
         {
-            if (string.IsNullOrWhiteSpace(title) ||
-                string.IsNullOrWhiteSpace(query))
+            if (string.IsNullOrWhiteSpace(title)
+                || string.IsNullOrWhiteSpace(query))
             {
                 TempData["Error"] = "Başlık ve sorgu boş olamaz.";
                 return RedirectToAction("Index");
@@ -84,23 +103,28 @@ namespace MarketERP.Controllers
 
             var savedQuery = new SavedQuery
             {
-                Title = title,
-                SqlQuery = query
+                Title = title.Trim(),
+                SqlQuery = query.Trim()
             };
 
             _context.SavedQueries.Add(savedQuery);
             _context.SaveChanges();
 
             TempData["Success"] = "Sorgu kaydedildi.";
-
             return RedirectToAction("Index");
         }
+
         public IActionResult SavedQueries()
         {
-            var queries = _context.SavedQueries.ToList();
+            var queries = _context.SavedQueries
+                .OrderBy(q => q.Title)
+                .ToList();
+
             return View(queries);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult DeleteSavedQuery(int id)
         {
             var query = _context.SavedQueries.Find(id);

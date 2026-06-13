@@ -20,6 +20,18 @@ namespace MarketERP.Models
         [Column("due_date")]
         public DateTime? DueDate { get; set; }
 
+        [Column("delivery_date")]
+        public DateTime? DeliveryDate { get; set; }
+
+        [Column("offer_valid_until")]
+        public DateTime? OfferValidUntil { get; set; }
+
+        [Column("delivery_address")]
+        public string? DeliveryAddress { get; set; }
+
+        [Column("payment_type")]
+        public string? PaymentType { get; set; }
+
         [Column("discount_rate")]
         public decimal DiscountRate { get; set; }
 

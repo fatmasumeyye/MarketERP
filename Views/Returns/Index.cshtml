@@ -1,4 +1,4 @@
-﻿@model List<MarketERP.Models.ReturnRequest>
+@model List<MarketERP.Models.ReturnRequest>
 
 @{
     ViewData["Title"] = "İade Yönetimi";
@@ -194,7 +194,7 @@ else
                 {
                     <form asp-action="ApproveDocument"
                           method="post"
-                          onsubmit="return confirm('Bu iade belgesi onaylanacak. Her ürün için seçilen stok işlemine göre işlem yapılacak. Devam edilsin mi?');">
+                                data-confirm-message="Bu iade belgesi onaylanacak. Her ürün için seçilen stok işlemine göre işlem yapılacak. Devam edilsin mi?">
 
                         <input type="hidden" name="requestNo" value="@group.Key" />
 
@@ -252,7 +252,7 @@ else
                     <form asp-action="RejectDocument"
                           method="post"
                           class="mt-2"
-                          onsubmit="return confirm('Bu iade belgesi tamamen reddedilecek. Devam edilsin mi?');">
+                                data-confirm-message="Bu iade belgesi tamamen reddedilecek. Devam edilsin mi?">
                         <input type="hidden" name="requestNo" value="@group.Key" />
 
                         <div class="row">

@@ -127,12 +127,14 @@ namespace MarketERP.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Address")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("address");
 
+                    b.Property<decimal>("DiscountRate")
+                        .HasColumnType("decimal(5,2)")
+                        .HasColumnName("discount_rate");
+
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("email");
 
@@ -142,7 +144,6 @@ namespace MarketERP.Migrations
                         .HasColumnName("full_name");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("phone");
 
@@ -470,6 +471,189 @@ namespace MarketERP.Migrations
                     b.HasIndex("SupplierId");
 
                     b.ToTable("product_suppliers");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.ProjectModule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Budget")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("budget");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("end_date");
+
+                    b.Property<decimal>("Expense")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("expense");
+
+                    b.Property<decimal>("Income")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("income");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("ProgressPercent")
+                        .HasColumnType("int")
+                        .HasColumnName("progress_percent");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("project_modules");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.ProjectTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AssignedMemberId")
+                        .HasColumnType("int")
+                        .HasColumnName("assigned_member_id");
+
+                    b.Property<decimal>("Budget")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("budget");
+
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("cost");
+
+                    b.Property<int?>("DependsOnTaskId")
+                        .HasColumnType("int")
+                        .HasColumnName("depends_on_task_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1500)
+                        .HasColumnType("varchar(1500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DurationDays")
+                        .HasColumnType("int")
+                        .HasColumnName("duration_days");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("end_date");
+
+                    b.Property<bool>("IsCritical")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_critical");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("priority");
+
+                    b.Property<int>("ProgressPercent")
+                        .HasColumnType("int")
+                        .HasColumnName("progress_percent");
+
+                    b.Property<int?>("SlackDays")
+                        .HasColumnType("int")
+                        .HasColumnName("slack_days");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedMemberId");
+
+                    b.HasIndex("DependsOnTaskId");
+
+                    b.ToTable("project_tasks");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.ProjectTeamMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ActualWorkHours")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("actual_work_hours");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("email");
+
+                    b.Property<decimal>("EstimatedWorkHours")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("estimated_work_hours");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("project_team_members");
                 });
 
             modelBuilder.Entity("MarketERP.Models.PurchaseOrder", b =>
@@ -932,6 +1116,14 @@ namespace MarketERP.Migrations
                         .HasColumnType("int")
                         .HasColumnName("customer_id");
 
+                    b.Property<string>("DeliveryAddress")
+                        .HasColumnType("longtext")
+                        .HasColumnName("delivery_address");
+
+                    b.Property<DateTime?>("DeliveryDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("delivery_date");
+
                     b.Property<decimal>("DiscountAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)")
@@ -953,6 +1145,14 @@ namespace MarketERP.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("longtext")
                         .HasColumnName("note");
+
+                    b.Property<DateTime?>("OfferValidUntil")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("offer_valid_until");
+
+                    b.Property<string>("PaymentType")
+                        .HasColumnType("longtext")
+                        .HasColumnName("payment_type");
 
                     b.Property<DateTime?>("RejectedAt")
                         .HasColumnType("datetime(6)")
@@ -1122,6 +1322,23 @@ namespace MarketERP.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.ProjectTask", b =>
+                {
+                    b.HasOne("MarketERP.Models.ProjectTeamMember", "AssignedMember")
+                        .WithMany("AssignedTasks")
+                        .HasForeignKey("AssignedMemberId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MarketERP.Models.ProjectTask", "DependsOnTask")
+                        .WithMany("DependentTasks")
+                        .HasForeignKey("DependsOnTaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AssignedMember");
+
+                    b.Navigation("DependsOnTask");
                 });
 
             modelBuilder.Entity("MarketERP.Models.PurchaseOrder", b =>
@@ -1343,6 +1560,16 @@ namespace MarketERP.Migrations
                     b.Navigation("ProductSuppliers");
 
                     b.Navigation("PurchaseOrderItems");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.ProjectTask", b =>
+                {
+                    b.Navigation("DependentTasks");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.ProjectTeamMember", b =>
+                {
+                    b.Navigation("AssignedTasks");
                 });
 
             modelBuilder.Entity("MarketERP.Models.PurchaseOrder", b =>

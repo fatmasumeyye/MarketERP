@@ -1,12 +1,32 @@
-﻿@{
-    ViewData["Title"] = "Erişim Reddedildi";
+@{
+    ViewData["Title"] = "Erişim Yetkiniz Yok";
 }
 
-<div class="container mt-5">
-    <div class="alert alert-danger shadow-sm">
-        <h4>Erişim Reddedildi</h4>
-        <p>Bu sayfaya veya işleme erişmek için yetkiniz yok.</p>
+<div class="row justify-content-center align-items-center py-5">
+    <div class="col-lg-7 col-xl-6">
+        <div class="card border-0 shadow-lg overflow-hidden">
+            <div class="card-body p-4 p-md-5 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger mb-4"
+                     style="width: 72px; height: 72px; font-size: 2rem;"
+                     aria-hidden="true">
+                    !
+                </div>
+                <h1 class="h3 mb-3">Erişim Yetkiniz Yok</h1>
+                <p class="text-muted mb-4">
+                    Bu sayfaya erişmek için gerekli yetkiye sahip değilsiniz.
+                    Yetkinizin olması gerektiğini düşünüyorsanız sistem yöneticinizle iletişime geçin.
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-primary">
+                        Ana Sayfaya Dön
+                    </a>
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            onclick="window.history.back()">
+                        Geri Dön
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <a href="/Home/Index" class="btn btn-primary">Ana Sayfaya Dön</a>
 </div>

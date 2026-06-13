@@ -1,35 +1,318 @@
-﻿@model Dictionary<string, List<string>>
+@model MarketERP.Models.DatabaseSchemaViewModel
 
 @{
     ViewData["Title"] = "Veritabanı Şeması";
 }
 
-<h2 class="mb-4">Veritabanı Şeması</h2>
+<style>
+    .schema-page {
+        --schema-border: #dbe3ec;
+        --schema-muted: #64748b;
+        --schema-primary: #2563eb;
+    }
 
-<div class="row">
-    @foreach (var table in Model)
+    .schema-card {
+        border: 1px solid var(--schema-border);
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, .05);
+    }
+
+    .schema-card .card-header {
+        border-radius: 10px 10px 0 0;
+    }
+
+    .schema-columns {
+        max-height: 250px;
+        overflow-y: auto;
+    }
+
+    .schema-columns .table {
+        font-size: .78rem;
+    }
+
+    .schema-columns code {
+        color: #334155;
+        font-size: .74rem;
+    }
+
+    .schema-stat {
+        min-width: 105px;
+        border: 1px solid var(--schema-border);
+        border-radius: 10px;
+        background: #fff;
+        padding: .6rem .8rem;
+    }
+
+    .relation-card {
+        border: 1px solid var(--schema-border);
+        border-radius: 10px;
+        background: #fff;
+        padding: .75rem;
+        height: 100%;
+    }
+
+    .relation-table {
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: .55rem .65rem;
+        min-width: 0;
+    }
+
+    .relation-table.principal {
+        border-left: 3px solid #198754;
+    }
+
+    .relation-table.dependent {
+        border-left: 3px solid var(--schema-primary);
+    }
+
+    .relation-arrow {
+        color: var(--schema-primary);
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .relation-name {
+        font-size: .78rem;
+        overflow-wrap: anywhere;
+    }
+
+    .filter-panel {
+        border: 1px solid var(--schema-border);
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .column-row.column-hidden {
+        display: none;
+    }
+</style>
+
+<div class="schema-page">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+    <div>
+        <h2 class="mb-1">Veritabanı Şeması</h2>
+        <p class="text-muted mb-0">
+            Tablolar, kolonlar ve foreign key ilişkilerinin ER görünümü
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <div class="schema-stat">
+            <small class="text-muted d-block">Tablo</small>
+            <strong>@Model.Tables.Count</strong>
+        </div>
+        <div class="schema-stat">
+            <small class="text-muted d-block">Kolon</small>
+            <strong>@Model.Tables.Sum(t => t.Columns.Count)</strong>
+        </div>
+        <div class="schema-stat">
+            <small class="text-muted d-block">İlişki</small>
+            <strong>@Model.Relations.Count</strong>
+        </div>
+    </div>
+</div>
+
+<div class="filter-panel p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label for="tableFilter" class="form-label small fw-semibold mb-1">Tablo adına göre ara</label>
+        <input id="tableFilter"
+               type="search"
+               class="form-control form-control-sm"
+                   placeholder="Örn. sales, products, employees"
+               aria-label="Tablo adına göre filtrele" />
+        </div>
+        <div class="col-md-5">
+            <label for="columnFilter" class="form-label small fw-semibold mb-1">Kolon adına göre ara</label>
+        <input id="columnFilter"
+               type="search"
+               class="form-control form-control-sm"
+                   placeholder="Örn. employee_id, status, total_amount"
+               aria-label="Kolon adına göre filtrele" />
+        </div>
+        <div class="col-md-2 d-grid">
+            <button id="clearSchemaFilters" type="button" class="btn btn-sm btn-outline-secondary">
+                Filtreleri Temizle
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="schemaEmptyState" class="alert alert-warning d-none">
+    Arama ölçütlerine uygun tablo veya kolon bulunamadı.
+</div>
+
+<div id="schemaGrid" class="row g-3 mb-4">
+    @foreach (var table in Model.Tables)
     {
-        <div class="col-md-4 mb-4">
-            <a href="/DatabaseSchema/Details?tableName=@table.Key" class="text-decoration-none text-dark">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-dark text-white">
-                        <strong>@table.Key</strong>
+        <div class="col-sm-6 col-xl-4 schema-table"
+             data-table-name="@table.Name.ToLowerInvariant()"
+             data-column-names="@string.Join(" ", table.Columns.Select(c => c.Name.ToLowerInvariant()))">
+            <div class="card schema-card h-100">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
+                    <div>
+                        <strong class="small">@table.Name</strong>
+                        <span class="badge bg-secondary ms-1">@table.Columns.Count kolon</span>
                     </div>
-
-                    <div class="card-body">
-                        <ul class="list-group list-group-flush">
-
-                            @foreach (var column in table.Value)
-                            {
-                                <li class="list-group-item">
-                                    @column
-                                </li>
-                            }
-
-                        </ul>
-                    </div>
+                    <a asp-action="Details"
+                       asp-route-tableName="@table.Name"
+                       class="btn btn-sm btn-outline-light py-0">
+                        Veriyi Gör
+                    </a>
                 </div>
-            </a>
+                <div class="schema-columns">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Kolon</th>
+                                <th>Tip</th>
+                                <th class="text-end">Özellik</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var column in table.Columns)
+                            {
+                                <tr class="column-row" data-column-name="@column.Name.ToLowerInvariant()">
+                                    <td>
+                                        <div class="fw-semibold">@column.Name</div>
+                                        @if (column.IsForeignKey)
+                                        {
+                                            <small class="text-muted">
+                                                → @column.ReferencedTable.@column.ReferencedColumn
+                                            </small>
+                                        }
+                                    </td>
+                                    <td><code>@column.DataType</code></td>
+                                    <td class="text-end text-nowrap">
+                                        @if (column.IsPrimaryKey)
+                                        {
+                                            <span class="badge bg-warning text-dark">PK</span>
+                                        }
+                                        @if (column.IsForeignKey)
+                                        {
+                                            <span class="badge bg-primary">FK</span>
+                                        }
+                                        <span class="badge @(column.IsNullable ? "bg-secondary" : "bg-success")">
+                                            @(column.IsNullable ? "NULL" : "NOT NULL")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     }
 </div>
+
+<div class="card schema-card mb-4">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h4 class="mb-1">ER Diyagramı / Tablolar Arası İlişkiler</h4>
+                <small class="text-muted">
+                    Solda ana tablo (PK), sağda ona bağlı tablo (FK) gösterilir.
+                </small>
+            </div>
+            <span class="badge bg-primary">1 - N ilişkiler</span>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Model.Relations.Any())
+        {
+            <div id="relationGrid" class="row g-3">
+                @foreach (var relation in Model.Relations)
+                {
+                    <div class="col-md-6 col-xl-4 relation-entry"
+                         data-relation-tables="@($"{relation.TargetTable} {relation.SourceTable}".ToLowerInvariant())"
+                         data-relation-columns="@($"{relation.TargetColumn} {relation.SourceColumn}".ToLowerInvariant())">
+                        <div class="relation-card">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="relation-table principal flex-grow-1">
+                                    <small class="text-success fw-semibold">Ana tablo</small>
+                                    <div class="relation-name fw-bold">@relation.TargetTable</div>
+                                    <code>@relation.TargetColumn</code>
+                                    <span class="badge bg-warning text-dark ms-1">PK</span>
+                                </div>
+                                <div class="text-center">
+                                    <span class="badge rounded-pill bg-primary mb-1">1 - N</span>
+                                    <div class="relation-arrow">→</div>
+                                </div>
+                                <div class="relation-table dependent flex-grow-1">
+                                    <small class="text-primary fw-semibold">Bağlı tablo</small>
+                                    <div class="relation-name fw-bold">@relation.SourceTable</div>
+                                    <code>@relation.SourceColumn</code>
+                                    <span class="badge bg-primary ms-1">FK</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div id="relationEmptyState" class="text-muted d-none">
+                Filtreye uygun ilişki bulunamadı.
+            </div>
+        }
+        else
+        {
+            <div class="text-muted">Tanımlı foreign key ilişkisi bulunamadı.</div>
+        }
+    </div>
+</div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const tableFilter = document.getElementById('tableFilter');
+            const columnFilter = document.getElementById('columnFilter');
+            const cards = [...document.querySelectorAll('.schema-table')];
+            const relationEntries = [...document.querySelectorAll('.relation-entry')];
+            const emptyState = document.getElementById('schemaEmptyState');
+            const relationEmptyState = document.getElementById('relationEmptyState');
+            const clearButton = document.getElementById('clearSchemaFilters');
+
+            const applyFilters = () => {
+                const tableTerm = tableFilter.value.trim().toLocaleLowerCase('tr-TR');
+                const columnTerm = columnFilter.value.trim().toLocaleLowerCase('tr-TR');
+                let visibleCount = 0;
+                let visibleRelationCount = 0;
+
+                cards.forEach(card => {
+                    const tableMatches = card.dataset.tableName.includes(tableTerm);
+                    const columnMatches = card.dataset.columnNames.includes(columnTerm);
+                    const isVisible = tableMatches && columnMatches;
+
+                    card.classList.toggle('d-none', !isVisible);
+                    card.querySelectorAll('.column-row').forEach(row => {
+                        const rowMatches = !columnTerm || row.dataset.columnName.includes(columnTerm);
+                        row.classList.toggle('column-hidden', !rowMatches);
+                    });
+                    visibleCount += isVisible ? 1 : 0;
+                });
+
+                relationEntries.forEach(entry => {
+                    const tableMatches = entry.dataset.relationTables.includes(tableTerm);
+                    const columnMatches = entry.dataset.relationColumns.includes(columnTerm);
+                    const isVisible = tableMatches && columnMatches;
+
+                    entry.classList.toggle('d-none', !isVisible);
+                    visibleRelationCount += isVisible ? 1 : 0;
+                });
+
+                emptyState.classList.toggle('d-none', visibleCount > 0);
+                relationEmptyState?.classList.toggle('d-none', visibleRelationCount > 0);
+            };
+
+            tableFilter.addEventListener('input', applyFilters);
+            columnFilter.addEventListener('input', applyFilters);
+            clearButton.addEventListener('click', () => {
+                tableFilter.value = '';
+                columnFilter.value = '';
+                applyFilters();
+                tableFilter.focus();
+            });
+        })();
+    </script>
+}

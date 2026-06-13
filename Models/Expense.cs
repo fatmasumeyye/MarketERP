@@ -9,7 +9,7 @@ namespace MarketERP.Models
         public int Id { get; set; }
 
         [Column("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         [Column("amount")]
         public decimal Amount { get; set; }
@@ -18,6 +18,6 @@ namespace MarketERP.Models
         public DateTime ExpenseDate { get; set; }
 
         [Column("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
     }
 }

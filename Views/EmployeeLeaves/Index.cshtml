@@ -1,33 +1,90 @@
-﻿@model List<MarketERP.Models.EmployeeLeave>
+@model List<MarketERP.Models.EmployeeLeave>
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
-    ViewData["Title"] = "Çalışan İzinleri";
+    ViewData["Title"] = "İzin Yönetimi";
 }
 
-<h2 class="mb-4">Çalışan İzinleri</h2>
+<h2 class="mb-4">İzin Yönetimi</h2>
 
-<form asp-action="Add" method="post" class="mb-4">
-    <div class="row mb-2">
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6>Bekleyen</h6>
+                <h3>@ViewBag.PendingCount</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6>Onaylanan</h6>
+                <h3>@ViewBag.ApprovedCount</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6>Reddedilen</h6>
+                <h3>@ViewBag.RejectedCount</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6>Toplam</h6>
+                <h3>@ViewBag.TotalCount</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Add" method="post" class="card p-3 mb-4">
+    <h5>Yönetici Olarak İzin Kaydı Oluştur</h5>
+
+    <div class="row">
         <div class="col-md-3">
-            <select name="EmployeeId" class="form-control" asp-items="ViewBag.Employees" required>
-                <option value="">Çalışan seçiniz</option>
+            <label class="form-label">Çalışan</label>
+            <select name="EmployeeId" class="form-control" asp-items="ViewBag.Employees">
+                <option value="">Çalışan Seçiniz</option>
             </select>
         </div>
 
         <div class="col-md-2">
-            <input type="date" name="StartDate" class="form-control" required />
+            <label class="form-label">Başlangıç</label>
+            <input type="date" name="StartDate" class="form-control" />
         </div>
 
         <div class="col-md-2">
-            <input type="date" name="EndDate" class="form-control" required />
+            <label class="form-label">Bitiş</label>
+            <input type="date" name="EndDate" class="form-control" />
         </div>
 
         <div class="col-md-3">
-            <input type="text" name="LeaveReason" class="form-control" placeholder="İzin nedeni" />
+            <label class="form-label">Neden</label>
+            <input type="text" name="LeaveReason" class="form-control" />
         </div>
 
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">İzin Ekle</button>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                Ekle
+            </button>
         </div>
     </div>
 </form>
@@ -35,8 +92,14 @@
 <table class="table table-bordered table-striped">
     <thead class="table-dark">
         <tr>
-            <th>ID</th>
             <th>Çalışan</th>
+            <th>İşe Giriş</th>
+            <th>Kıdem</th>
+            <th>Yıllık Hak</th>
+            <th>Kullanılan</th>
+            <th>Bekleyen</th>
+            <th>Kalan</th>
+            <th>Talep Gün</th>
             <th>Başlangıç</th>
             <th>Bitiş</th>
             <th>Neden</th>
@@ -49,29 +112,66 @@
         @foreach (var leave in Model)
         {
             <tr>
-                <td>@leave.Id</td>
                 <td>@leave.Employee?.FullName</td>
+
+                <td>
+                    @(leave.Employee?.HireDate != null
+                        ? leave.Employee.HireDate.Value.ToString("dd.MM.yyyy")
+                        : "-")
+                </td>
+
+                <td>@leave.SeniorityYear yıl</td>
+                <td>@leave.AnnualLeaveRight gün</td>
+                <td>@leave.UsedLeaveDays gün</td>
+                <td>@leave.PendingLeaveDays gün</td>
+                <td>@leave.RemainingLeaveDays gün</td>
+                <td>@leave.RequestedDays gün</td>
                 <td>@leave.StartDate.ToString("dd.MM.yyyy")</td>
                 <td>@leave.EndDate.ToString("dd.MM.yyyy")</td>
                 <td>@leave.LeaveReason</td>
+
                 <td>
-                    @if (leave.Status == "Onaylandı")
-                    {
-                        <span class="badge bg-success">Onaylandı</span>
-                    }
-                    else if (leave.Status == "Reddedildi")
-                    {
-                        <span class="badge bg-danger">Reddedildi</span>
-                    }
-                    else
+                    @if (leave.Status == "Beklemede")
                     {
                         <span class="badge bg-warning text-dark">Beklemede</span>
                     }
+                    else if (leave.Status == "Onaylandı")
+                    {
+                        <span class="badge bg-success">Onaylandı</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Reddedildi</span>
+                    }
                 </td>
+
                 <td>
-                    <a href="/EmployeeLeaves/Approve/@leave.Id" class="btn btn-success btn-sm">Onayla</a>
-                    <a href="/EmployeeLeaves/Reject/@leave.Id" class="btn btn-warning btn-sm">Reddet</a>
-                    <a href="/EmployeeLeaves/Delete/@leave.Id" class="btn btn-danger btn-sm">Sil</a>
+                    @if (leave.Status == "Beklemede")
+                    {
+                        <form asp-action="Approve" asp-route-id="@leave.Id" method="post" class="d-inline">
+                            <button type="submit"
+                                    class="btn btn-success btn-sm"
+                                data-confirm-message="Bu izin talebini onaylamak istiyor musunuz?">
+                                Onayla
+                            </button>
+                        </form>
+
+                        <form asp-action="Reject" asp-route-id="@leave.Id" method="post" class="d-inline">
+                            <button type="submit"
+                                    class="btn btn-warning btn-sm"
+                                data-confirm-message="Bu izin talebini reddetmek istiyor musunuz?">
+                                Reddet
+                            </button>
+                        </form>
+                    }
+
+                    <form asp-action="Delete" asp-route-id="@leave.Id" method="post" class="d-inline">
+                        <button type="submit"
+                                class="btn btn-danger btn-sm"
+                                data-confirm-message="Bu izin kaydını silmek istiyor musunuz?">
+                            Sil
+                        </button>
+                    </form>
                 </td>
             </tr>
         }

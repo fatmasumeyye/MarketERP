@@ -1,4 +1,4 @@
-﻿@model List<MarketERP.Models.PurchaseOrder>
+@model List<MarketERP.Models.PurchaseOrder>
 
 @{
     ViewData["Title"] = "Satın Alma Siparişleri";
@@ -79,14 +79,14 @@
         </a>
 
         <form asp-action="ApproveAllPending" method="post"
-              onsubmit="return confirm('Tüm onay bekleyen siparişleri onaylamak istediğinize emin misiniz?')">
+                                data-confirm-message="Tüm onay bekleyen siparişleri onaylamak istediğinize emin misiniz?">
             <button type="submit" class="btn btn-success">
                 Tüm Onay Bekleyenleri Onayla
             </button>
         </form>
 
         <form asp-action="ReceiveAllApproved" method="post"
-              onsubmit="return confirm('Tüm onaylanmış siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.')">
+                                data-confirm-message="Tüm onaylanmış siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.">
             <button type="submit" class="btn btn-outline-success">
                 Tüm Onaylananları Geldi İşaretle
             </button>
@@ -172,7 +172,7 @@
                     class="btn btn-primary btn-sm"
                     formaction="/PurchaseOrders/ApproveSelected"
                     formmethod="post"
-                    onclick="return confirm('Seçili onay bekleyen siparişleri onaylamak istediğinize emin misiniz?')">
+                                data-confirm-message="Seçili onay bekleyen siparişleri onaylamak istediğinize emin misiniz?">
                 Seçili Siparişleri Onayla
             </button>
 
@@ -180,7 +180,7 @@
                     class="btn btn-success btn-sm"
                     formaction="/PurchaseOrders/ReceiveSelected"
                     formmethod="post"
-                    onclick="return confirm('Seçili onaylı siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.')">
+                                data-confirm-message="Seçili onaylı siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.">
                 Seçili Siparişleri Geldi İşaretle
             </button>
         </div>
@@ -337,7 +337,7 @@
                                                                 formaction="/PurchaseOrders/Approve/@order.Id"
                                                                 formmethod="post"
                                                                 class="btn btn-success btn-sm"
-                                                                onclick="return confirm('Bu siparişi onaylamak istiyor musunuz?')">
+                                data-confirm-message="Bu siparişi onaylamak istiyor musunuz?">
                                                             Onayla
                                                         </button>
                                                     }
@@ -348,7 +348,7 @@
                                                                 formaction="/PurchaseOrders/ReceiveAll/@order.Id"
                                                                 formmethod="post"
                                                                 class="btn btn-outline-success btn-sm"
-                                                                onclick="return confirm('Bu sipariş geldi ve ürünler doğru mu? Onaylarsanız stoklar artacak.')">
+                                data-confirm-message="Bu sipariş geldi ve ürünler doğru mu? Onaylarsanız stoklar artacak.">
                                                             Geldi / Kontrol Edildi
                                                         </button>
                                                     }

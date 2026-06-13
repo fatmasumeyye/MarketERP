@@ -5,6 +5,50 @@
     var products = ViewBag.Products as List<MarketERP.Models.Product> ?? new List<MarketERP.Models.Product>();
 }
 
+<style>
+    .erp-card {
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .summary-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 15px;
+    }
+
+        .summary-row.total {
+            border-top: 1px solid #dee2e6;
+            padding-top: 10px;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+    .customer-info {
+        background: #e7f5ff;
+        border: 1px solid #a5d8ff;
+        color: #0b7285;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 12px;
+    }
+
+    .small-muted {
+        color: #6c757d;
+        font-size: 13px;
+    }
+</style>
+
 <h2 class="mb-4">Toptan Satış Talebi Oluştur</h2>
 
 @if (TempData["Error"] != null)
@@ -18,12 +62,20 @@
 }
 
 <div class="alert alert-info">
-    Bu ekran satış personelinin toptan satış talebi oluşturması içindir.
-    Talep oluşturulduktan sonra yönetici onayına gider.
+    Bu ekran toptan satış sorumlusunun firma/müşteri bazlı toptan satış talebi oluşturması içindir.
+    Müşteriye tanımlı iskonto oranı otomatik uygulanır. Talep yönetici onayından sonra satışa dönüşür.
 </div>
 
-<form asp-action="Wholesale" method="post">
-    <div class="card shadow-sm mb-4">
+<form asp-action="Wholesale"
+      method="post"
+      class="js-confirm"
+      data-confirm-title="Toptan Satış Talebini Gönder"
+      data-confirm-message="Talep müşteriye bağlı iskonto ile yönetici onayına gönderilecek. Devam etmek istiyor musunuz?"
+      data-confirm-button="Talebi Gönder"
+      data-confirm-type="success"
+      onsubmit="return validateWholesaleRequest();">
+
+    <div class="card erp-card mb-4">
         <div class="card-header bg-dark text-white">
             <strong>Firma / Talep Bilgileri</strong>
         </div>
@@ -32,8 +84,43 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Müşteri / Firma</label>
-                    <select name="customerId" class="form-control" asp-items="customers" required>
+                    <select id="customerId"
+                            name="customerId"
+                            class="form-control"
+                            asp-items="customers"
+                            required
+                            onchange="onCustomerChanged()">
                         <option value="">Firma seçiniz</option>
+                    </select>
+
+                    <div id="customerInfo" class="customer-info d-none">
+                        <div><strong>Telefon:</strong> <span id="customerPhone">-</span></div>
+                        <div><strong>E-posta:</strong> <span id="customerEmail">-</span></div>
+                        <div><strong>Adres:</strong> <span id="customerAddress">-</span></div>
+                        <div><strong>Müşteri İskontosu:</strong> <span id="customerDiscountText">%0</span></div>
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Müşteri İskontosu (%)</label>
+                    <input type="number"
+                           id="discountRate"
+                           class="form-control"
+                           value="0"
+                           readonly />
+                    <div class="small-muted">
+                        Bu oran müşteri kartından otomatik gelir.
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Ödeme Tipi</label>
+                    <select name="paymentType" class="form-control" required>
+                        <option value="">Ödeme tipi seçiniz</option>
+                        <option value="Peşin">Peşin</option>
+                        <option value="Vadeli">Vadeli</option>
+                        <option value="Havale/EFT">Havale/EFT</option>
+                        <option value="Cari Hesap">Cari Hesap</option>
                     </select>
                 </div>
 
@@ -42,22 +129,39 @@
                     <input type="date" name="dueDate" class="form-control" />
                 </div>
 
-                <div class="col-md-2">
-                    <label class="form-label">İskonto (%)</label>
-                    <input type="number" name="discountRate" class="form-control" min="0" max="100" step="0.01" value="0" />
+                <div class="col-md-3">
+                    <label class="form-label">Teslimat Tarihi</label>
+                    <input type="date" name="deliveryDate" class="form-control" />
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label">Not</label>
-                    <input type="text" name="note" class="form-control" placeholder="Örn: Kurumsal teklif" />
+                    <label class="form-label">Teklif Geçerlilik Tarihi</label>
+                    <input type="date" name="offerValidUntil" class="form-control" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Teslimat Adresi</label>
+                    <input type="text"
+                           id="deliveryAddress"
+                           name="deliveryAddress"
+                           class="form-control"
+                           placeholder="Teslimat adresi" />
+                </div>
+
+                <div class="col-md-12">
+                    <label class="form-label">Talep / Teklif Notu</label>
+                    <textarea name="note"
+                              class="form-control"
+                              rows="2"
+                              placeholder="Örn: Kurumsal teklif, özel teslimat, ödeme notu..."></textarea>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
+    <div class="card erp-card mb-4">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-            <strong>Ürünler</strong>
+            <strong>Ürün Kalemleri</strong>
 
             <button type="button" class="btn btn-sm btn-light" onclick="addRow()">
                 + Ürün Satırı Ekle
@@ -69,8 +173,11 @@
                 <thead class="table-dark">
                     <tr>
                         <th>Ürün</th>
-                        <th width="160">Miktar</th>
-                        <th width="120">İşlem</th>
+                        <th width="120">Stok</th>
+                        <th width="150">Birim Fiyat</th>
+                        <th width="140">Miktar</th>
+                        <th width="150">Ara Toplam</th>
+                        <th width="100">İşlem</th>
                     </tr>
                 </thead>
 
@@ -80,17 +187,52 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-between">
-        <a href="/Sales" class="btn btn-secondary">Satış Listesine Dön</a>
+    <div class="row mb-4">
+        <div class="col-md-7">
+            <div class="alert alert-warning">
+                <strong>ERP Notu:</strong>
+                Bu işlem doğrudan satış oluşturmaz. Talep önce yönetici onayına gider.
+                Yönetici onaylarsa satış kaydı oluşur ve stok düşer.
+            </div>
+        </div>
 
-        <button type="submit" class="btn btn-success"
-                onclick="return confirm('Toptan satış talebi yönetici onayına gönderilecek. Devam edilsin mi?');">
-            Talebi Oluştur
+        <div class="col-md-5">
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span>Ara Toplam</span>
+                    <strong id="subtotalText">0,00 ₺</strong>
+                </div>
+
+                <div class="summary-row">
+                    <span>İskonto Oranı</span>
+                    <strong id="discountRateText">%0</strong>
+                </div>
+
+                <div class="summary-row">
+                    <span>İskonto Tutarı</span>
+                    <strong id="discountAmountText">0,00 ₺</strong>
+                </div>
+
+                <div class="summary-row total">
+                    <span>Genel Toplam</span>
+                    <strong id="totalAmountText">0,00 ₺</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a href="/" class="btn btn-secondary">Dashboard'a Dön</a>
+
+        <button type="submit" class="btn btn-success">
+            Talebi Yönetici Onayına Gönder
         </button>
     </div>
 </form>
 
 <script>
+    const customers = @Html.Raw(ViewBag.CustomersJson ?? "[]");
+
     const products = [
         @foreach (var p in products)
         {
@@ -98,36 +240,206 @@
         }
     ];
 
+    let rowIndex = 0;
+    let currentDiscountRate = 0;
+
+    function formatMoney(value) {
+        return value.toLocaleString('tr-TR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + ' ₺';
+    }
+
+    function onCustomerChanged() {
+        const customerId = parseInt(document.getElementById("customerId").value || "0");
+        const selectedCustomer = customers.find(c => c.id === customerId);
+
+        const customerInfo = document.getElementById("customerInfo");
+
+        if (!selectedCustomer) {
+            currentDiscountRate = 0;
+            document.getElementById("discountRate").value = 0;
+            document.getElementById("discountRateText").innerText = "%0";
+            document.getElementById("customerDiscountText").innerText = "%0";
+            document.getElementById("deliveryAddress").value = "";
+            customerInfo.classList.add("d-none");
+            calculateTotals();
+            return;
+        }
+
+        currentDiscountRate = parseFloat(selectedCustomer.discountRate || 0);
+
+        document.getElementById("discountRate").value = currentDiscountRate;
+        document.getElementById("discountRateText").innerText = "%" + currentDiscountRate.toLocaleString('tr-TR');
+        document.getElementById("customerDiscountText").innerText = "%" + currentDiscountRate.toLocaleString('tr-TR');
+
+        document.getElementById("customerPhone").innerText = selectedCustomer.phone || "-";
+        document.getElementById("customerEmail").innerText = selectedCustomer.email || "-";
+        document.getElementById("customerAddress").innerText = selectedCustomer.address || "-";
+        document.getElementById("deliveryAddress").value = selectedCustomer.address || "";
+
+        customerInfo.classList.remove("d-none");
+
+        calculateTotals();
+    }
+
     function addRow() {
         const tbody = document.getElementById("productRows");
 
         const tr = document.createElement("tr");
+        tr.setAttribute("data-row", rowIndex);
 
         let productOptions = '<option value="">Ürün seçiniz</option>';
 
         products.forEach(p => {
-            productOptions += `<option value="${p.id}">${p.name} | Stok: ${p.stock} | Fiyat: ${p.price} ₺</option>`;
+            productOptions += `<option value="${p.id}">${p.name}</option>`;
         });
 
         tr.innerHTML = `
             <td>
-                <select name="productIds" class="form-control" required>
+                <select name="productIds"
+                        class="form-control product-select"
+                        required
+                        onchange="onProductChanged(this)">
                     ${productOptions}
                 </select>
             </td>
 
             <td>
-                <input type="number" name="quantities" class="form-control" min="1" value="1" required />
+                <span class="stock-text">-</span>
             </td>
 
             <td>
-                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">
+                <span class="price-text">0,00 ₺</span>
+            </td>
+
+            <td>
+                <input type="number"
+                       name="quantities"
+                       class="form-control quantity-input"
+                       min="1"
+                       value="1"
+                       required
+                       oninput="calculateRowTotal(this)" />
+            </td>
+
+            <td>
+                <strong class="line-total">0,00 ₺</strong>
+            </td>
+
+            <td>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
                     Sil
                 </button>
             </td>
         `;
 
         tbody.appendChild(tr);
+        rowIndex++;
+    }
+
+    function onProductChanged(selectElement) {
+        const tr = selectElement.closest("tr");
+        const productId = parseInt(selectElement.value || "0");
+        const product = products.find(p => p.id === productId);
+
+        const stockText = tr.querySelector(".stock-text");
+        const priceText = tr.querySelector(".price-text");
+        const quantityInput = tr.querySelector(".quantity-input");
+
+        if (!product) {
+            stockText.innerText = "-";
+            priceText.innerText = "0,00 ₺";
+            quantityInput.removeAttribute("max");
+            tr.setAttribute("data-price", "0");
+            tr.setAttribute("data-stock", "0");
+            calculateRowTotal(quantityInput);
+            return;
+        }
+
+        stockText.innerText = product.stock + " adet";
+        priceText.innerText = formatMoney(product.price);
+        quantityInput.max = product.stock;
+
+        tr.setAttribute("data-price", product.price);
+        tr.setAttribute("data-stock", product.stock);
+
+        calculateRowTotal(quantityInput);
+    }
+
+    function calculateRowTotal(inputElement) {
+        const tr = inputElement.closest("tr");
+        const price = parseFloat(tr.getAttribute("data-price") || "0");
+        const quantity = parseInt(inputElement.value || "0");
+        const stock = parseInt(tr.getAttribute("data-stock") || "0");
+
+        if (stock > 0 && quantity > stock) {
+            inputElement.value = stock;
+        }
+
+        const fixedQuantity = parseInt(inputElement.value || "0");
+        const lineTotal = price * fixedQuantity;
+
+        tr.querySelector(".line-total").innerText = formatMoney(lineTotal);
+
+        calculateTotals();
+    }
+
+    function removeRow(button) {
+        button.closest("tr").remove();
+        calculateTotals();
+    }
+
+    function calculateTotals() {
+        let subtotal = 0;
+
+        document.querySelectorAll("#productRows tr").forEach(tr => {
+            const price = parseFloat(tr.getAttribute("data-price") || "0");
+            const quantityInput = tr.querySelector(".quantity-input");
+            const quantity = parseInt(quantityInput?.value || "0");
+
+            subtotal += price * quantity;
+        });
+
+        const discountAmount = subtotal * currentDiscountRate / 100;
+        const totalAmount = subtotal - discountAmount;
+
+        document.getElementById("subtotalText").innerText = formatMoney(subtotal);
+        document.getElementById("discountAmountText").innerText = formatMoney(discountAmount);
+        document.getElementById("totalAmountText").innerText = formatMoney(totalAmount);
+    }
+
+    function validateWholesaleRequest() {
+        const customerId = document.getElementById("customerId").value;
+
+        if (!customerId) {
+            window.erpNotify("Müşteri / firma seçmelisiniz.", "warning");
+            return false;
+        }
+
+        const rows = document.querySelectorAll("#productRows tr");
+
+        if (rows.length === 0) {
+            window.erpNotify("En az bir ürün satırı eklemelisiniz.", "warning");
+            return false;
+        }
+
+        for (let row of rows) {
+            const productSelect = row.querySelector(".product-select");
+            const quantityInput = row.querySelector(".quantity-input");
+
+            if (!productSelect.value) {
+                window.erpNotify("Tüm ürün satırlarında ürün seçmelisiniz.", "warning");
+                return false;
+            }
+
+            if (!quantityInput.value || parseInt(quantityInput.value) <= 0) {
+                window.erpNotify("Tüm ürün satırlarında geçerli miktar girmelisiniz.", "warning");
+                return false;
+            }
+        }
+
+        return true;
     }
 
     addRow();

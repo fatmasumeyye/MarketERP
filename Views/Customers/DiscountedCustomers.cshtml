@@ -1,0 +1,51 @@
+﻿@model List<MarketERP.Models.Customer>
+
+@{
+    ViewData["Title"] = "İskontolu Müşteriler";
+}
+
+<h2 class="mb-4">İskontolu Müşteriler</h2>
+
+<div class="alert alert-info">
+    Bu ekranda toptan satışta iskonto uygulanacak müşteri ve firmalar listelenir.
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">
+        Tanımlı iskonto oranı olan müşteri bulunmuyor.
+    </div>
+}
+else
+{
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Müşteri / Firma</th>
+                <th>Telefon</th>
+                <th>E-posta</th>
+                <th>Adres</th>
+                <th>İskonto Oranı</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var customer in Model)
+            {
+                <tr>
+                    <td>@customer.Id</td>
+                    <td>@customer.FullName</td>
+                    <td>@customer.Phone</td>
+                    <td>@customer.Email</td>
+                    <td>@customer.Address</td>
+                    <td>
+                        <span class="badge bg-success">
+                            %@customer.DiscountRate.ToString("0.##")
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,106 @@
+﻿@{
+    ViewData["Title"] = "Yeni İzin Talebi";
+}
+
+<h2 class="mb-4">Yeni İzin Talebi</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6>Kıdem</h6>
+                <h4>@ViewBag.SeniorityYear yıl</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <h6>Yıllık Hak</h6>
+                <h4>@ViewBag.AnnualLeaveRight gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6>Kullanılan</h6>
+                <h4>@ViewBag.UsedLeaveDays gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6>Bekleyen</h6>
+                <h4>@ViewBag.PendingLeaveDays gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-dark">
+            <div class="card-body text-center">
+                <h6>Kalan Hak</h6>
+                <h4>@ViewBag.RemainingLeaveDays gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6>Onaylanırsa Kalan</h6>
+                <h4>@ViewBag.RemainingAfterPending gün</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" class="card p-4 shadow-sm">
+    <div class="mb-3">
+        <label class="form-label">Başlangıç Tarihi</label>
+        <input type="date" name="startDate" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Bitiş Tarihi</label>
+        <input type="date" name="endDate" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">İzin Nedeni</label>
+        <select name="leaveReason" class="form-control" required>
+            <option value="">İzin nedeni seçiniz</option>
+            <option value="Yıllık izin">Yıllık izin</option>
+            <option value="Hastalık izni">Hastalık izni</option>
+            <option value="Mazeret izni">Mazeret izni</option>
+            <option value="Ailevi nedenler">Ailevi nedenler</option>
+        </select>
+    </div>
+
+    <div class="alert alert-info">
+        Yıllık izin kalan yıllık izin hakkından düşer. Hastalık, mazeret ve ailevi nedenler yıllık izin hakkından düşmez.
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Talep Oluştur
+    </button>
+
+    <a asp-action="MyLeaves" class="btn btn-secondary mt-2">
+        Taleplerime Dön
+    </a>
+</form>

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP.Controllers
 {
-    [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+    [PermissionAuthorize("purchase.view", "purchase.create", "stock.view", "product.view")]
     public class PurchaseOrdersController : Controller
     {
         private readonly AppDbContext _context;
@@ -62,6 +62,7 @@ namespace MarketERP.Controllers
             return View(order);
         }
 
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult Create()
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -98,6 +99,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult CreateManual(ManualPurchaseOrderViewModel model)
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -225,6 +227,7 @@ namespace MarketERP.Controllers
             return 0;
         }
 
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult Suggestions()
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -282,6 +285,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult CreateFromSuggestions(PurchaseOrderSuggestionsViewModel model)
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -356,6 +360,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult Approve(int id)
         {
             var order = _context.PurchaseOrders.Find(id);
@@ -381,6 +386,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult ApproveSelected(List<int> selectedOrderIds)
         {
             if (selectedOrderIds == null || selectedOrderIds.Count == 0)
@@ -412,6 +418,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult ApproveAllPending()
         {
             var orders = _context.PurchaseOrders
@@ -437,6 +444,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult Cancel(int id)
         {
             var order = _context.PurchaseOrders.Find(id);
@@ -460,6 +468,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult Receive(int id, Dictionary<int, int> receivedQuantities)
         {
             var order = _context.PurchaseOrders
@@ -528,6 +537,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult ReceiveAll(int id)
         {
             var order = _context.PurchaseOrders
@@ -569,6 +579,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult ReceiveSelected(List<int> selectedReceiveOrderIds)
         {
             if (selectedReceiveOrderIds == null || selectedReceiveOrderIds.Count == 0)
@@ -616,6 +627,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
         public IActionResult ReceiveAllApproved()
         {
             var orders = _context.PurchaseOrders

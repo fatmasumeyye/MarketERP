@@ -1,4 +1,5 @@
-﻿@model List<MarketERP.Models.Product>
+@model List<MarketERP.Models.Product>
+@using MarketERP.Helpers
 
 @{
     ViewData["Title"] = "Ürün Yönetimi";
@@ -12,6 +13,12 @@
     string selectedCategoryName = ViewBag.SelectedCategoryName ?? "Tüm Ürünler";
     string search = ViewBag.Search ?? "";
     string stockStatus = ViewBag.StockStatus ?? "";
+
+    var isWholesaleStaff =
+        Context.HasPermission("sale.wholesale.create")
+        && !Context.HasPermission("role.manage")
+        && !Context.HasPermission("user.manage")
+        && !Context.HasPermission("sale.view.all");
 }
 
 <style>
@@ -76,9 +83,27 @@
         padding: 12px;
         margin-bottom: 15px;
     }
+
+    .role-info-box {
+        background: #e7f5ff;
+        border: 1px solid #a5d8ff;
+        color: #0b7285;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
 </style>
 
-<h2 class="mb-4">Ürün / Stok Yönetimi</h2>
+<h2 class="mb-4">
+    @if (isWholesaleStaff)
+    {
+        <span>Ürün / Stok Görüntüleme</span>
+    }
+    else
+    {
+        <span>Ürün / Stok Yönetimi</span>
+    }
+</h2>
 
 @if (TempData["Error"] != null)
 {
@@ -96,15 +121,27 @@
     </div>
 }
 
+@if (isWholesaleStaff)
+{
+    <div class="role-info-box">
+        <strong>Toptan satış rolü:</strong>
+        Bu ekranda ürünleri, stok durumunu ve satış fiyatlarını görüntüleyebilirsin.
+        Stok ekleme, ürün düzenleme, ürün silme ve sipariş önerisi işlemleri bu rolün görevi değildir.
+    </div>
+}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex gap-2">
-        <a href="/Products/Create" class="btn btn-primary">
-            + Yeni Ürün Ekle
-        </a>
+        @if (!isWholesaleStaff)
+        {
+            <a href="/Products/Create" class="btn btn-primary">
+                + Yeni Ürün Ekle
+            </a>
 
-        <a href="/PurchaseOrders/Suggestions" class="btn btn-outline-danger">
-            Kritik Stok Sipariş Önerileri
-        </a>
+            <a href="/PurchaseOrders/Suggestions" class="btn btn-outline-danger">
+                Kritik Stok Sipariş Önerileri
+            </a>
+        }
     </div>
 </div>
 
@@ -233,8 +270,12 @@
                         <th>Alış</th>
                         <th>Satış</th>
                         <th>Durum</th>
-                        <th>Stok Ekle</th>
-                        <th>İşlem</th>
+
+                        @if (!isWholesaleStaff)
+                        {
+                            <th>Stok Ekle</th>
+                            <th>İşlem</th>
+                        }
                     </tr>
                 </thead>
 
@@ -252,6 +293,10 @@
                                     <span>
                                         @product.Category.ParentCategory.Name &gt; @product.Category.Name
                                     </span>
+                                }
+                                else if (product.Category != null)
+                                {
+                                    <span>@product.Category.Name</span>
                                 }
                                 else
                                 {
@@ -279,43 +324,46 @@
                                 }
                             </td>
 
-                            <td>
-                                <form asp-action="AddStock" method="post" class="d-flex gap-1">
-                                    <input type="hidden" name="productId" value="@product.Id" />
-                                    <input type="number"
-                                           name="quantity"
-                                           class="form-control form-control-sm"
-                                           placeholder="+Stok"
-                                           min="1"
-                                           required />
-                                    <button type="submit" class="btn btn-success btn-sm">
-                                        Ekle
-                                    </button>
-                                </form>
-                            </td>
+                            @if (!isWholesaleStaff)
+                            {
+                                <td>
+                                    <form asp-action="AddStock" method="post" class="d-flex gap-1">
+                                        <input type="hidden" name="productId" value="@product.Id" />
+                                        <input type="number"
+                                               name="quantity"
+                                               class="form-control form-control-sm"
+                                               placeholder="+Stok"
+                                               min="1"
+                                               required />
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            Ekle
+                                        </button>
+                                    </form>
+                                </td>
 
-                            <td>
-                                <a href="/Products/Edit/@product.Id" class="btn btn-warning btn-sm">
-                                    Düzenle
-                                </a>
-
-                                @if (productIdsUsedInSales.Contains(product.Id))
-                                {
-                                    <button class="btn btn-secondary btn-sm"
-                                            disabled
-                                            title="Bu ürün satış geçmişinde kullanıldığı için silinemez.">
-                                        Silinemez
-                                    </button>
-                                }
-                                else
-                                {
-                                    <a href="/Products/Delete/@product.Id"
-                                           class="btn btn-danger btn-sm"
-                                           onclick="return confirm('Bu ürünü silmek istediğinize emin misiniz?');">
-                                        Sil
+                                <td>
+                                    <a href="/Products/Edit/@product.Id" class="btn btn-warning btn-sm">
+                                        Düzenle
                                     </a>
-                                }
-                            </td>
+
+                                    @if (productIdsUsedInSales.Contains(product.Id))
+                                    {
+                                        <button class="btn btn-secondary btn-sm"
+                                                disabled
+                                                title="Bu ürün satış geçmişinde kullanıldığı için silinemez.">
+                                            Silinemez
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <a href="/Products/Delete/@product.Id"
+                                               class="btn btn-danger btn-sm"
+                                data-confirm-message="Bu ürünü silmek istediğinize emin misiniz?">
+                                            Sil
+                                        </a>
+                                    }
+                                </td>
+                            }
                         </tr>
                     }
                 </tbody>

@@ -1,4 +1,4 @@
-﻿@model IEnumerable<MarketERP.Models.Category>
+@model IEnumerable<MarketERP.Models.Category>
 
 @{
     ViewData["Title"] = "Kategori Yönetimi";
@@ -224,7 +224,7 @@
                             <form asp-action="Delete"
                                   method="post"
                                   class="d-inline"
-                                  onsubmit="return confirm('Bu kategoriyi silmek istediğinize emin misiniz?');">
+                                data-confirm-message="Bu kategoriyi silmek istediğinize emin misiniz?">
                                 <input type="hidden" name="id" value="@main.Id" />
                                 <button type="submit" class="btn btn-danger btn-sm">
                                     Sil
@@ -274,7 +274,7 @@
                                 <form asp-action="Delete"
                                       method="post"
                                       class="d-inline"
-                                      onsubmit="return confirm('Bu kategoriyi silmek istediğinize emin misiniz?');">
+                                data-confirm-message="Bu kategoriyi silmek istediğinize emin misiniz?">
                                     <input type="hidden" name="id" value="@sub.Id" />
                                     <button type="submit" class="btn btn-danger btn-sm">
                                         Sil

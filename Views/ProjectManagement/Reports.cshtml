@@ -1,0 +1,126 @@
+@model MarketERP.Models.ProjectReportsViewModel
+
+@{
+    ViewData["Title"] = "Proje Raporları";
+    var netBudget = Model.Project.Income - Model.Project.Expense;
+}
+
+<style>
+    .report-card { border: 0; border-radius: 12px; box-shadow: 0 3px 14px rgba(15, 23, 42, .08); }
+    @@media print {
+        .no-print, nav, footer { display: none !important; }
+        .report-card { box-shadow: none; border: 1px solid #ddd; }
+        .container, .container-fluid { max-width: 100% !important; }
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h2 class="mb-1">Proje Raporları</h2>
+        <p class="text-muted mb-0">@Model.Project.Name görev, ekip, bütçe ve ilerleme özeti</p>
+    </div>
+    <div class="d-flex gap-2 no-print">
+        <a asp-action="ExportReportsCsv" class="btn btn-success">CSV İndir</a>
+        <button type="button" class="btn btn-outline-dark" onclick="window.print()">Yazdır</button>
+    </div>
+</div>
+
+<div class="card report-card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+            <strong>Proje İlerlemesi</strong>
+            <span>%@Model.ProgressPercent tamamlandı, %@Model.RemainingPercent kaldı</span>
+        </div>
+        <div class="progress" style="height: 22px;">
+            <div class="progress-bar bg-success" style="width: @Model.ProgressPercent%">%@Model.ProgressPercent</div>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-3">Görev Raporu</h5>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg"><div class="card report-card h-100"><div class="card-body"><small class="text-muted">Toplam</small><div class="fs-3 fw-bold">@Model.TotalTasks</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card report-card h-100 border-start border-success border-4"><div class="card-body"><small class="text-muted">Tamamlanan</small><div class="fs-3 fw-bold text-success">@Model.CompletedTasks</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card report-card h-100 border-start border-primary border-4"><div class="card-body"><small class="text-muted">Devam Eden</small><div class="fs-3 fw-bold text-primary">@Model.ActiveTasks</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card report-card h-100 border-start border-danger border-4"><div class="card-body"><small class="text-muted">Geciken</small><div class="fs-3 fw-bold text-danger">@Model.DelayedTasks</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card report-card h-100 border-start border-secondary border-4"><div class="card-body"><small class="text-muted">Planlanan</small><div class="fs-3 fw-bold">@Model.PlannedTasks</div></div></div></div>
+</div>
+
+<h5 class="mb-3">Bütçe Raporu</h5>
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card report-card h-100"><div class="card-body"><small class="text-muted">Toplam Bütçe</small><div class="fs-5 fw-bold">@Model.Project.Budget.ToString("N2") ₺</div></div></div></div>
+    <div class="col-md-3"><div class="card report-card h-100"><div class="card-body"><small class="text-muted">Toplam Gelir</small><div class="fs-5 fw-bold text-success">@Model.Project.Income.ToString("N2") ₺</div></div></div></div>
+    <div class="col-md-3"><div class="card report-card h-100"><div class="card-body"><small class="text-muted">Toplam Gider</small><div class="fs-5 fw-bold text-danger">@Model.Project.Expense.ToString("N2") ₺</div></div></div></div>
+    <div class="col-md-3"><div class="card report-card h-100 border-start @(netBudget >= 0 ? "border-success" : "border-danger") border-4"><div class="card-body"><small class="text-muted">Net Bütçe</small><div class="fs-5 fw-bold @(netBudget >= 0 ? "text-success" : "text-danger")">@netBudget.ToString("N2") ₺</div></div></div></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card report-card h-100"><div class="card-body"><small class="text-muted">Görev Bütçeleri</small><div class="fs-5 fw-bold">@Model.TotalTaskBudget.ToString("N2") ₺</div></div></div></div>
+    <div class="col-md-4"><div class="card report-card h-100"><div class="card-body"><small class="text-muted">Görev Maliyetleri</small><div class="fs-5 fw-bold">@Model.TotalTaskCost.ToString("N2") ₺</div></div></div></div>
+    <div class="col-md-4"><div class="card report-card h-100 border-start border-danger border-4"><div class="card-body"><small class="text-muted">Kritik / Geciken Kritik</small><div class="fs-5 fw-bold">@Model.CriticalTaskCount / @Model.DelayedCriticalTaskCount</div></div></div></div>
+</div>
+
+<div class="card report-card mb-4">
+    <div class="card-header"><strong>Ekip Üyesi Raporu</strong></div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Ekip Üyesi</th>
+                    <th>Rol</th>
+                    <th>Atanan Görev</th>
+                    <th>Ortalama İlerleme</th>
+                    <th>Tahmini İş Yükü</th>
+                    <th>Gerçek İş Yükü</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.TeamRows)
+                {
+                    <tr>
+                        <td>@row.Member.FullName</td>
+                        <td>@row.Member.Role</td>
+                        <td>@row.AssignedTaskCount</td>
+                        <td>%@row.AverageProgress</td>
+                        <td>@row.EstimatedWorkHours.ToString("N1") saat</td>
+                        <td>@row.ActualWorkHours.ToString("N1") saat</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card report-card">
+    <div class="card-header"><strong>Görev Maliyetleri</strong></div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Görev</th>
+                    <th>Durum</th>
+                    <th>Sorumlu</th>
+                    <th>İlerleme</th>
+                    <th>Bütçe</th>
+                    <th>Maliyet</th>
+                    <th>Fark</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in Model.Tasks)
+                {
+                    var difference = task.Budget - task.Cost;
+                    <tr>
+                        <td>@task.Title</td>
+                        <td>@task.Status</td>
+                        <td>@(task.AssignedMember?.FullName ?? "Atanmamış")</td>
+                        <td>%@task.ProgressPercent</td>
+                        <td>@task.Budget.ToString("N2") ₺</td>
+                        <td>@task.Cost.ToString("N2") ₺</td>
+                        <td class="@(difference >= 0 ? "text-success" : "text-danger")">@difference.ToString("N2") ₺</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

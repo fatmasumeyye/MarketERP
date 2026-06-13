@@ -1,4 +1,4 @@
-﻿@model List<MarketERP.Controllers.CartItem>
+@model List<MarketERP.Controllers.CartItem>
 
 @{
     ViewData["Title"] = "Perakende Satış";
@@ -180,7 +180,7 @@
 
                             <a href="/Sales/ClearCart"
                                    class="btn btn-outline-danger w-100"
-                                   onclick="return confirm('Sepeti temizlemek istediğinize emin misiniz?')">
+                                data-confirm-message="Sepeti temizlemek istediğinize emin misiniz?">
                                 Sepeti Temizle
                             </a>
                         </div>

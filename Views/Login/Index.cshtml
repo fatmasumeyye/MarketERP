@@ -17,15 +17,24 @@
                     </div>
                 }
 
-                <form method="post">
+                <form asp-controller="Login" asp-action="Index" method="post">
                     <div class="mb-3">
                         <label>Kullanıcı Adı</label>
-                        <input type="text" name="username" class="form-control" required />
+                        <input type="text"
+                               name="username"
+                               value="@ViewBag.Username"
+                               class="form-control"
+                               autocomplete="username"
+                               required />
                     </div>
 
                     <div class="mb-3">
                         <label>Şifre</label>
-                        <input type="password" name="password" class="form-control" required />
+                        <input type="password"
+                               name="password"
+                               class="form-control"
+                               autocomplete="current-password"
+                               required />
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

@@ -1,0 +1,112 @@
+@model MarketERP.Models.ProjectManagementDashboardViewModel
+
+@{
+    ViewData["Title"] = "Proje Yönetimi";
+    var remainingPercent = Math.Max(0, 100 - Model.ProgressPercent);
+    var netBudget = Model.Project.Income - Model.Project.Expense;
+}
+
+<style>
+    .project-summary-card {
+        border: 0;
+        border-radius: 14px;
+        box-shadow: 0 3px 14px rgba(15, 23, 42, .08);
+        transition: transform .15s ease;
+    }
+    a.project-card-link { color: inherit; text-decoration: none; }
+    a.project-card-link:hover .project-summary-card { transform: translateY(-2px); }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h2 class="mb-1">Proje Yönetimi</h2>
+        <h5 class="text-primary mb-2">@Model.Project.Name</h5>
+        <p class="text-muted mb-0">@Model.Project.Description</p>
+    </div>
+    <span class="badge bg-primary fs-6">@Model.Project.Status</span>
+</div>
+
+<div class="card project-summary-card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3"><small class="text-muted d-block">Başlangıç</small><strong>@Model.Project.StartDate.ToString("dd.MM.yyyy")</strong></div>
+            <div class="col-md-3"><small class="text-muted d-block">Bitiş</small><strong>@Model.Project.EndDate.ToString("dd.MM.yyyy")</strong></div>
+            <div class="col-md-3"><small class="text-muted d-block">Ortalama İlerleme</small><strong>%@Model.ProgressPercent</strong></div>
+            <div class="col-md-3"><small class="text-muted d-block">Kalan</small><strong>%@remainingPercent</strong></div>
+        </div>
+        <div class="progress mt-3" style="height: 12px;">
+            <div class="progress-bar" style="width: @Model.ProgressPercent%"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Tasks" class="project-card-link">
+            <div class="card project-summary-card h-100"><div class="card-body"><small class="text-muted">Toplam Görev</small><div class="fs-3 fw-bold">@Model.TotalTasks</div></div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Tasks" class="project-card-link">
+            <div class="card project-summary-card h-100 border-start border-success border-4"><div class="card-body"><small class="text-muted">Tamamlanan</small><div class="fs-3 fw-bold text-success">@Model.CompletedTasks</div></div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Tasks" class="project-card-link">
+            <div class="card project-summary-card h-100 border-start border-primary border-4"><div class="card-body"><small class="text-muted">Devam Eden</small><div class="fs-3 fw-bold text-primary">@Model.ActiveTasks</div></div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-action="Tasks" class="project-card-link">
+            <div class="card project-summary-card h-100 border-start border-danger border-4"><div class="card-body"><small class="text-muted">Geciken</small><div class="fs-3 fw-bold text-danger">@Model.DelayedTasks</div></div></div>
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <a asp-action="Budget" class="project-card-link">
+            <div class="card project-summary-card h-100"><div class="card-body"><small class="text-muted">Toplam Bütçe</small><div class="fs-4 fw-bold">@Model.Project.Budget.ToString("N2") ₺</div></div></div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-action="Budget" class="project-card-link">
+            <div class="card project-summary-card h-100"><div class="card-body"><small class="text-muted">Toplam Görev Maliyeti</small><div class="fs-4 fw-bold">@Model.TotalTaskCost.ToString("N2") ₺</div></div></div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-action="Budget" class="project-card-link">
+            <div class="card project-summary-card h-100 border-start @(netBudget >= 0 ? "border-success" : "border-danger") border-4">
+                <div class="card-body"><small class="text-muted">Net Bütçe Durumu</small><div class="fs-4 fw-bold @(netBudget >= 0 ? "text-success" : "text-danger")">@netBudget.ToString("N2") ₺</div></div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-md-4">
+        <a asp-action="Team" class="project-card-link">
+            <div class="card project-summary-card h-100"><div class="card-body"><small class="text-muted">Ekip Üyeleri</small><div class="fs-4 fw-bold">@Model.TeamMemberCount</div><div class="small text-muted">İş yükünü görüntüle</div></div></div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-action="Gantt" class="project-card-link">
+            <div class="card project-summary-card h-100 border-start border-primary border-4"><div class="card-body"><small class="text-muted">Görev Gantt Şeması</small><div class="fs-4 fw-bold">Zaman Planı</div><div class="small text-muted">Görev bazlı görünüm</div></div></div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a asp-action="GanttByMember" class="project-card-link">
+            <div class="card project-summary-card h-100 border-start border-info border-4"><div class="card-body"><small class="text-muted">Ekip Gantt Şeması</small><div class="fs-4 fw-bold">Kaynak Planı</div><div class="small text-muted">Üye bazlı görünüm</div></div></div>
+        </a>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mt-4">
+    <a asp-action="Tasks" class="btn btn-primary">Görevleri Yönet</a>
+    <a asp-action="Team" class="btn btn-outline-primary">Proje Ekibi</a>
+    <a asp-action="Gantt" class="btn btn-outline-primary">Görev Gantt</a>
+    <a asp-action="GanttByMember" class="btn btn-outline-info">Ekip Gantt</a>
+    <a asp-action="CriticalPath" class="btn btn-outline-danger">Kritik Yol</a>
+    <a asp-action="Reports" class="btn btn-outline-success">Raporlar</a>
+    <a asp-action="Budget" class="btn btn-outline-dark">Bütçe ve İş Yükü</a>
+</div>

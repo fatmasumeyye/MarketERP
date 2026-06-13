@@ -1,4 +1,4 @@
-﻿@model List<MarketERP.Models.WholesaleSaleRequest>
+@model List<MarketERP.Models.WholesaleSaleRequest>
 
 @{
     ViewData["Title"] = "Toptan Satış Yönetimi";
@@ -9,6 +9,7 @@
 
 <div class="alert alert-info">
     Bu ekran admin/yönetici için toptan satış taleplerini onaylama, reddetme ve geçmiş talepleri izleme ekranıdır.
+    Onaylanan talep satışa dönüşür ve stok düşer.
 </div>
 
 @if (TempData["Error"] != null)
@@ -55,95 +56,157 @@
     </div>
 }
 
-<table class="table table-bordered table-striped align-middle">
-    <thead class="table-dark">
-        <tr>
-            <th>ID</th>
-            <th>Firma</th>
-            <th>Personel</th>
-            <th>Talep Tarihi</th>
-            <th>Vade</th>
-            <th>İskonto</th>
-            <th>Toplam</th>
-            <th>Durum</th>
-            <th>Ürünler</th>
-            <th width="260">İşlem</th>
-        </tr>
-    </thead>
+@foreach (var request in Model)
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Talep No:</strong> WS-@request.Id.ToString("D6")
+                <span class="ms-3"><strong>Firma:</strong> @(request.Customer?.FullName ?? "-")</span>
+                <span class="ms-3"><strong>Personel:</strong> @(request.Employee?.FullName ?? "-")</span>
+            </div>
 
-    <tbody>
-        @if (Model.Any())
-        {
-            foreach (var request in Model)
+            <div>
+                @if (request.Status == "Onay Bekliyor")
+                {
+                    <span class="badge bg-warning text-dark">Onay Bekliyor</span>
+                }
+                else if (request.Status == "Onaylandı")
+                {
+                    <span class="badge bg-success">Onaylandı</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">Reddedildi</span>
+                }
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <strong>Talep Tarihi:</strong>
+                    <div>@request.RequestDate.ToString("dd.MM.yyyy HH:mm")</div>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Vade Tarihi:</strong>
+                    <div>@(request.DueDate.HasValue? request.DueDate.Value.ToString("dd.MM.yyyy") : "-")</div>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Teslimat Tarihi:</strong>
+                    <div>@(request.DeliveryDate.HasValue? request.DeliveryDate.Value.ToString("dd.MM.yyyy") : "-")</div>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Teklif Geçerlilik:</strong>
+                    <div>@(request.OfferValidUntil.HasValue? request.OfferValidUntil.Value.ToString("dd.MM.yyyy") : "-")</div>
+                </div>
+
+                <div class="col-md-3 mt-3">
+                    <strong>Ödeme Tipi:</strong>
+                    <div>@(request.PaymentType ?? "-")</div>
+                </div>
+
+                <div class="col-md-9 mt-3">
+                    <strong>Teslimat Adresi:</strong>
+                    <div>@(request.DeliveryAddress ?? "-")</div>
+                </div>
+
+                <div class="col-md-12 mt-3">
+                    <strong>Talep Notu:</strong>
+                    <div>@(request.Note ?? "-")</div>
+                </div>
+            </div>
+
+            <table class="table table-bordered table-striped align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Ürün</th>
+                        <th>Adet</th>
+                        <th>Birim Fiyat</th>
+                        <th>Ara Toplam</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var item in request.Items)
+                    {
+                        <tr>
+                            <td>@(item.Product?.Name ?? "-")</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.UnitPrice.ToString("N2") ₺</td>
+                            <td>@item.Subtotal.ToString("N2") ₺</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="row justify-content-end">
+                <div class="col-md-4">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Ara Toplam</th>
+                            <td>@request.SubtotalAmount.ToString("N2") ₺</td>
+                        </tr>
+                        <tr>
+                            <th>İskonto</th>
+                            <td>%@request.DiscountRate.ToString("0.##")</td>
+                        </tr>
+                        <tr>
+                            <th>İskonto Tutarı</th>
+                            <td>@request.DiscountAmount.ToString("N2") ₺</td>
+                        </tr>
+                        <tr class="table-dark">
+                            <th>Genel Toplam</th>
+                            <td>@request.TotalAmount.ToString("N2") ₺</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            @if (request.Status == "Onay Bekliyor")
             {
-                <tr>
-                    <td>@request.Id</td>
-                    <td>@(request.Customer?.FullName ?? "-")</td>
-                    <td>@(request.Employee?.FullName ?? "-")</td>
-                    <td>@request.RequestDate.ToString("dd.MM.yyyy HH:mm")</td>
-                    <td>@(request.DueDate.HasValue? request.DueDate.Value.ToString("dd.MM.yyyy") : "-")</td>
-                    <td>%@request.DiscountRate.ToString("0.##")</td>
-                    <td>@request.TotalAmount.ToString("N2") ₺</td>
-                    <td>
-                        @if (request.Status == "Onay Bekliyor")
-                        {
-                            <span class="badge bg-warning text-dark">Onay Bekliyor</span>
-                        }
-                        else if (request.Status == "Onaylandı")
-                        {
-                            <span class="badge bg-success">Onaylandı</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-danger">Reddedildi</span>
-                        }
-                    </td>
-                    <td>
-                        @foreach (var item in request.Items)
-                        {
-                            <div>
-                                @(item.Product?.Name ?? "-") - @item.Quantity adet
-                            </div>
-                        }
-                    </td>
-                    <td>
-                        @if (request.Status == "Onay Bekliyor")
-                        {
-                            <form asp-action="Approve" method="post" class="d-inline">
-                                <input type="hidden" name="id" value="@request.Id" />
-                                <input type="text" name="reviewNote" class="form-control form-control-sm mb-1" placeholder="Onay notu" />
-                                <button type="submit"
-                                        class="btn btn-success btn-sm"
-                                        onclick="return confirm('Talep onaylanacak, satış oluşacak ve stok düşülecek. Devam edilsin mi?');">
-                                    Onayla
-                                </button>
-                            </form>
+                <div class="border-top pt-3">
+                    <form asp-action="Approve" method="post" class="d-inline-block me-2">
+                        <input type="hidden" name="id" value="@request.Id" />
+                        <input type="text" name="reviewNote" class="form-control form-control-sm mb-1" placeholder="Onay notu" />
+                        <button type="submit"
+                                class="btn btn-success btn-sm"
+                                data-confirm-message="Talep onaylanacak, satış oluşacak ve stok düşülecek. Devam edilsin mi?">
+                            Onayla
+                        </button>
+                    </form>
 
-                            <form asp-action="Reject" method="post" class="d-inline">
-                                <input type="hidden" name="id" value="@request.Id" />
-                                <input type="text" name="reviewNote" class="form-control form-control-sm mb-1 mt-1" placeholder="Red notu" />
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="return confirm('Talep reddedilecek. Devam edilsin mi?');">
-                                    Reddet
-                                </button>
-                            </form>
-                        }
-                        else
-                        {
-                            <span class="text-muted">İşlem tamamlandı</span>
-                        }
-                    </td>
-                </tr>
+                    <form asp-action="Reject" method="post" class="d-inline-block">
+                        <input type="hidden" name="id" value="@request.Id" />
+                        <input type="text" name="reviewNote" class="form-control form-control-sm mb-1" placeholder="Red notu" />
+                        <button type="submit"
+                                class="btn btn-danger btn-sm"
+                                data-confirm-message="Talep reddedilecek. Devam edilsin mi?">
+                            Reddet
+                        </button>
+                    </form>
+                </div>
             }
-        }
-        else
-        {
-            <tr>
-                <td colspan="10" class="text-center text-muted">
-                    Toptan satış talebi bulunmuyor.
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+            else
+            {
+                <div class="text-muted">
+                    İşlem tamamlandı.
+                    @if (!string.IsNullOrWhiteSpace(request.ReviewNote))
+                    {
+                        <span> Yönetici notu: @request.ReviewNote</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">
+        Toptan satış talebi bulunmuyor.
+    </div>
+}

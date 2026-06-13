@@ -1,4 +1,4 @@
-﻿@model List<MarketERP.Models.Sale>
+@model List<MarketERP.Models.Sale>
 
 @{
     ViewData["Title"] = "Satış Listesi";
@@ -88,7 +88,7 @@
 
                     <a href="/Sales/Cancel/@sale.Id"
                            class="btn btn-danger btn-sm"
-                           onclick="return confirm('Bu satışı iptal etmek istediğinize emin misiniz? Stok geri eklenecek.')">
+                                data-confirm-message="Bu satışı iptal etmek istediğinize emin misiniz? Stok geri eklenecek.">
                         Satışı İptal Et
                     </a>
                 </td>

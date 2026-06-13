@@ -65,7 +65,13 @@
 }
 
 <div class="order-card">
-    <form asp-action="CreateManual" method="post">
+    <form asp-action="CreateManual"
+          method="post"
+          class="js-confirm"
+          data-confirm-title="Satın Alma Siparişi Oluştur"
+          data-confirm-message="Sipariş bilgileri kaydedilecek. Devam etmek istiyor musunuz?"
+          data-confirm-button="Siparişi Oluştur"
+          data-confirm-type="success">
 
         <div class="row mb-3">
             <div class="col-md-12">
@@ -124,7 +130,7 @@
 
             <button type="submit"
                     class="btn btn-success"
-                    onclick="return confirmPurchaseOrder()">
+                    onclick="return validatePurchaseOrder()">
                 Siparişi Oluştur
             </button>
         </div>
@@ -175,7 +181,7 @@
         const products = getDistinctProducts();
 
         if (products.length === 0) {
-            alert("Siparişe eklenebilecek ürün bulunamadı. Önce ürün-tedarikçi ilişkisi olmalı.");
+            window.erpNotify("Siparişe eklenebilecek ürün bulunamadı. Önce ürün-tedarikçi ilişkisi olmalı.", "warning");
             return;
         }
 
@@ -428,11 +434,11 @@
         document.getElementById("grandTotal").innerText = formatCurrency(grandTotal);
     }
 
-    function confirmPurchaseOrder() {
+    function validatePurchaseOrder() {
         const rows = document.querySelectorAll("#orderRows tr");
 
         if (rows.length === 0) {
-            alert("Sipariş oluşturmak için en az bir ürün satırı eklemelisiniz.");
+            window.erpNotify("Sipariş oluşturmak için en az bir ürün satırı eklemelisiniz.", "warning");
             return false;
         }
 
@@ -465,7 +471,7 @@
         });
 
         if (validRowCount === 0) {
-            alert("Sipariş oluşturmak için ürün, tedarikçi, miktar ve fiyat bilgilerini doldurmalısınız.");
+            window.erpNotify("Sipariş oluşturmak için ürün, tedarikçi, miktar ve fiyat bilgilerini doldurmalısınız.", "warning");
             return false;
         }
 
@@ -477,7 +483,7 @@
             productLines.join("\n") +
             "\n\nDevam etmek istiyor musunuz?";
 
-        return confirm(message);
+        return true;
     }
 
     addRow();

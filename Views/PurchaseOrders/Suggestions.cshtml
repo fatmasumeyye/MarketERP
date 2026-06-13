@@ -1,4 +1,4 @@
-﻿@model MarketERP.Controllers.PurchaseOrderSuggestionsViewModel
+@model MarketERP.Controllers.PurchaseOrderSuggestionsViewModel
 
 @{
     ViewData["Title"] = "Kritik Stok Sipariş Önerileri";
@@ -243,7 +243,7 @@
 
                 <button type="submit"
                         class="btn btn-success"
-                        onclick="return confirm('Seçili ürünlerden satın alma siparişi oluşturulsun mu?')">
+                                data-confirm-message="Seçili ürünlerden satın alma siparişi oluşturulsun mu?">
                     Seçili Ürünlerden Sipariş Oluştur
                 </button>
             </div>

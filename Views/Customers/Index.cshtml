@@ -1,41 +1,89 @@
-﻿@model List<MarketERP.Models.Customer>
+@model List<MarketERP.Models.Customer>
+@using MarketERP.Helpers
 
 @{
     ViewData["Title"] = "Müşteri Yönetimi";
+
+    var canManageDiscount =
+        Context.HasPermission("sale.wholesale.create")
+        || Context.HasPermission("role.manage")
+        || Context.HasPermission("user.manage")
+        || Context.HasPermission("sale.view.all");
 }
 
 <h2 class="mb-4">Müşteri Yönetimi</h2>
 
+@if (canManageDiscount)
+{
+    <div class="alert alert-info">
+        <strong>Müşteri iskonto yönetimi:</strong>
+        Bu ekranda müşterilerin iskonto oranlarını görebilir ve yeni müşteri eklerken iskonto oranı tanımlayabilirsin.
+        Bu oran satış ve toptan satış işlemlerinde indirim hesabı için kullanılacaktır.
+    </div>
+}
+
 <form asp-action="Add" method="post" class="mb-4">
     <div class="row mb-2">
         <div class="col-md-3">
-            <input type="text" name="FullName" class="form-control" placeholder="Ad Soyad" required />
+            <input type="text"
+                   name="FullName"
+                   class="form-control"
+                   placeholder="Ad Soyad / Firma Adı"
+                   required />
+        </div>
+
+        <div class="col-md-2">
+            <input type="text"
+                   name="Phone"
+                   class="form-control"
+                   placeholder="Telefon" />
+        </div>
+
+        <div class="col-md-2">
+            <input type="email"
+                   name="Email"
+                   class="form-control"
+                   placeholder="E-posta" />
         </div>
 
         <div class="col-md-3">
-            <input type="text" name="Phone" class="form-control" placeholder="Telefon" />
+            <input type="text"
+                   name="Address"
+                   class="form-control"
+                   placeholder="Adres" />
         </div>
 
-        <div class="col-md-3">
-            <input type="email" name="Email" class="form-control" placeholder="E-posta" />
-        </div>
-
-        <div class="col-md-3">
-            <input type="text" name="Address" class="form-control" placeholder="Adres" />
-        </div>
+        @if (canManageDiscount)
+        {
+            <div class="col-md-2">
+                <input type="text"
+                       name="DiscountRate"
+                       class="form-control"
+                       placeholder="İskonto % örn: 12.5"
+                       inputmode="decimal" />
+            </div>
+        }
     </div>
 
-    <button type="submit" class="btn btn-primary">Müşteri Ekle</button>
+    <button type="submit" class="btn btn-primary">
+        Müşteri Ekle
+    </button>
 </form>
 
 <table class="table table-bordered table-striped">
     <thead class="table-dark">
         <tr>
             <th>ID</th>
-            <th>Ad Soyad</th>
+            <th>Ad Soyad / Firma</th>
             <th>Telefon</th>
             <th>E-posta</th>
             <th>Adres</th>
+
+            @if (canManageDiscount)
+            {
+                <th>İskonto Oranı</th>
+            }
+
             <th>İşlem</th>
         </tr>
     </thead>
@@ -49,8 +97,33 @@
                 <td>@customer.Phone</td>
                 <td>@customer.Email</td>
                 <td>@customer.Address</td>
+
+                @if (canManageDiscount)
+                {
+                    <td>
+                        <form asp-action="UpdateDiscount" method="post" class="d-flex gap-2">
+                            <input type="hidden" name="id" value="@customer.Id" />
+
+                            <input type="text"
+                                   name="discountRate"
+                                   value="@customer.DiscountRate.ToString("0.##")"
+                                   class="form-control form-control-sm"
+                                   style="width: 90px;"
+                                   inputmode="decimal" />
+
+                            <button type="submit" class="btn btn-success btn-sm">
+                                Kaydet
+                            </button>
+                        </form>
+                    </td>
+                }
+
                 <td>
-                    <a href="/Customers/Delete/@customer.Id" class="btn btn-danger btn-sm">Sil</a>
+                    <a href="/Customers/Delete/@customer.Id"
+                           class="btn btn-danger btn-sm"
+                                data-confirm-message="Bu müşteriyi silmek istediğinize emin misiniz?">
+                        Sil
+                    </a>
                 </td>
             </tr>
         }

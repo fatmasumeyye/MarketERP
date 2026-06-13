@@ -1,221 +1,604 @@
-﻿@{
+@using MarketERP.Models
+@{
     ViewData["Title"] = "İstatistikler";
+
+    var topSellingProducts =
+        ViewBag.TopSellingProducts as List<Tuple<string, int, decimal>>
+        ?? new List<Tuple<string, int, decimal>>();
+    var paymentTypeDistribution =
+        ViewBag.PaymentTypeDistribution as List<Tuple<string, decimal>>
+        ?? new List<Tuple<string, decimal>>();
+    var topCustomers =
+        ViewBag.TopCustomers as List<Tuple<string, int, decimal>>
+        ?? new List<Tuple<string, int, decimal>>();
+    var criticalProducts =
+        ViewBag.CriticalProducts as List<Product>
+        ?? new List<Product>();
+    var outOfStockProducts =
+        ViewBag.OutOfStockProducts as List<Product>
+        ?? new List<Product>();
+    var recentSales =
+        ViewBag.RecentSales as List<Sale>
+        ?? new List<Sale>();
 }
 
 <style>
-    .stat-card {
-        border: none;
-        border-radius: 18px;
-        padding: 10px;
-        color: white;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-        transition: 0.3s;
+    .erp-stat-card {
+        display: block;
+        min-height: 126px;
+        border: 0;
+        border-radius: 16px;
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .1);
+        transition: transform .2s ease, box-shadow .2s ease;
     }
 
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.18);
-        }
-
-        .stat-card h5 {
-            font-size: 15px;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-
-        .stat-card h2 {
-            font-size: 34px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-    .bg-modern-blue {
-        background: linear-gradient(135deg, #1e3c72, #2a5298);
+    .erp-stat-card:hover {
+        color: #fff;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .14);
     }
 
-    .bg-modern-green {
-        background: linear-gradient(135deg, #134e5e, #71b280);
+    .erp-stat-card h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
     }
 
-    .bg-modern-yellow {
-        background: linear-gradient(135deg, #b8860b, #d4af37);
+    .erp-panel {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, .07);
     }
 
-    .bg-modern-red {
-        background: linear-gradient(135deg, #7b1e1e, #b33939);
+    .chart-panel {
+        min-height: 360px;
     }
 
-    .bg-modern-dark {
-        background: linear-gradient(135deg, #232526, #414345);
+    .chart-wrap {
+        position: relative;
+        min-height: 280px;
     }
 
-    .bg-modern-cyan {
-        background: linear-gradient(135deg, #136a8a, #267871);
-    }
-
-    .bg-modern-gray {
-        background: linear-gradient(135deg, #485563, #29323c);
-    }
+    .bg-erp-blue { background: linear-gradient(135deg, #1f3b73, #355c9a); }
+    .bg-erp-green { background: linear-gradient(135deg, #1b4332, #2d6a4f); }
+    .bg-erp-orange { background: linear-gradient(135deg, #9a6700, #ca8a04); }
+    .bg-erp-red { background: linear-gradient(135deg, #7f1d1d, #b91c1c); }
+    .bg-erp-purple { background: linear-gradient(135deg, #4c1d95, #7c3aed); }
+    .bg-erp-teal { background: linear-gradient(135deg, #115e59, #0f766e); }
 </style>
 
-<h2 class="mb-4">ERP İstatistikleri</h2>
-
-<div class="row mb-4">
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-blue mb-3">
-            <div class="card-body">
-                <h5>Tablo Sayısı</h5>
-                <h2>@ViewBag.TableCount</h2>
-            </div>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">ERP İstatistikleri</h2>
+        <p class="text-muted mb-0">Satış, stok ve operasyon performansı</p>
     </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-green mb-3">
-            <div class="card-body">
-                <h5>Ürün Sayısı</h5>
-                <h2>@ViewBag.ProductCount</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-yellow mb-3">
-            <div class="card-body">
-                <h5>Müşteri Sayısı</h5>
-                <h2>@ViewBag.CustomerCount</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-dark mb-3">
-            <div class="card-body">
-                <h5>Çalışan Sayısı</h5>
-                <h2>@ViewBag.EmployeeCount</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-cyan mb-3">
-            <div class="card-body">
-                <h5>Toplam Ciro</h5>
-                <h2>@ViewBag.TotalRevenue ₺</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-gray mb-3">
-            <div class="card-body">
-                <h5>Satış Sayısı</h5>
-                <h2>@ViewBag.SaleCount</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-green mb-3">
-            <div class="card-body">
-                <h5>Toplam Prim</h5>
-                <h2>@ViewBag.TotalBonus ₺</h2>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card stat-card bg-modern-red mb-3">
-            <div class="card-body">
-                <h5>Açık Destek</h5>
-                <h2>@ViewBag.OpenTicketCount</h2>
-            </div>
-        </div>
-    </div>
-
 </div>
 
-<h4>Veritabanı Tabloları</h4>
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="today"
+           class="card erp-stat-card bg-erp-blue">
+            <div class="card-body">
+                <div>Günlük Satış Toplamı</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.TodayRevenue).ToString("N2")) ₺</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="month"
+           class="card erp-stat-card bg-erp-green">
+            <div class="card-body">
+                <div>Aylık Satış Toplamı</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.MonthlyRevenue).ToString("N2")) ₺</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Sales" asp-action="Index" class="card erp-stat-card bg-erp-purple">
+            <div class="card-body">
+                <div>Toplam Satış Sayısı</div>
+                <h2 class="mt-2 mb-0">@ViewBag.SaleCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Customers" asp-action="Index" class="card erp-stat-card bg-erp-teal">
+            <div class="card-body">
+                <div>Müşteri Sayısı</div>
+                <h2 class="mt-2 mb-0">@ViewBag.CustomerCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+           class="card erp-stat-card bg-erp-orange">
+            <div class="card-body">
+                <div>Kritik Stoktaki Ürünler</div>
+                <h2 class="mt-2 mb-0">@ViewBag.CriticalStockCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+           class="card erp-stat-card bg-erp-red">
+            <div class="card-body">
+                <div>Stokta Biten Ürünler</div>
+                <h2 class="mt-2 mb-0">@ViewBag.OutOfStockCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Returns" asp-action="Index" asp-route-status="Beklemede"
+           class="card erp-stat-card bg-erp-red">
+            <div class="card-body">
+                <div>Bekleyen İade Talepleri</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingReturnRequestCount</h2>
+                <small>Satışlara oranı: %@ViewBag.ReturnRate</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="WholesaleSales" asp-action="Index" asp-route-status="Onay Bekliyor"
+           class="card erp-stat-card bg-erp-orange">
+            <div class="card-body">
+                <div>Bekleyen Toptan Talepler</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingWholesaleRequestCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="CashRegister" asp-action="Index" asp-route-status="Beklemede"
+           class="card erp-stat-card bg-erp-blue">
+            <div class="card-body">
+                <div>Bekleyen Kasa Kapanışları</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingCashClosingCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="EmployeeLeaves" asp-action="Index"
+           class="card erp-stat-card bg-erp-teal">
+            <div class="card-body">
+                <div>Bekleyen İzin Talepleri</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingLeaveCount</h2>
+            </div>
+        </a>
+    </div>
+</div>
 
-<table class="table table-bordered table-striped mb-4">
-    <thead class="table-dark">
-        <tr>
-            <th>Tablo Adı</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var table in ViewBag.TableNames)
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card erp-panel chart-panel h-100">
+            <div class="card-header bg-white fw-semibold">Son 30 Gün Satış Grafiği</div>
+            <div class="card-body chart-wrap">
+                @if ((bool)ViewBag.HasDailySalesData)
+                {
+                    <canvas id="dailySalesChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Son 30 gün için satış verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card erp-panel chart-panel h-100">
+            <div class="card-header bg-white fw-semibold">Ödeme Tipi Dağılımı</div>
+            <div class="card-body chart-wrap">
+                @if ((bool)ViewBag.HasPaymentTypeData)
+                {
+                    <canvas id="paymentTypeChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Ödeme tipi verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card erp-panel chart-panel h-100">
+            <div class="card-header bg-white fw-semibold">Kategori Bazlı Satış</div>
+            <div class="card-body chart-wrap">
+                @if ((bool)ViewBag.HasCategorySalesData)
+                {
+                    <canvas id="categorySalesChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Kategori satış verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card erp-panel chart-panel h-100">
+            <div class="card-header bg-white fw-semibold">En Çok Satan Ürünler</div>
+            <div class="card-body chart-wrap">
+                @if ((bool)ViewBag.HasTopProductData)
+                {
+                    <canvas id="topProductsChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Ürün satış verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card erp-panel chart-panel h-100">
+            <div class="card-header bg-white fw-semibold">İade Durumları</div>
+            <div class="card-body chart-wrap">
+                @if ((bool)ViewBag.HasReturnStatusData)
+                {
+                    <canvas id="returnStatusChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        İade talebi verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card erp-panel chart-panel h-100">
+            <div class="card-header bg-white fw-semibold">Stok Durumu</div>
+            <div class="card-body chart-wrap">
+                @if ((bool)ViewBag.HasStockStatusData)
+                {
+                    <canvas id="stockStatusChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Ürün stok verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7">
+        <div class="card erp-panel h-100">
+            <div class="card-header bg-white fw-semibold">En Çok Satan Ürünler</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ürün</th>
+                            <th class="text-end">Adet</th>
+                            <th class="text-end">Ciro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (topSellingProducts.Any())
+                        {
+                            foreach (var item in topSellingProducts)
+                            {
+                                <tr>
+                                    <td>@item.Item1</td>
+                                    <td class="text-end">@item.Item2</td>
+                                    <td class="text-end">@item.Item3.ToString("N2") ₺</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="3" class="text-center text-muted py-4">Satış verisi bulunmuyor.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card erp-panel h-100">
+            <div class="card-header bg-white fw-semibold">Tahsilat / Ödeme Tipi Dağılımı</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ödeme Tipi</th>
+                            <th class="text-end">Toplam</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (paymentTypeDistribution.Any())
+                        {
+                            foreach (var item in paymentTypeDistribution)
+                            {
+                                <tr>
+                                    <td>@item.Item1</td>
+                                    <td class="text-end">@item.Item2.ToString("N2") ₺</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="2" class="text-center text-muted py-4">Ödeme verisi bulunmuyor.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartColors = [
+            '#355c9a', '#2d6a4f', '#ca8a04', '#b91c1c',
+            '#7c3aed', '#0f766e', '#4b5563', '#0ea5e9',
+            '#db2777', '#65a30d'
+        ];
+
+        @if ((bool)ViewBag.HasDailySalesData)
         {
-            <tr>
-                <td>@table</td>
-            </tr>
+            <text>
+            new Chart(document.getElementById('dailySalesChart'), {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.DailySalesLabels)),
+                    datasets: [
+                        {
+                            label: 'Satış Tutarı',
+                            data: @Html.Raw(Json.Serialize(ViewBag.DailySalesRevenue)),
+                            borderColor: '#355c9a',
+                            backgroundColor: 'rgba(53, 92, 154, .12)',
+                            fill: true,
+                            tension: .3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Satış Adedi',
+                            data: @Html.Raw(Json.Serialize(ViewBag.DailySalesCounts)),
+                            borderColor: '#ca8a04',
+                            backgroundColor: '#ca8a04',
+                            type: 'bar',
+                            yAxisID: 'yCount'
+                        }
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true },
+                        yCount: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+            </text>
         }
-    </tbody>
-</table>
 
-<h4>En Çok Satılan Ürünler</h4>
-
-<table class="table table-bordered table-striped mb-4">
-    <thead class="table-dark">
-        <tr>
-            <th>Ürün</th>
-            <th>Toplam Adet</th>
-            <th>Toplam Gelir</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in ViewBag.TopSellingProducts)
+        @if ((bool)ViewBag.HasCategorySalesData)
         {
-            <tr>
-                <td>@item.ProductName</td>
-                <td>@item.TotalQuantity</td>
-                <td>@item.TotalRevenue ₺</td>
-            </tr>
+            <text>
+            new Chart(document.getElementById('categorySalesChart'), {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.CategorySalesLabels)),
+                    datasets: [{
+                        label: 'Satış Tutarı',
+                        data: @Html.Raw(Json.Serialize(ViewBag.CategorySalesData)),
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: { maintainAspectRatio: false, indexAxis: 'y' }
+            });
+            </text>
         }
-    </tbody>
-</table>
 
-<h4>Kritik Stoktaki Ürünler</h4>
-
-<table class="table table-bordered table-striped mb-4">
-    <thead class="table-dark">
-        <tr>
-            <th>Ürün</th>
-            <th>Stok</th>
-            <th>Kritik Stok</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var product in ViewBag.CriticalProducts)
+        @if ((bool)ViewBag.HasTopProductData)
         {
-            <tr>
-                <td>@product.Name</td>
-                <td>@product.StockQuantity</td>
-                <td>@product.CriticalStock</td>
-            </tr>
+            <text>
+            new Chart(document.getElementById('topProductsChart'), {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.TopProductChartLabels)),
+                    datasets: [{
+                        label: 'Satılan Adet',
+                        data: @Html.Raw(Json.Serialize(ViewBag.TopProductChartData)),
+                        backgroundColor: '#0f766e'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+            </text>
         }
-    </tbody>
-</table>
 
-<h4>Son Satışlar</h4>
-
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>Satış ID</th>
-            <th>Toplam Tutar</th>
-            <th>Tarih</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var sale in ViewBag.LastSales)
+        @if ((bool)ViewBag.HasPaymentTypeData)
         {
-            <tr>
-                <td>@sale.Id</td>
-                <td>@sale.TotalAmount ₺</td>
-                <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
-            </tr>
+            <text>
+            new Chart(document.getElementById('paymentTypeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeChartLabels)),
+                    datasets: [{
+                        data: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeChartData)),
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: { maintainAspectRatio: false }
+            });
+            </text>
         }
-    </tbody>
-</table>
+
+        @if ((bool)ViewBag.HasReturnStatusData)
+        {
+            <text>
+            new Chart(document.getElementById('returnStatusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.ReturnStatusLabels)),
+                    datasets: [{
+                        data: @Html.Raw(Json.Serialize(ViewBag.ReturnStatusData)),
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: { maintainAspectRatio: false }
+            });
+            </text>
+        }
+
+        @if ((bool)ViewBag.HasStockStatusData)
+        {
+            <text>
+            new Chart(document.getElementById('stockStatusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.StockStatusLabels)),
+                    datasets: [{
+                        data: @Html.Raw(Json.Serialize(ViewBag.StockStatusData)),
+                        backgroundColor: ['#2d6a4f', '#ca8a04', '#b91c1c']
+                    }]
+                },
+                options: { maintainAspectRatio: false }
+            });
+            </text>
+        }
+    </script>
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card erp-panel h-100">
+            <div class="card-header bg-white fw-semibold">Kritik Stok</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Ürün</th><th class="text-end">Stok</th><th class="text-end">Kritik Seviye</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (criticalProducts.Any())
+                        {
+                            foreach (var product in criticalProducts)
+                            {
+                                <tr>
+                                    <td>@product.Name</td>
+                                    <td class="text-end">@product.StockQuantity</td>
+                                    <td class="text-end">@product.CriticalStock</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="3" class="text-center text-muted py-4">Kritik stokta ürün yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card erp-panel h-100">
+            <div class="card-header bg-white fw-semibold">Stokta Biten Ürünler</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Ürün</th><th class="text-end">Stok</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (outOfStockProducts.Any())
+                        {
+                            foreach (var product in outOfStockProducts)
+                            {
+                                <tr>
+                                    <td>@product.Name</td>
+                                    <td class="text-end"><span class="badge bg-danger">@product.StockQuantity</span></td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="2" class="text-center text-muted py-4">Stokta biten ürün yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card erp-panel mb-4">
+    <div class="card-header bg-white fw-semibold">En Çok Alışveriş Yapan Müşteriler</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Müşteri</th><th class="text-end">Satış Sayısı</th><th class="text-end">Toplam Alışveriş</th></tr>
+            </thead>
+            <tbody>
+                @if (topCustomers.Any())
+                {
+                    foreach (var customer in topCustomers)
+                    {
+                        <tr>
+                            <td>@customer.Item1</td>
+                            <td class="text-end">@customer.Item2</td>
+                            <td class="text-end">@customer.Item3.ToString("N2") ₺</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-4">Müşteri satış verisi bulunmuyor.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card erp-panel">
+    <div class="card-header bg-white fw-semibold">Son Satışlar</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Satış No</th><th>Müşteri</th><th>Çalışan</th><th>Ödeme</th><th class="text-end">Tutar</th><th>Tarih</th></tr>
+            </thead>
+            <tbody>
+                @if (recentSales.Any())
+                {
+                    foreach (var sale in recentSales)
+                    {
+                        <tr>
+                            <td>#@sale.Id</td>
+                            <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
+                            <td>@(sale.Employee?.FullName ?? "-")</td>
+                            <td>@(string.IsNullOrWhiteSpace(sale.PaymentType) ? "-" : sale.PaymentType)</td>
+                            <td class="text-end">@sale.TotalAmount.ToString("N2") ₺</td>
+                            <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">Satış kaydı bulunmuyor.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

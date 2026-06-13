@@ -1,0 +1,376 @@
+﻿@{
+    ViewData["Title"] = "Toptan Satış Dashboard";
+
+    var recentRequests = ViewBag.MyRecentWholesaleRequests as List<MarketERP.Models.WholesaleSaleRequest>
+        ?? new List<MarketERP.Models.WholesaleSaleRequest>();
+
+    var pendingRequests = ViewBag.MyPendingWholesaleRequests as List<MarketERP.Models.WholesaleSaleRequest>
+        ?? new List<MarketERP.Models.WholesaleSaleRequest>();
+}
+
+<style>
+    .dashboard-card {
+        border: none;
+        border-radius: 18px;
+        color: white;
+        padding: 20px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        min-height: 130px;
+        text-decoration: none;
+        display: block;
+        transition: 0.2s;
+    }
+
+        .dashboard-card:hover {
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .dashboard-card h5 {
+            font-size: 15px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .dashboard-card h2 {
+            font-size: 30px;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .dashboard-card p {
+            margin-top: 10px;
+            margin-bottom: 0;
+            opacity: 0.9;
+        }
+
+    .bg-blue {
+        background: linear-gradient(135deg, #1f3b73, #355c9a);
+    }
+
+    .bg-green {
+        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+    }
+
+    .bg-orange {
+        background: linear-gradient(135deg, #9a6700, #ca8a04);
+    }
+
+    .bg-red {
+        background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+    }
+
+    .bg-purple {
+        background: linear-gradient(135deg, #4c1d95, #7c3aed);
+    }
+
+    .bg-gray {
+        background: linear-gradient(135deg, #374151, #4b5563);
+    }
+
+    .info-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        padding: 18px;
+        margin-bottom: 22px;
+    }
+
+    .custom-table {
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .chart-card {
+        border-radius: 18px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        min-height: 360px;
+    }
+
+        .chart-card h5 {
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+    .chart-description {
+        color: #6c757d;
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+</style>
+
+<h2 class="mb-4">Toptan Satış Dashboard</h2>
+
+<div class="info-box">
+    <strong>Toptan satış sorumlusu ekranı:</strong>
+    Bu ekranda firma/müşteri bazlı toptan satış taleplerini, iskonto oranlarını ve onay durumlarını takip edebilirsin.
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <a href="/Sales/Wholesale" class="dashboard-card bg-green mb-3">
+            <h5>Toptan Satış Talebi</h5>
+            <h2>Oluştur</h2>
+            <p>Yeni firma/toptan satış talebi oluştur</p>
+        </a>
+    </div>
+
+    <div class="col-md-3">
+        <div class="dashboard-card bg-orange mb-3">
+            <h5>Bekleyen Taleplerim</h5>
+            <h2>@ViewBag.MyPendingWholesaleRequestCount</h2>
+            <p>Yönetici onayı bekleyen talepler</p>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="dashboard-card bg-blue mb-3">
+            <h5>Bugünkü Taleplerim</h5>
+            <h2>@ViewBag.TodayWholesaleRequestCount</h2>
+            <p>Bugün oluşturduğun talepler</p>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="dashboard-card bg-purple mb-3">
+            <h5>Bu Ay Talep Tutarı</h5>
+            <h2>@ViewBag.MonthlyWholesaleAmount.ToString("N2") ₺</h2>
+            <p>Bu ay oluşturduğun toptan talepler</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="dashboard-card bg-gray mb-3">
+            <h5>Toplam Talebim</h5>
+            <h2>@ViewBag.MyTotalWholesaleRequestCount</h2>
+            <p>Tüm toptan satış taleplerin</p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="dashboard-card bg-green mb-3">
+            <h5>Onaylanan Taleplerim</h5>
+            <h2>@ViewBag.MyApprovedWholesaleRequestCount</h2>
+            <p>Satışa dönüşen talepler</p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="dashboard-card bg-red mb-3">
+            <h5>Reddedilen Taleplerim</h5>
+            <h2>@ViewBag.MyRejectedWholesaleRequestCount</h2>
+            <p>Yönetici tarafından reddedilen talepler</p>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Toptan Satış Analizi</h4>
+
+<div class="row mb-5">
+    <div class="col-md-6 mb-4">
+        <div class="card p-4 chart-card">
+            <h5>Son 7 Günlük Toptan Talep Tutarı</h5>
+            <div class="chart-description">
+                Kendi oluşturduğun toptan satış taleplerinin gün bazlı tutarı.
+            </div>
+            <canvas id="wholesaleAmountChart" height="160"></canvas>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card p-4 chart-card">
+            <h5>Talep Durum Dağılımı</h5>
+            <div class="chart-description">
+                Bekleyen, onaylanan ve reddedilen toptan taleplerinin dağılımı.
+            </div>
+            <canvas id="wholesaleStatusChart" height="160"></canvas>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Bekleyen Toptan Satış Taleplerim</h4>
+
+<div class="custom-table mb-5">
+    <table class="table table-bordered table-striped align-middle mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Talep ID</th>
+                <th>Firma / Müşteri</th>
+                <th>Talep Tarihi</th>
+                <th>Vade</th>
+                <th>İskonto</th>
+                <th>Toplam Tutar</th>
+                <th>Durum</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (pendingRequests.Any())
+            {
+                foreach (var request in pendingRequests)
+                {
+                    <tr>
+                        <td>@request.Id</td>
+                        <td>@(request.Customer?.FullName ?? "-")</td>
+                        <td>@request.RequestDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@(request.DueDate.HasValue? request.DueDate.Value.ToString("dd.MM.yyyy") : "-")</td>
+                        <td>%@request.DiscountRate.ToString("0.##")</td>
+                        <td>@request.TotalAmount.ToString("N2") ₺</td>
+                        <td>
+                            <span class="badge bg-warning text-dark">@request.Status</span>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted">
+                        Bekleyen toptan satış talebin bulunmuyor.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h4 class="mb-3">Son Toptan Satış Taleplerim</h4>
+
+<div class="custom-table">
+    <table class="table table-bordered table-striped align-middle mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Talep ID</th>
+                <th>Firma / Müşteri</th>
+                <th>Ürünler</th>
+                <th>Talep Tarihi</th>
+                <th>Toplam Tutar</th>
+                <th>Durum</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (recentRequests.Any())
+            {
+                foreach (var request in recentRequests)
+                {
+                    <tr>
+                        <td>@request.Id</td>
+                        <td>@(request.Customer?.FullName ?? "-")</td>
+                        <td>
+                            @foreach (var item in request.Items)
+                            {
+                                <div>
+                                    @(item.Product?.Name ?? "-") - @item.Quantity adet
+                                </div>
+                            }
+                        </td>
+                        <td>@request.RequestDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@request.TotalAmount.ToString("N2") ₺</td>
+                        <td>
+                            @if (request.Status == "Onay Bekliyor" || request.Status == "Beklemede")
+                            {
+                                <span class="badge bg-warning text-dark">@request.Status</span>
+                            }
+                            else if (request.Status == "Onaylandı")
+                            {
+                                <span class="badge bg-success">Onaylandı</span>
+                            }
+                            else if (request.Status == "Reddedildi")
+                            {
+                                <span class="badge bg-danger">Reddedildi</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@request.Status</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        Henüz toptan satış talebin bulunmuyor.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const wholesaleAmountCtx = document.getElementById('wholesaleAmountChart');
+
+    new Chart(wholesaleAmountCtx, {
+    type: 'line',
+    data: {
+    labels: @Html.Raw(Json.Serialize(ViewBag.WholesaleAmountChartLabels)),
+    datasets: [{
+    label: 'Talep Tutarı',
+    data: @Html.Raw(Json.Serialize(ViewBag.WholesaleAmountChartData)),
+    tension: 0.35,
+    fill: true,
+    borderWidth: 3,
+    pointRadius: 5
+    }]
+    },
+    options: {
+    responsive: true,
+    plugins: {
+    tooltip: {
+    callbacks: {
+    label: function(context) {
+    let value = context.raw || 0;
+    return 'Tutar: ' + value.toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+    }) + ' ₺';
+    }
+    }
+    }
+    },
+    scales: {
+    y: {
+    beginAtZero: true,
+    ticks: {
+    callback: function(value) {
+    return value.toLocaleString('tr-TR') + ' ₺';
+    }
+    }
+    }
+    }
+    }
+    });
+
+    const wholesaleStatusCtx = document.getElementById('wholesaleStatusChart');
+
+    new Chart(wholesaleStatusCtx, {
+    type: 'doughnut',
+    data: {
+    labels: ['Bekleyen', 'Onaylanan', 'Reddedilen'],
+    datasets: [{
+    data: [
+    @ViewBag.MyPendingWholesaleRequestCount,
+    @ViewBag.MyApprovedWholesaleRequestCount,
+    @ViewBag.MyRejectedWholesaleRequestCount
+    ]
+    }]
+    },
+    options: {
+    responsive: true,
+    plugins: {
+    legend: {
+    position: 'bottom'
+    }
+    }
+    }
+    });
+</script>

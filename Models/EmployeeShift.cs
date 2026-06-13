@@ -21,8 +21,8 @@ namespace MarketERP.Models
         public TimeSpan EndTime { get; set; }
 
         [Column("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
-        public Employee Employee { get; set; }
+        public Employee? Employee { get; set; }
     }
 }

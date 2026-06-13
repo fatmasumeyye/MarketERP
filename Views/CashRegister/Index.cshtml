@@ -1,4 +1,4 @@
-﻿@model List<MarketERP.Models.CashRegisterClosing>
+@model List<MarketERP.Models.CashRegisterClosing>
 
 @{
     ViewData["Title"] = "Kasa Kapanış Yönetimi";
@@ -269,7 +269,7 @@
                                            placeholder="Not" />
                                     <button type="submit"
                                             class="btn btn-success btn-sm mt-1"
-                                            onclick="return confirm('Bu kasa kapanışı onaylanacak. Devam edilsin mi?');">
+                                data-confirm-message="Bu kasa kapanışı onaylanacak. Devam edilsin mi?">
                                         Onayla
                                     </button>
                                 </form>
@@ -284,7 +284,7 @@
                                            placeholder="Red notu" />
                                     <button type="submit"
                                             class="btn btn-danger btn-sm mt-1"
-                                            onclick="return confirm('Bu kasa kapanışı reddedilecek. Devam edilsin mi?');">
+                                data-confirm-message="Bu kasa kapanışı reddedilecek. Devam edilsin mi?">
                                         Reddet
                                     </button>
                                 </form>

@@ -127,13 +127,27 @@ namespace MarketERP.Controllers
         [PermissionAuthorize("sale.wholesale.create")]
         public IActionResult Wholesale()
         {
+            var customers = _context.Customers
+                .Where(c => c.FullName != "Nihai Tüketici")
+                .OrderBy(c => c.FullName)
+                .ToList();
+
             ViewBag.Customers = new SelectList(
-                _context.Customers
-                    .Where(c => c.FullName != "Nihai Tüketici")
-                    .OrderBy(c => c.FullName)
-                    .ToList(),
+                customers,
                 "Id",
                 "FullName"
+            );
+
+            ViewBag.CustomersJson = JsonSerializer.Serialize(
+                customers.Select(c => new
+                {
+                    id = c.Id,
+                    name = c.FullName,
+                    phone = c.Phone,
+                    email = c.Email,
+                    address = c.Address,
+                    discountRate = c.DiscountRate
+                })
             );
 
             ViewBag.Products = _context.Products
@@ -145,7 +159,16 @@ namespace MarketERP.Controllers
 
         [HttpPost]
         [PermissionAuthorize("sale.wholesale.create")]
-        public IActionResult Wholesale(int customerId, DateTime? dueDate, decimal discountRate, string? note, List<int> productIds, List<int> quantities)
+        public IActionResult Wholesale(
+            int customerId,
+            DateTime? dueDate,
+            DateTime? deliveryDate,
+            DateTime? offerValidUntil,
+            string? deliveryAddress,
+            string? paymentType,
+            string? note,
+            List<int> productIds,
+            List<int> quantities)
         {
             var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
@@ -157,6 +180,20 @@ namespace MarketERP.Controllers
             if (customerId <= 0)
             {
                 TempData["Error"] = "Toptan satış talebi için müşteri/firma seçmelisiniz.";
+                return RedirectToAction("Wholesale");
+            }
+
+            var customer = _context.Customers.FirstOrDefault(c => c.Id == customerId);
+
+            if (customer == null)
+            {
+                TempData["Error"] = "Seçilen müşteri/firma bulunamadı.";
+                return RedirectToAction("Wholesale");
+            }
+
+            if (string.IsNullOrWhiteSpace(paymentType))
+            {
+                TempData["Error"] = "Ödeme tipi seçmelisiniz.";
                 return RedirectToAction("Wholesale");
             }
 
@@ -185,6 +222,12 @@ namespace MarketERP.Controllers
                     continue;
                 }
 
+                if (product.StockQuantity < quantity)
+                {
+                    TempData["Error"] = $"{product.Name} için stok yetersiz. Mevcut stok: {product.StockQuantity}";
+                    return RedirectToAction("Wholesale");
+                }
+
                 items.Add(new WholesaleSaleRequestItem
                 {
                     ProductId = product.Id,
@@ -201,6 +244,8 @@ namespace MarketERP.Controllers
             }
 
             decimal subtotal = items.Sum(i => i.Subtotal);
+
+            decimal discountRate = customer.DiscountRate;
 
             if (discountRate < 0)
             {
@@ -221,6 +266,10 @@ namespace MarketERP.Controllers
                 EmployeeId = employeeId.Value,
                 RequestDate = DateTime.Now,
                 DueDate = dueDate,
+                DeliveryDate = deliveryDate,
+                OfferValidUntil = offerValidUntil,
+                DeliveryAddress = deliveryAddress,
+                PaymentType = paymentType,
                 DiscountRate = discountRate,
                 SubtotalAmount = subtotal,
                 DiscountAmount = discountAmount,
@@ -233,7 +282,8 @@ namespace MarketERP.Controllers
             _context.WholesaleSaleRequests.Add(request);
             _context.SaveChanges();
 
-            TempData["Success"] = "Toptan satış talebi oluşturuldu. Yönetici onayına gönderildi.";
+            TempData["Success"] =
+                $"Toptan satış talebi oluşturuldu. Müşteriye bağlı %{discountRate:0.##} iskonto uygulandı ve yönetici onayına gönderildi.";
 
             return RedirectToAction("Wholesale");
         }

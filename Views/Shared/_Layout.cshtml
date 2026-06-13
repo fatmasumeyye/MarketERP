@@ -15,13 +15,311 @@
     @{
         var isLoggedIn = Context.Session.GetInt32("EmployeeId") != null;
         var fullName = Context.Session.GetString("FullName");
+        var roleNames = (Context.Session.GetString("Roles") ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        var isAdminOrManager =
-            Context.HasPermission("sale.view.all")
-            || Context.HasPermission("sale.view.branch")
-            || Context.HasPermission("role.manage")
-            || Context.HasPermission("user.manage")
-            || Context.HasPermission("reports.sales");
+        var isAdmin = roleNames.Contains("Admin", StringComparer.OrdinalIgnoreCase);
+        var isStoreManager = roleNames.Contains("Mağaza Müdürü", StringComparer.OrdinalIgnoreCase);
+        var isCashier = roleNames.Contains("Kasiyer", StringComparer.OrdinalIgnoreCase);
+        var isAccounting = roleNames.Contains("Muhasebe", StringComparer.OrdinalIgnoreCase);
+        var isWarehouseManager = roleNames.Contains(
+            "Depo Sorumlusu",
+            StringComparer.OrdinalIgnoreCase);
+        var isWholesaleSalesStaff = roleNames.Contains(
+            "Toptan Satış Sorumlusu",
+            StringComparer.OrdinalIgnoreCase);
+        var isManagementRole = isAdmin || isStoreManager;
+        var toastSuccess = TempData.Peek("Success")?.ToString();
+        var toastError = TempData.Peek("Error")?.ToString();
+        var toastInfo = TempData.Peek("Info")?.ToString();
+        var toastWarning = TempData.Peek("Warning")?.ToString();
+
+        var canCreateLeaveRequest =
+            Context.HasPermission("leave.request.create");
+
+        var canApproveLeaveRequest =
+            Context.HasPermission("leave.request.view")
+            || Context.HasPermission("leave.request.approve");
+
+        var isRealAdminOrManager =
+            isManagementRole
+            && canApproveLeaveRequest;
+
+        var isWholesaleStaff =
+            isWholesaleSalesStaff
+            &&
+            Context.HasPermission("sale.wholesale.create")
+            && !isRealAdminOrManager;
+
+        var isCashierOrSalesStaff =
+            isCashier
+            && (
+                Context.HasPermission("sale.retail.create")
+                || Context.HasPermission("sale.view.own")
+                || Context.HasPermission("cash.closing.create")
+                || Context.HasPermission("return.request")
+            )
+            && !isRealAdminOrManager
+            && !isWholesaleStaff;
+
+        var showRetailSale =
+            isLoggedIn
+            && Context.HasPermission("sale.retail.create")
+            && isCashierOrSalesStaff;
+        var showOwnSales =
+            isLoggedIn
+            && Context.HasPermission("sale.view.own")
+            && isCashierOrSalesStaff;
+        var showSalesList =
+            isLoggedIn
+            && (
+                Context.HasPermission("sale.view.all")
+                || Context.HasPermission("sale.view.branch")
+            )
+            && isRealAdminOrManager;
+        var showWholesaleRequest = isLoggedIn && isWholesaleStaff;
+        var showWholesaleManagement =
+            isLoggedIn
+            && isManagementRole
+            && (
+                Context.HasPermission("sale.view.all")
+                || Context.HasPermission("sale.view.branch")
+                || Context.HasPermission("role.manage")
+            );
+
+        var showProducts =
+            isLoggedIn
+            && Context.HasPermission("product.view")
+            && !isAccounting
+            && !isWarehouseManager;
+        var showCategories =
+            showProducts
+            && !isWholesaleStaff;
+
+        var showCustomers =
+            isLoggedIn
+            && Context.HasPermission("customer.view")
+            && !isAccounting
+            && !isWarehouseManager;
+        var showOwnReturnRequests =
+            isLoggedIn
+            && Context.HasPermission("return.request")
+            && isCashierOrSalesStaff;
+        var showReturnManagement =
+            isLoggedIn
+            && isManagementRole
+            && (
+                Context.HasPermission("sale.view.all")
+                || Context.HasPermission("sale.view.branch")
+                || Context.HasPermission("role.manage")
+            );
+        var showSupportTickets =
+            isLoggedIn
+            && Context.HasPermission("support.view")
+            && !isWarehouseManager
+            && !isWholesaleStaff;
+
+        var showEmployees =
+            isLoggedIn
+            && isManagementRole
+            && (
+                Context.HasPermission("employee.view")
+                || Context.HasPermission("user.manage")
+                || Context.HasPermission("reports.employee")
+            );
+        var showEmployeeReports =
+            isLoggedIn
+            && isAdmin
+            && (
+                Context.HasPermission("user.manage")
+                || Context.HasPermission("reports.employee")
+            );
+        var showLeaveRequest =
+            isLoggedIn
+            && (isCashier || isWholesaleSalesStaff)
+            && canCreateLeaveRequest
+            && !isManagementRole;
+        var showLeaveManagement =
+            isLoggedIn
+            && isManagementRole
+            && canApproveLeaveRequest;
+        var showShifts =
+            isLoggedIn
+            && (
+                isAdmin
+                || isStoreManager
+                || isCashier
+                || isWarehouseManager
+                || isWholesaleSalesStaff
+            );
+
+        var showCashClosing =
+            isLoggedIn
+            && Context.HasPermission("cash.closing.create")
+            && isCashierOrSalesStaff;
+        var showCashClosingManagement =
+            isLoggedIn
+            && isManagementRole
+            && (
+                Context.HasPermission("sale.view.all")
+                || Context.HasPermission("sale.view.branch")
+                || Context.HasPermission("role.manage")
+            );
+        var showStatistics =
+            isLoggedIn
+            && isAdmin
+            && (
+                Context.HasPermission("reports.sales")
+                || Context.HasPermission("reports.stock")
+                || Context.HasPermission("reports.financial")
+            )
+            && !isWholesaleStaff;
+        var showExpenses =
+            isLoggedIn
+            && isAdmin
+            && (
+                Context.HasPermission("finance.view")
+                || Context.HasPermission("reports.financial")
+            )
+            && !isWholesaleStaff;
+
+        var showPurchasing =
+            isLoggedIn
+            && (
+                Context.HasPermission("purchase.view")
+                || Context.HasPermission("purchase.create")
+            )
+            && !isAccounting
+            && !isWarehouseManager
+            && !isWholesaleStaff;
+        var showSystem =
+            isLoggedIn
+            && isAdmin
+            && Context.HasPermission("role.manage")
+            && !isWholesaleStaff;
+
+        var hasAccountingFinancialScope =
+            isLoggedIn
+            && isAccounting
+            && (
+                Context.HasPermission("finance.view")
+                || Context.HasPermission("payment.collect")
+                || Context.HasPermission("payment.refund")
+                || Context.HasPermission("reports.financial")
+            );
+        var accountingCanViewSales =
+            hasAccountingFinancialScope
+            && (
+                Context.HasPermission("sale.view.all")
+                || Context.HasPermission("sale.view.branch")
+            );
+        var showAccountingExpenses =
+            isAccounting
+            && Context.HasPermission("finance.view");
+        var showAccountingCashClosings =
+            accountingCanViewSales
+            && (
+                Context.HasPermission("finance.view")
+                || Context.HasPermission("payment.collect")
+                || Context.HasPermission("reports.financial")
+            );
+        var showAccountingReturns =
+            accountingCanViewSales
+            && (
+                Context.HasPermission("payment.refund")
+                || Context.HasPermission("finance.view")
+                || Context.HasPermission("reports.financial")
+            );
+        var showAccountingCustomers =
+            hasAccountingFinancialScope;
+        var showAccountingPurchaseOrders =
+            hasAccountingFinancialScope
+            && Context.HasPermission("purchase.view");
+        var showAccountingSuppliers =
+            hasAccountingFinancialScope
+            && (
+                Context.HasPermission("supplier.view")
+                || Context.HasPermission("purchase.view")
+                || Context.HasPermission("finance.view")
+            );
+        var showAccountingFinance =
+            showAccountingExpenses
+            || showAccountingCashClosings;
+        var showAccountingSalesAndReturns =
+            accountingCanViewSales
+            || showAccountingReturns
+            || showAccountingCustomers;
+        var showAccountingPurchasing =
+            showAccountingPurchaseOrders
+            || showAccountingSuppliers;
+
+        var showWarehouseProducts =
+            isLoggedIn
+            && isWarehouseManager
+            && Context.HasPermission("product.view");
+        var showWarehousePurchaseOrders =
+            isLoggedIn
+            && isWarehouseManager
+            && (
+                Context.HasPermission("purchase.view")
+                || Context.HasPermission("stock.view")
+                || Context.HasPermission("product.view")
+            );
+        var showWarehousePurchaseSuggestions =
+            isLoggedIn
+            && isWarehouseManager
+            && (
+                Context.HasPermission("stock.view")
+                || Context.HasPermission("product.view")
+            );
+        var showWarehouseSuppliers =
+            isLoggedIn
+            && isWarehouseManager
+            && Context.HasPermission("supplier.view");
+        var showWarehouseLeaveRequest =
+            isLoggedIn
+            && isWarehouseManager
+            && canCreateLeaveRequest;
+        var showWarehouseShifts =
+            isLoggedIn
+            && isWarehouseManager;
+        var showWarehouseStock = showWarehouseProducts;
+        var showWarehousePurchasing =
+            showWarehousePurchaseOrders
+            || showWarehousePurchaseSuggestions
+            || showWarehouseSuppliers;
+        var showWarehousePersonnel =
+            showWarehouseLeaveRequest
+            || showWarehouseShifts;
+
+        var showOperations =
+            showRetailSale
+            || showOwnSales
+            || showSalesList
+            || showWholesaleRequest
+            || showWholesaleManagement;
+        var showStockAndProducts =
+            !isWarehouseManager
+            && (showProducts || showCategories);
+        var showCustomersAndReturns =
+            showCustomers
+            || showOwnReturnRequests
+            || showReturnManagement
+            || showSupportTickets;
+        var showPersonnel =
+            !isWarehouseManager
+            && (
+                showEmployees
+                || showEmployeeReports
+                || showLeaveRequest
+                || showLeaveManagement
+                || showShifts
+            );
+        var showFinanceAndReports =
+            showCashClosing
+            || showCashClosingManagement
+            || showStatistics
+            || showExpenses;
     }
 
     <header>
@@ -40,209 +338,368 @@
                         @if (isLoggedIn && Context.HasPermission("dashboard.view"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">
-                                    Dashboard
-                                </a>
+                                <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Dashboard</a>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("product.view"))
+                        @if (showAccountingFinance)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Categories" asp-action="Index">
-                                    Kategoriler
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="accountingFinanceDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Finans
                                 </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Products" asp-action="Index">
-                                    Ürünler / Stok
-                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="accountingFinanceDropdown">
+                                    @if (showAccountingExpenses)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Expenses" asp-action="Index">Gelir-Gider</a></li>
+                                    }
+                                    @if (showAccountingCashClosings)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="CashRegister" asp-action="Index">Kasa Kapanışları</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("sale.retail.create") && !isAdminOrManager)
+                        @if (showAccountingSalesAndReturns)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Retail">
-                                    Perakende Satış
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="accountingSalesReturnsDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Satış &amp; İade
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="accountingSalesReturnsDropdown">
+                                    @if (accountingCanViewSales)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Sales" asp-action="Index">Satış Listesi</a></li>
+                                        <li><a class="dropdown-item" asp-controller="WholesaleSales" asp-action="Index">Toptan Satış Yönetimi</a></li>
+                                    }
+                                    @if (showAccountingReturns)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Returns" asp-action="Index">İade Yönetimi</a></li>
+                                    }
+                                    @if (showAccountingCustomers)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Customers" asp-action="Index">Müşteriler</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("sale.view.own") && !isAdminOrManager)
+                        @if (showAccountingPurchasing)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="MySales">
-                                    Kendi Satışlarım
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="accountingPurchasingDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Satın Alma
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="accountingPurchasingDropdown">
+                                    @if (showAccountingPurchaseOrders)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Index">Siparişler</a></li>
+                                    }
+                                    @if (showAccountingSuppliers)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Suppliers" asp-action="Index">Tedarikçiler</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("return.request") && !isAdminOrManager)
+                        @if (showWarehouseStock)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Returns" asp-action="MyRequests">
-                                    İade Taleplerim
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="warehouseStockDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Stok &amp; Ürün
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="warehouseStockDropdown">
+                                    @if (showWarehouseProducts)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Products" asp-action="Index">Ürünler / Stok</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical">Kritik Stoklar</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && isAdminOrManager)
+                        @if (showWarehousePurchasing)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Returns" asp-action="Index">
-                                    İade Yönetimi
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="warehousePurchasingDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Satın Alma &amp; Mal Kabul
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="warehousePurchasingDropdown">
+                                    @if (showWarehousePurchaseOrders)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Index">Siparişler / Mal Kabul</a></li>
+                                    }
+                                    @if (showWarehousePurchaseSuggestions)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Suggestions">Sipariş Önerileri</a></li>
+                                    }
+                                    @if (showWarehouseSuppliers)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Suppliers" asp-action="Index">Tedarikçiler</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("cash.closing.create") && !isAdminOrManager)
+                        @if (showWarehousePersonnel)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="CashRegister" asp-action="MyClosings">
-                                    Kasa Kapanışı
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="warehousePersonnelDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Personel
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="warehousePersonnelDropdown">
+                                    @if (showWarehouseShifts)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="EmployeeShifts" asp-action="Index">Vardiyalarım</a></li>
+                                    }
+                                    @if (showWarehouseLeaveRequest)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="EmployeeLeaves" asp-action="Create">İzin Talebi</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && isAdminOrManager)
+                        @if (showOperations)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="CashRegister" asp-action="Index">
-                                    Kasa Kapanış Yönetimi
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="operationsDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Operasyon
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="operationsDropdown">
+                                    @if (showRetailSale)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Sales" asp-action="Retail">Perakende Satış</a></li>
+                                    }
+                                    @if (showOwnSales)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Sales" asp-action="MySales">Kendi Satışlarım</a></li>
+                                    }
+                                    @if (showSalesList)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Sales" asp-action="Index">Satış Listesi</a></li>
+                                    }
+                                    @if (showWholesaleRequest)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Sales" asp-action="Wholesale">Toptan Satış Talebi</a></li>
+                                    }
+                                    @if (showWholesaleManagement)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="WholesaleSales" asp-action="Index">Toptan Satış Yönetimi</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("sale.wholesale.create") && !isAdminOrManager)
+                        @if (showStockAndProducts)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Wholesale">
-                                    Toptan Satış
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="stockProductsDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Stok &amp; Ürün
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="stockProductsDropdown">
+                                    @if (showProducts)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Products" asp-action="Index">Ürünler / Stok</a></li>
+                                    }
+                                    @if (showCategories)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Categories" asp-action="Index">Kategoriler</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && (Context.HasPermission("sale.view.all") || Context.HasPermission("sale.view.branch")))
+                        @if (showCustomersAndReturns)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Sales" asp-action="Index">
-                                    Satış Listesi
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="customersReturnsDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Müşteri &amp; İade
                                 </a>
-                            </li>
-                        }
-                        @if (isLoggedIn && isAdminOrManager)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="WholesaleSales" asp-action="Index">
-                                    Toptan Satış Yönetimi
-                                </a>
-                            </li>
-                        }
-
-                        @if (isLoggedIn && Context.HasPermission("customer.view"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Customers" asp-action="Index">
-                                    Müşteriler
-                                </a>
-                            </li>
-                        }
-
-                        @if (isLoggedIn && (Context.HasPermission("user.manage") || Context.HasPermission("reports.employee")))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Employees" asp-action="Index">
-                                    Çalışanlar
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="EmployeeBonuses" asp-action="Index">
-                                    Primler
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="EmployeeLeaves" asp-action="Index">
-                                    İzinler
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="EmployeeShifts" asp-action="Index">
-                                    Vardiyalar
-                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="customersReturnsDropdown">
+                                    @if (showCustomers)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Customers" asp-action="Index">Müşteriler</a></li>
+                                    }
+                                    @if (showOwnReturnRequests)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Returns" asp-action="MyRequests">İade Taleplerim</a></li>
+                                    }
+                                    @if (showReturnManagement)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Returns" asp-action="Index">İade Yönetimi</a></li>
+                                    }
+                                    @if (showSupportTickets)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="SupportTickets" asp-action="Index">Destek Talepleri</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("support.view"))
+                        @if (showPersonnel)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="SupportTickets" asp-action="Index">
-                                    Destek Talepleri
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="personnelDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Personel
                                 </a>
+                                <ul class="dropdown-menu" aria-labelledby="personnelDropdown">
+                                    @if (showEmployees)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Employees" asp-action="Index">Çalışanlar</a></li>
+                                    }
+                                    @if (showEmployeeReports)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="EmployeeBonuses" asp-action="Index">Primler</a></li>
+                                    }
+                                    @if (showLeaveRequest)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="EmployeeLeaves" asp-action="Create">İzin Talebi</a></li>
+                                    }
+                                    @if (showLeaveManagement)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="EmployeeLeaves" asp-action="Index">İzinler</a></li>
+                                    }
+                                    @if (showShifts)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="EmployeeShifts" asp-action="Index">
+                                                @(isManagementRole ? "Vardiyalar" : "Vardiyalarım")
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && (Context.HasPermission("purchase.view") || Context.HasPermission("purchase.create")))
+                        @if (showFinanceAndReports)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Suppliers" asp-action="Index">
-                                    Tedarikçiler
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="financeReportsDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Finans &amp; Raporlar
                                 </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="PurchaseOrders" asp-action="Index">
-                                    Siparişler
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="PurchaseOrders" asp-action="Suggestions">
-                                    Sipariş Önerileri
-                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="financeReportsDropdown">
+                                    @if (showCashClosing)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="CashRegister" asp-action="MyClosings">Kasa Kapanışı</a></li>
+                                    }
+                                    @if (showCashClosingManagement)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="CashRegister" asp-action="Index">Kasa Kapanış Yönetimi</a></li>
+                                    }
+                                    @if (showStatistics)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Statistics" asp-action="Index">İstatistikler</a></li>
+                                    }
+                                    @if (showExpenses)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Expenses" asp-action="Index">Gelir-Gider</a></li>
+                                    }
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && Context.HasPermission("role.manage"))
+                        @if (showPurchasing)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="DatabaseSchema" asp-action="Index">
-                                    Veritabanı Şeması
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="purchasingDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Satın Alma
                                 </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="SqlEditor" asp-action="Index">
-                                    SQL Rapor Paneli
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="SqlEditor" asp-action="SavedQueries">
-                                    Kayıtlı Sorgular
-                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="purchasingDropdown">
+                                    <li><a class="dropdown-item" asp-controller="Suppliers" asp-action="Index">Tedarikçiler</a></li>
+                                    <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Index">Siparişler</a></li>
+                                    <li><a class="dropdown-item" asp-controller="PurchaseOrders" asp-action="Suggestions">Sipariş Önerileri</a></li>
+                                </ul>
                             </li>
                         }
 
-                        @if (isLoggedIn && (Context.HasPermission("reports.sales") || Context.HasPermission("reports.stock") || Context.HasPermission("reports.financial")))
+                        @if (showSystem)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Statistics" asp-action="Index">
-                                    İstatistikler
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark"
+                                   href="#"
+                                   id="systemDropdown"
+                                   role="button"
+                                   data-bs-toggle="dropdown"
+                                   aria-expanded="false">
+                                    Sistem
                                 </a>
-                            </li>
-                        }
-
-                        @if (isLoggedIn && (Context.HasPermission("finance.view") || Context.HasPermission("reports.financial")))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Expenses" asp-action="Index">
-                                    Gelir-Gider
-                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="systemDropdown">
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="Index">Proje Dashboard</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="Tasks">Görevler</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="Team">Ekip Üyeleri</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="Gantt">Gantt</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="GanttByMember">Ekip Gantt</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="CriticalPath">Kritik Yol</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="Reports">Raporlar</a></li>
+                                    <li><a class="dropdown-item" asp-controller="ProjectManagement" asp-action="Budget">Bütçe</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" asp-controller="DatabaseSchema" asp-action="Index">Veritabanı Şeması</a></li>
+                                    <li><a class="dropdown-item" asp-controller="SqlEditor" asp-action="Index">SQL Rapor Paneli</a></li>
+                                    <li><a class="dropdown-item" asp-controller="SqlEditor" asp-action="SavedQueries">Kayıtlı Sorgular</a></li>
+                                </ul>
                             </li>
                         }
                     </ul>
@@ -251,15 +708,16 @@
                         @if (isLoggedIn)
                         {
                             <li class="nav-item">
-                                <span class="nav-link text-dark">
-                                    @fullName
-                                </span>
+                                <span class="nav-link text-dark">@fullName</span>
                             </li>
 
                             <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                       href="/Login/Logout"
-                                       onclick="return confirm('Çıkış yapmak istediğinize emin misiniz?')">
+                                <a class="nav-link text-dark js-confirm"
+                                   href="/Login/Logout"
+                                   data-confirm-title="Çıkış Yap"
+                                   data-confirm-message="Oturumunuzu sonlandırmak istediğinize emin misiniz?"
+                                   data-confirm-button="Çıkış Yap"
+                                   data-confirm-type="warning">
                                     Çıkış Yap
                                 </a>
                             </li>
@@ -267,9 +725,7 @@
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Login" asp-action="Index">
-                                    Giriş
-                                </a>
+                                <a class="nav-link text-dark" asp-controller="Login" asp-action="Index">Giriş</a>
                             </li>
                         }
                     </ul>
@@ -290,9 +746,227 @@
         </div>
     </footer>
 
+    <div class="toast-container position-fixed top-0 end-0 p-3 mt-5" style="z-index: 1090">
+        <div id="erpNotificationToast"
+             class="toast border-0 shadow"
+             role="alert"
+             aria-live="assertive"
+             aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="erpNotificationMessage"></div>
+                <button type="button"
+                        class="btn-close me-2 m-auto"
+                        data-bs-dismiss="toast"
+                        aria-label="Kapat"></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade"
+         id="erpConfirmModal"
+         tabindex="-1"
+         aria-labelledby="erpConfirmModalTitle"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="erpConfirmModalTitle">İşlemi Onayla</h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0" id="erpConfirmModalMessage">
+                        Bu işlemi gerçekleştirmek istediğinize emin misiniz?
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Vazgeç
+                    </button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            id="erpConfirmModalButton">
+                        Onayla
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        (() => {
+            const modalElement = document.getElementById('erpConfirmModal');
+            const modal = new bootstrap.Modal(modalElement);
+            const modalTitle = document.getElementById('erpConfirmModalTitle');
+            const modalMessage = document.getElementById('erpConfirmModalMessage');
+            const modalButton = document.getElementById('erpConfirmModalButton');
+            const toastElement = document.getElementById('erpNotificationToast');
+            const toastMessage = document.getElementById('erpNotificationMessage');
+            const confirmedElements = new WeakSet();
+            let pendingTrigger = null;
+
+            const buttonClasses = {
+                danger: 'btn-danger',
+                warning: 'btn-warning',
+                success: 'btn-success',
+                primary: 'btn-primary',
+                info: 'btn-info'
+            };
+
+            function getDefaults(message) {
+                const normalized = (message || '').toLocaleLowerCase('tr-TR');
+                if (normalized.includes('sil') || normalized.includes('iptal')) {
+                    return {
+                        title: normalized.includes('sil') ? 'Kaydı Sil' : 'İşlemi İptal Et',
+                        button: normalized.includes('sil') ? 'Sil' : 'İptal Et',
+                        type: 'danger'
+                    };
+                }
+                if (normalized.includes('redd') || normalized.includes('red ')) {
+                    return { title: 'İşlemi Reddet', button: 'Reddet', type: 'danger' };
+                }
+                if (normalized.includes('onay') || normalized.includes('devam')) {
+                    return { title: 'İşlemi Onayla', button: 'Onayla', type: 'success' };
+                }
+                return { title: 'İşlemi Onayla', button: 'Devam Et', type: 'primary' };
+            }
+
+            document.querySelectorAll('[data-confirm-message]')
+                .forEach(element => element.classList.add('js-confirm'));
+
+            window.erpNotify = (message, type = 'info') => {
+                if (!message) {
+                    return;
+                }
+
+                const alreadyVisible = Array.from(document.querySelectorAll('.alert'))
+                    .some(alert => alert.textContent.trim().includes(String(message).trim()));
+                if (alreadyVisible) {
+                    return;
+                }
+
+                const colorClass = {
+                    success: 'text-bg-success',
+                    error: 'text-bg-danger',
+                    danger: 'text-bg-danger',
+                    warning: 'text-bg-warning',
+                    info: 'text-bg-primary'
+                }[type] || 'text-bg-primary';
+
+                toastElement.className = `toast border-0 shadow ${colorClass}`;
+                toastMessage.textContent = message;
+                bootstrap.Toast.getOrCreateInstance(
+                    toastElement,
+                    { delay: type === 'error' || type === 'danger' ? 7000 : 4500 }
+                ).show();
+            };
+
+            window.alert = message => window.erpNotify(message, 'warning');
+
+            function showConfirmation(trigger) {
+                const message = trigger.dataset.confirmMessage
+                    || 'Bu işlemi gerçekleştirmek istediğinize emin misiniz?';
+                const defaults = getDefaults(message);
+                const type = trigger.dataset.confirmType || defaults.type;
+
+                pendingTrigger = trigger;
+                modalTitle.textContent = trigger.dataset.confirmTitle || defaults.title;
+                modalMessage.textContent = message;
+                modalButton.textContent = trigger.dataset.confirmButton || defaults.button;
+                modalButton.className = `btn ${buttonClasses[type] || buttonClasses.primary}`;
+                modal.show();
+            }
+
+            document.addEventListener('click', event => {
+                const trigger = event.target.closest('.js-confirm');
+                if (!trigger || trigger.tagName === 'FORM') {
+                    return;
+                }
+
+                if (confirmedElements.has(trigger)) {
+                    confirmedElements.delete(trigger);
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                showConfirmation(trigger);
+            }, true);
+
+            document.addEventListener('submit', event => {
+                const form = event.target;
+                if (!form.matches('form.js-confirm')) {
+                    return;
+                }
+
+                if (confirmedElements.has(form)) {
+                    confirmedElements.delete(form);
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                form._erpSubmitter = event.submitter || form._erpSubmitter || null;
+                showConfirmation(form);
+            });
+
+            modalButton.addEventListener('click', () => {
+                if (!pendingTrigger) {
+                    return;
+                }
+
+                const trigger = pendingTrigger;
+                pendingTrigger = null;
+                modal.hide();
+
+                if (trigger.tagName === 'A') {
+                    window.location.href = trigger.dataset.confirmUrl || trigger.href;
+                    return;
+                }
+
+                if (trigger.tagName === 'FORM') {
+                    confirmedElements.add(trigger);
+                    trigger.requestSubmit(trigger._erpSubmitter || undefined);
+                    return;
+                }
+
+                const form = trigger.form || trigger.closest('form');
+                if (form) {
+                    confirmedElements.add(trigger);
+                    trigger.click();
+                    return;
+                }
+
+                if (trigger.dataset.confirmUrl) {
+                    window.location.href = trigger.dataset.confirmUrl;
+                }
+            });
+
+            @if (!string.IsNullOrWhiteSpace(toastSuccess))
+            {
+                <text>window.erpNotify(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(toastSuccess)), 'success');</text>
+            }
+            else if (!string.IsNullOrWhiteSpace(toastError))
+            {
+                <text>window.erpNotify(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(toastError)), 'error');</text>
+            }
+            else if (!string.IsNullOrWhiteSpace(toastWarning))
+            {
+                <text>window.erpNotify(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(toastWarning)), 'warning');</text>
+            }
+            else if (!string.IsNullOrWhiteSpace(toastInfo))
+            {
+                <text>window.erpNotify(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(toastInfo)), 'info');</text>
+            }
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

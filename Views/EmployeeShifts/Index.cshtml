@@ -1,68 +1,518 @@
-﻿@model List<MarketERP.Models.EmployeeShift>
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model MarketERP.Models.EmployeeShiftScheduleViewModel
 
 @{
-    ViewData["Title"] = "Çalışan Vardiyaları";
+    ViewData["Title"] = "Vardiyalar";
+    var employees =
+        ViewBag.Employees as IEnumerable<SelectListItem>
+        ?? Enumerable.Empty<SelectListItem>();
+    var dayNames = new[]
+    {
+        "Pazartesi",
+        "Salı",
+        "Çarşamba",
+        "Perşembe",
+        "Cuma",
+        "Cumartesi",
+        "Pazar"
+    };
+    var defaultShiftDate =
+        DateTime.Today >= Model.WeekStart && DateTime.Today <= Model.WeekEnd
+            ? DateTime.Today
+            : Model.WeekStart;
 }
 
-<h2 class="mb-4">Çalışan Vardiyaları</h2>
+<style>
+    .shift-panel {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, .07);
+    }
 
-<form asp-action="Add" method="post" class="mb-4">
-    <div class="row mb-2">
-        <div class="col-md-3">
-            <select name="EmployeeId" class="form-control" asp-items="ViewBag.Employees" required>
-                <option value="">Çalışan seçiniz</option>
-            </select>
-        </div>
+    .schedule-table {
+        min-width: 1380px;
+        table-layout: fixed;
+        font-size: .86rem;
+    }
 
-        <div class="col-md-2">
-            <input type="date" name="ShiftDate" class="form-control" required />
-        </div>
+    .schedule-table th,
+    .schedule-table td {
+        width: 165px;
+        padding: .55rem;
+        vertical-align: top;
+    }
 
-        <div class="col-md-2">
-            <input type="time" name="StartTime" class="form-control" required />
-        </div>
+    .schedule-table .employee-column {
+        width: 210px;
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        background: #fff;
+    }
 
-        <div class="col-md-2">
-            <input type="time" name="EndTime" class="form-control" required />
-        </div>
+    .schedule-table thead .employee-column {
+        background: #f8f9fa;
+        z-index: 5;
+    }
 
-        <div class="col-md-2">
-            <input type="text" name="Description" class="form-control" placeholder="Açıklama" />
-        </div>
+    .schedule-table .hours-column {
+        width: 95px;
+        text-align: center;
+    }
 
-        <div class="col-md-1">
-            <button type="submit" class="btn btn-primary w-100">Ekle</button>
+    .today-column {
+        background-color: #fff8db !important;
+    }
+
+    .shift-entry {
+        border: 1px solid #cbd5e1;
+        border-left: 4px solid #0d6efd;
+        border-radius: 9px;
+        background: #fff;
+        padding: .45rem;
+    }
+
+    .shift-entry + .shift-entry {
+        margin-top: .4rem;
+    }
+
+    .shift-entry.leave-entry {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+    }
+
+    .shift-time {
+        margin-top: .2rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .shift-description {
+        display: block;
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .74rem;
+        overflow-wrap: anywhere;
+    }
+
+    .empty-shift {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+    <div>
+        <h2 class="mb-1">@(Model.IsOwnShiftView ? "Vardiyalarım" : "Haftalık Vardiya Çizelgesi")</h2>
+        <div class="fs-5 fw-semibold text-primary">
+            @Model.WeekStart.ToString("dd.MM.yyyy") - @Model.WeekEnd.ToString("dd.MM.yyyy")
+            Haftalık Vardiya Planı
         </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (Model.CanManageShifts)
+        {
+            <div class="dropdown">
+                <button class="btn btn-success dropdown-toggle"
+                        type="button"
+                        id="weeklyPlanDownloadDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    Haftalık Planı İndir
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="weeklyPlanDownloadDropdown">
+                    <li>
+                        <a class="dropdown-item"
+                           asp-action="ExportWeeklyExcel"
+                           asp-route-weekStart="@Model.WeekStart.ToString("yyyy-MM-dd")">
+                            Excel (.xlsx)
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           asp-action="ExportWeeklyCsv"
+                           asp-route-weekStart="@Model.WeekStart.ToString("yyyy-MM-dd")">
+                            CSV (.csv)
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           asp-action="ExportWeeklyWord"
+                           asp-route-weekStart="@Model.WeekStart.ToString("yyyy-MM-dd")">
+                            Word (.doc)
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+        <div class="btn-group" role="group" aria-label="Hafta seçimi">
+            <a asp-action="Index"
+               asp-route-weekStart="@Model.WeekStart.AddDays(-7).ToString("yyyy-MM-dd")"
+               class="btn btn-outline-secondary">
+                Önceki Hafta
+            </a>
+            <a asp-action="Index" class="btn btn-outline-primary">Bu Hafta</a>
+            <a asp-action="Index"
+               asp-route-weekStart="@Model.WeekStart.AddDays(7).ToString("yyyy-MM-dd")"
+               class="btn btn-outline-secondary">
+                Sonraki Hafta
+            </a>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Index" method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-sm-auto">
+        <label class="form-label fw-semibold">Görüntülenecek haftayı seç</label>
+        <input type="date"
+               name="weekStart"
+               value="@Model.WeekStart.ToString("yyyy-MM-dd")"
+               class="form-control" />
+    </div>
+    <div class="col-sm-auto">
+        <button type="submit" class="btn btn-primary">Seçili Haftayı Göster</button>
     </div>
 </form>
 
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>ID</th>
-            <th>Çalışan</th>
-            <th>Tarih</th>
-            <th>Başlangıç</th>
-            <th>Bitiş</th>
-            <th>Açıklama</th>
-            <th>İşlem</th>
-        </tr>
-    </thead>
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info">@TempData["Info"]</div>
+}
 
-    <tbody>
-        @foreach (var shift in Model)
-        {
-            <tr>
-                <td>@shift.Id</td>
-                <td>@shift.Employee?.FullName</td>
-                <td>@shift.ShiftDate.ToString("dd.MM.yyyy")</td>
-                <td>@shift.StartTime.ToString(@"hh\:mm")</td>
-                <td>@shift.EndTime.ToString(@"hh\:mm")</td>
-                <td>@shift.Description</td>
-                <td>
-                    <a href="/EmployeeShifts/Delete/@shift.Id" class="btn btn-danger btn-sm">Sil</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+@if (Model.CanManageShifts)
+{
+    <div class="alert alert-primary border-0 shadow-sm">
+        Bu ekranda haftalık vardiya planını hazırlayabilirsiniz. Boş hücrelerden
+        <strong>Şift Ata</strong> diyerek hızlıca vardiya atayabilir, var olan
+        vardiyaları düzenleyebilir veya silebilirsiniz.
+    </div>
+}
+else
+{
+    <div class="alert alert-info border-0 shadow-sm">
+        Bu ekranda seçili haftaya ait vardiya planınızı görüntüleyebilirsiniz.
+    </div>
+}
+
+@if (Model.CanManageShifts)
+{
+    <div class="card shift-panel mb-4" id="addShiftPanel">
+        <div class="card-header bg-white">
+            <div class="fw-semibold">Haftalık Plana Vardiya Ata</div>
+            <small class="text-muted">
+                Çalışan, tarih ve şift tipini seçip Kaydet'e bastığınızda vardiya
+                veritabanına kaydedilir.
+            </small>
+        </div>
+        <div class="card-body">
+            <form asp-action="Add" method="post">
+                <input type="hidden" name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6 col-xl-3">
+                        <label class="form-label">Çalışan</label>
+                        <select id="addEmployeeId"
+                                name="employeeId"
+                                class="form-select"
+                                asp-items="employees"
+                                required>
+                            <option value="">Çalışan seçin</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-xl-2">
+                        <label class="form-label">Vardiya tarihi</label>
+                        <input id="addShiftDate"
+                               type="date"
+                               name="shiftDate"
+                               value="@defaultShiftDate.ToString("yyyy-MM-dd")"
+                               class="form-control"
+                               required />
+                    </div>
+                    <div class="col-md-6 col-xl-3">
+                        <label class="form-label">Şift tipi</label>
+                        <select id="addShiftType" name="shiftType" class="form-select" required>
+                            @foreach (var shiftType in Model.ShiftTypes)
+                            {
+                                var optionText = string.IsNullOrWhiteSpace(shiftType.TimeRange)
+                                    ? shiftType.Label
+                                    : $"{shiftType.Label} ({shiftType.TimeRange})";
+                                <option value="@shiftType.Value">@optionText</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-xl-2">
+                        <label class="form-label">Ek açıklama</label>
+                        <input type="text"
+                               name="note"
+                               class="form-control"
+                               maxlength="250"
+                               placeholder="İsteğe bağlı" />
+                    </div>
+                    <div class="col-md-6 col-xl-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            Vardiyayı Kaydet
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="card shift-panel">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Haftalık Plan</span>
+        <span class="badge bg-secondary">@Model.Rows.Count çalışan</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered schedule-table mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="employee-column">Çalışan</th>
+                    @for (var dayIndex = 0; dayIndex < Model.WeekDays.Count; dayIndex++)
+                    {
+                        var day = Model.WeekDays[dayIndex];
+                        var isToday = day == DateTime.Today;
+
+                        <th class="text-center @(isToday ? "today-column" : "")">
+                            <div>@dayNames[dayIndex]</div>
+                            <small class="text-muted">@day.ToString("dd.MM")</small>
+                            @if (isToday)
+                            {
+                                <span class="badge bg-warning text-dark ms-1">Bugün</span>
+                            }
+                        </th>
+                    }
+                    <th class="hours-column">Toplam</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Rows.Any())
+                {
+                    foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td class="employee-column">
+                                <div class="fw-semibold">@row.EmployeeName</div>
+                                <small class="text-muted">@row.Position</small>
+                            </td>
+                            @foreach (var day in Model.WeekDays)
+                            {
+                                var dayShifts = row.ShiftsByDay[day];
+                                var isToday = day == DateTime.Today;
+
+                                <td class="@(isToday ? "today-column" : "")">
+                                    @if (dayShifts.Any())
+                                    {
+                                        foreach (var shift in dayShifts)
+                                        {
+                                            <div class="shift-entry @(shift.IsLeave ? "leave-entry" : "")">
+                                                <span class="badge @(shift.IsLeave ? "bg-danger" : "bg-primary")">
+                                                    @shift.ShiftLabel
+                                                </span>
+                                                @if (!shift.IsLeave)
+                                                {
+                                                    <div class="shift-time">
+                                                        @shift.StartTime.ToString(@"hh\:mm")
+                                                        -
+                                                        @shift.EndTime.ToString(@"hh\:mm")
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(shift.Note))
+                                                {
+                                                    <small class="shift-description">@shift.Note</small>
+                                                }
+                                                @if (Model.CanManageShifts)
+                                                {
+                                                    <div class="d-flex gap-1 mt-2">
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-primary py-0 edit-shift-button"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#editShiftModal"
+                                                                data-id="@shift.Id"
+                                                                data-employee-id="@shift.EmployeeId"
+                                                                data-date="@shift.ShiftDate.ToString("yyyy-MM-dd")"
+                                                                data-shift-type="@shift.ShiftTypeValue"
+                                                                data-note="@shift.Note">
+                                                            Düzenle
+                                                        </button>
+                                                        <form asp-action="Delete"
+                                                              method="post"
+                                data-confirm-message="Bu vardiyayı silmek istediğinize emin misiniz?">
+                                                            <input type="hidden" name="id" value="@shift.Id" />
+                                                            <input type="hidden"
+                                                                   name="weekStart"
+                                                                   value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
+                                                            <button type="submit"
+                                                                    class="btn btn-sm btn-outline-danger py-0">
+                                                                Sil
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="empty-shift">
+                                            @if (Model.CanManageShifts)
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary add-cell-shift"
+                                                        data-employee-id="@row.EmployeeId"
+                                                        data-date="@day.ToString("yyyy-MM-dd")">
+                                                    Şift Ata
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                            }
+                            <td class="hours-column align-middle">
+                                <strong>@row.WeeklyHours.ToString("N1")</strong>
+                                <small class="d-block text-muted">saat</small>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">
+                            Bu hafta için görüntülenecek çalışan bulunmuyor.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            @if (Model.CanManageShifts && Model.Rows.Any())
+            {
+                <tfoot class="table-light">
+                    <tr>
+                        <th class="employee-column">Planlanan çalışan</th>
+                        @foreach (var day in Model.WeekDays)
+                        {
+                            <th class="text-center @(day == DateTime.Today ? "today-column" : "")">
+                                @Model.DailyEmployeeCounts[day]
+                            </th>
+                        }
+                        <th class="hours-column">-</th>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+</div>
+
+@if (Model.CanManageShifts)
+{
+    <div class="modal fade" id="editShiftModal" tabindex="-1" aria-labelledby="editShiftModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editShiftModalLabel">Vardiyayı Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editShiftId" name="id" />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Çalışan</label>
+                                <select id="editEmployeeId"
+                                        name="employeeId"
+                                        class="form-select"
+                                        asp-items="employees"
+                                        required>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Vardiya tarihi</label>
+                                <input id="editShiftDate"
+                                       type="date"
+                                       name="shiftDate"
+                                       class="form-control"
+                                       required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Şift tipi</label>
+                                <select id="editShiftType"
+                                        name="shiftType"
+                                        class="form-select"
+                                        required>
+                                    @foreach (var shiftType in Model.ShiftTypes)
+                                    {
+                                        var optionText = string.IsNullOrWhiteSpace(shiftType.TimeRange)
+                                            ? shiftType.Label
+                                            : $"{shiftType.Label} ({shiftType.TimeRange})";
+                                        <option value="@shiftType.Value">@optionText</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ek açıklama</label>
+                                <input id="editNote"
+                                       type="text"
+                                       name="note"
+                                       maxlength="250"
+                                       class="form-control"
+                                       placeholder="İsteğe bağlı" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @if (Model.CanManageShifts)
+    {
+        <script>
+            document.querySelectorAll('.edit-shift-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    document.getElementById('editShiftId').value = button.dataset.id;
+                    document.getElementById('editEmployeeId').value = button.dataset.employeeId;
+                    document.getElementById('editShiftDate').value = button.dataset.date;
+                    document.getElementById('editShiftType').value = button.dataset.shiftType || 'Sabah';
+                    document.getElementById('editNote').value = button.dataset.note || '';
+                });
+            });
+
+            document.querySelectorAll('.add-cell-shift').forEach(button => {
+                button.addEventListener('click', () => {
+                    document.getElementById('addEmployeeId').value = button.dataset.employeeId;
+                    document.getElementById('addShiftDate').value = button.dataset.date;
+                    document.getElementById('addShiftPanel').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    window.setTimeout(() => {
+                        document.getElementById('addShiftType').focus();
+                    }, 350);
+                });
+            });
+        </script>
+    }
+}

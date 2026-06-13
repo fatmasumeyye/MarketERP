@@ -1,0 +1,115 @@
+﻿@model List<MarketERP.Models.EmployeeLeave>
+
+@{
+    ViewData["Title"] = "İzin Taleplerim";
+}
+
+<h2 class="mb-4">İzin Taleplerim</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6>Kıdem</h6>
+                <h4>@ViewBag.SeniorityYear yıl</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-info">
+            <div class="card-body text-center">
+                <h6>Yıllık Hak</h6>
+                <h4>@ViewBag.AnnualLeaveRight gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6>Kullanılan</h6>
+                <h4>@ViewBag.UsedLeaveDays gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6>Bekleyen</h6>
+                <h4>@ViewBag.PendingLeaveDays gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-dark">
+            <div class="card-body text-center">
+                <h6>Kalan Hak</h6>
+                <h4>@ViewBag.RemainingLeaveDays gün</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6>Onaylanırsa Kalan</h6>
+                <h4>@ViewBag.RemainingAfterPending gün</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a asp-action="Create" class="btn btn-primary mb-3">
+    Yeni İzin Talebi Oluştur
+</a>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Başlangıç</th>
+            <th>Bitiş</th>
+            <th>Gün</th>
+            <th>Neden</th>
+            <th>Durum</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var leave in Model)
+        {
+            <tr>
+                <td>@leave.StartDate.ToString("dd.MM.yyyy")</td>
+                <td>@leave.EndDate.ToString("dd.MM.yyyy")</td>
+                <td>@leave.RequestedDays gün</td>
+                <td>@leave.LeaveReason</td>
+                <td>
+                    @if (leave.Status == "Beklemede")
+                    {
+                        <span class="badge bg-warning text-dark">Beklemede</span>
+                    }
+                    else if (leave.Status == "Onaylandı")
+                    {
+                        <span class="badge bg-success">Onaylandı</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Reddedildi</span>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

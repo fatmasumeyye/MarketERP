@@ -1,0 +1,253 @@
+@using MarketERP.Helpers
+@using MarketERP.Models
+@{
+    ViewData["Title"] = "Depo Dashboard";
+
+    var canViewProducts = Context.HasPermission("product.view");
+    var canViewPurchasing =
+        Context.HasPermission("purchase.view")
+        || Context.HasPermission("stock.view")
+        || Context.HasPermission("product.view");
+    var canViewSuppliers = Context.HasPermission("supplier.view");
+
+    var lowestStockProducts =
+        ViewBag.LowestStockProducts as List<Product> ?? new List<Product>();
+    var highestStockProducts =
+        ViewBag.HighestStockProducts as List<Product> ?? new List<Product>();
+    var recentPurchaseOrders =
+        ViewBag.RecentPurchaseOrders as List<PurchaseOrder> ?? new List<PurchaseOrder>();
+}
+
+<style>
+    .warehouse-card {
+        display: block;
+        min-height: 126px;
+        border: 0;
+        border-radius: 15px;
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, .1);
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .warehouse-card:hover {
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 9px 22px rgba(15, 23, 42, .16);
+    }
+
+    .warehouse-card .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .warehouse-panel {
+        border: 0;
+        border-radius: 15px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, .07);
+    }
+
+    .stock-blue { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
+    .stock-green { background: linear-gradient(135deg, #166534, #16a34a); }
+    .stock-orange { background: linear-gradient(135deg, #9a3412, #f59e0b); }
+    .stock-red { background: linear-gradient(135deg, #991b1b, #dc2626); }
+    .stock-teal { background: linear-gradient(135deg, #115e59, #0d9488); }
+    .stock-slate { background: linear-gradient(135deg, #334155, #64748b); }
+</style>
+
+<div class="mb-4">
+    <h2 class="mb-1">Depo Dashboard</h2>
+    <p class="text-muted mb-0">Stok durumu, satın alma siparişleri ve mal kabul özeti</p>
+</div>
+
+<div class="row g-3 mb-4">
+    @if (canViewProducts)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Products" asp-action="Index" class="card warehouse-card stock-blue">
+                <div class="card-body">
+                    <div>Toplam Ürün Sayısı</div>
+                    <div class="value mt-2">@ViewBag.ProductCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+               class="card warehouse-card stock-orange">
+                <div class="card-body">
+                    <div>Kritik Stoktaki Ürünler</div>
+                    <div class="value mt-2">@ViewBag.CriticalStockCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+               class="card warehouse-card stock-red">
+                <div class="card-body">
+                    <div>Stokta Biten Ürünler</div>
+                    <div class="value mt-2">@ViewBag.OutOfStockCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Products" asp-action="Index" class="card warehouse-card stock-green">
+                <div class="card-body">
+                    <div>Toplam Stok Miktarı</div>
+                    <div class="value mt-2">@ViewBag.TotalStockQuantity</div>
+                </div>
+            </a>
+        </div>
+    }
+
+    @if (canViewPurchasing)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="PurchaseOrders" asp-action="Index" asp-route-status="Onay Bekliyor"
+               class="card warehouse-card stock-orange">
+                <div class="card-body">
+                    <div>Bekleyen Satın Alma Siparişleri</div>
+                    <div class="value mt-2">@ViewBag.PendingPurchaseOrderCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="PurchaseOrders" asp-action="Index"
+               class="card warehouse-card stock-teal">
+                <div class="card-body">
+                    <div>Teslim Alınmayı Bekleyenler</div>
+                    <div class="value mt-2">@ViewBag.AwaitingReceiptOrderCount</div>
+                </div>
+            </a>
+        </div>
+    }
+
+    @if (canViewSuppliers)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Suppliers" asp-action="Index" class="card warehouse-card stock-slate">
+                <div class="card-body">
+                    <div>Tedarikçi Sayısı</div>
+                    <div class="value mt-2">@ViewBag.SupplierCount</div>
+                </div>
+            </a>
+        </div>
+    }
+</div>
+
+@if (canViewProducts)
+{
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="card warehouse-panel h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">En Düşük Stoklu Ürünler</span>
+                    <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+                       class="btn btn-sm btn-outline-warning">Kritik Stokları Gör</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr><th>Ürün</th><th>Kategori</th><th>Stok</th><th>Kritik Stok</th><th>Tedarikçi</th></tr>
+                        </thead>
+                        <tbody>
+                            @if (lowestStockProducts.Any())
+                            {
+                                foreach (var product in lowestStockProducts)
+                                {
+                                    var stockClass = product.StockQuantity <= 0
+                                        ? "bg-danger"
+                                        : product.StockQuantity <= product.CriticalStock
+                                            ? "bg-warning text-dark"
+                                            : "bg-success";
+                                    <tr>
+                                        <td>@product.Name</td>
+                                        <td>@(product.Category?.Name ?? "-")</td>
+                                        <td><span class="badge @stockClass">@product.StockQuantity</span></td>
+                                        <td>@product.CriticalStock</td>
+                                        <td>@(product.Supplier?.CompanyName ?? "-")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="5" class="text-center text-muted py-4">Ürün kaydı yok.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card warehouse-panel h-100">
+                <div class="card-header bg-white fw-semibold">En Çok Stokta Bulunan Ürünler</div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light"><tr><th>Ürün</th><th>Kategori</th><th class="text-end">Stok</th></tr></thead>
+                        <tbody>
+                            @if (highestStockProducts.Any())
+                            {
+                                foreach (var product in highestStockProducts)
+                                {
+                                    <tr>
+                                        <td>@product.Name</td>
+                                        <td>@(product.Category?.Name ?? "-")</td>
+                                        <td class="text-end"><span class="badge bg-primary">@product.StockQuantity</span></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="3" class="text-center text-muted py-4">Ürün kaydı yok.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (canViewPurchasing)
+{
+    <div class="card warehouse-panel">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Son Satın Alma Siparişleri</span>
+            <a asp-controller="PurchaseOrders" asp-action="Index" class="btn btn-sm btn-outline-primary">Tüm Siparişler</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Sipariş No</th><th>Tedarikçi</th><th>Durum</th><th>Tarih</th><th>Kalem</th><th>Toplam Adet</th><th>Kalan Adet</th></tr>
+                </thead>
+                <tbody>
+                    @if (recentPurchaseOrders.Any())
+                    {
+                        foreach (var order in recentPurchaseOrders)
+                        {
+                            var totalQuantity = order.Items.Sum(i => i.Quantity);
+                            var remainingQuantity = order.Items.Sum(i => Math.Max(0, i.Quantity - i.ReceivedQuantity));
+                            <tr>
+                                <td>
+                                    <a asp-controller="PurchaseOrders" asp-action="Details" asp-route-id="@order.Id">
+                                        #@order.Id
+                                    </a>
+                                </td>
+                                <td>@(order.Supplier?.CompanyName ?? "-")</td>
+                                <td><span class="badge bg-secondary">@order.Status</span></td>
+                                <td>@order.OrderDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>@order.Items.Count</td>
+                                <td>@totalQuantity</td>
+                                <td>@remainingQuantity</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">Satın alma siparişi yok.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

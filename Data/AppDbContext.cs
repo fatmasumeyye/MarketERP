@@ -39,6 +39,9 @@ namespace MarketERP.Data
         public DbSet<PurchaseOrderItem> PurchaseOrderItems { get; set; }
         public DbSet<WholesaleSaleRequest> WholesaleSaleRequests { get; set; }
         public DbSet<WholesaleSaleRequestItem> WholesaleSaleRequestItems { get; set; }
+        public DbSet<ProjectModule> ProjectModules { get; set; }
+        public DbSet<ProjectTask> ProjectTasks { get; set; }
+        public DbSet<ProjectTeamMember> ProjectTeamMembers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -165,6 +168,32 @@ namespace MarketERP.Data
                 .HasOne(i => i.Product)
                 .WithMany()
                 .HasForeignKey(i => i.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProjectModule>().Property(p => p.Budget).HasPrecision(18, 2);
+            modelBuilder.Entity<ProjectModule>().Property(p => p.Income).HasPrecision(18, 2);
+            modelBuilder.Entity<ProjectModule>().Property(p => p.Expense).HasPrecision(18, 2);
+
+            modelBuilder.Entity<ProjectTask>().Property(t => t.Budget).HasPrecision(18, 2);
+            modelBuilder.Entity<ProjectTask>().Property(t => t.Cost).HasPrecision(18, 2);
+
+            modelBuilder.Entity<ProjectTeamMember>()
+                .Property(m => m.EstimatedWorkHours)
+                .HasPrecision(10, 2);
+            modelBuilder.Entity<ProjectTeamMember>()
+                .Property(m => m.ActualWorkHours)
+                .HasPrecision(10, 2);
+
+            modelBuilder.Entity<ProjectTask>()
+                .HasOne(t => t.AssignedMember)
+                .WithMany(m => m.AssignedTasks)
+                .HasForeignKey(t => t.AssignedMemberId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ProjectTask>()
+                .HasOne(t => t.DependsOnTask)
+                .WithMany(t => t.DependentTasks)
+                .HasForeignKey(t => t.DependsOnTaskId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

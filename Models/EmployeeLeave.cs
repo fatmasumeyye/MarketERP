@@ -24,5 +24,23 @@ namespace MarketERP.Models
         public string Status { get; set; }
 
         public Employee Employee { get; set; }
+
+        [NotMapped]
+        public int RequestedDays { get; set; }
+
+        [NotMapped]
+        public int AnnualLeaveRight { get; set; }
+
+        [NotMapped]
+        public int UsedLeaveDays { get; set; }
+
+        [NotMapped]
+        public int PendingLeaveDays { get; set; }
+
+        [NotMapped]
+        public int RemainingLeaveDays { get; set; }
+
+        [NotMapped]
+        public int SeniorityYear { get; set; }
     }
 }

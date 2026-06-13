@@ -9,9 +9,9 @@ namespace MarketERP.Models
         public int Id { get; set; }
 
         [Column("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         [Column("sql_query")]
-        public string SqlQuery { get; set; }
+        public string SqlQuery { get; set; } = string.Empty;
     }
 }

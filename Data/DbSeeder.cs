@@ -13,8 +13,10 @@ namespace MarketERP.Data
             await EnsureRolesAsync(context);
             await EnsurePermissionsAsync(context);
             await EnsureCategoryTreeAsync(context);
+            await EnsureSavedQueriesAsync(context);
             await EnsureRolePermissionsAsync(context);
             await EnsureDefaultUsersAsync(context);
+            await EnsureProjectManagementDataAsync(context);
         }
 
         private static async Task EnsureRolesAsync(AppDbContext context)
@@ -108,7 +110,11 @@ namespace MarketERP.Data
                 new Permission { Code = "return.approve", Description = "İade talebi onaylama" },
 
                 new Permission { Code = "cash.closing.create", Description = "Kasa kapanışı oluşturma" },
-                new Permission { Code = "cash.closing.approve", Description = "Kasa kapanışı onaylama" }
+                new Permission { Code = "cash.closing.approve", Description = "Kasa kapanışı onaylama" },
+
+                new Permission { Code = "leave.request.create", Description = "İzin talebi oluşturma" },
+                new Permission { Code = "leave.request.view", Description = "İzin taleplerini görüntüleme" },
+                new Permission { Code = "leave.request.approve", Description = "İzin taleplerini onaylama ve reddetme" }
             };
 
             foreach (var permission in permissions)
@@ -161,6 +167,267 @@ namespace MarketERP.Data
 
             var other = await EnsureMainCategoryAsync(context, "Diğer Market Ürünleri");
             await EnsureSubCategoryAsync(context, other, "Diğer Ürünler", 20);
+
+            await context.SaveChangesAsync();
+        }
+
+        public static async Task EnsureSavedQueriesAsync(AppDbContext context)
+        {
+            var preparedQueries = new Dictionary<string, string>
+            {
+                ["Bugünkü Satışlar"] = """
+                    SELECT s.id, s.sale_date, c.full_name AS customer_name,
+                           e.full_name AS employee_name, s.payment_type, s.total_amount
+                    FROM sales s
+                    LEFT JOIN customers c ON c.id = s.customer_id
+                    LEFT JOIN employees e ON e.id = s.employee_id
+                    WHERE s.sale_date >= CURDATE()
+                      AND s.sale_date < CURDATE() + INTERVAL 1 DAY
+                    ORDER BY s.sale_date DESC;
+                    """,
+                ["Bugünkü Ciro"] = """
+                    SELECT COUNT(*) AS sale_count,
+                           COALESCE(SUM(total_amount), 0) AS total_revenue
+                    FROM sales
+                    WHERE sale_date >= CURDATE()
+                      AND sale_date < CURDATE() + INTERVAL 1 DAY;
+                    """,
+                ["Aylık Satış Özeti"] = """
+                    SELECT DATE_FORMAT(sale_date, '%Y-%m') AS sale_month,
+                           COUNT(*) AS sale_count,
+                           COALESCE(SUM(total_amount), 0) AS total_revenue,
+                           COALESCE(AVG(total_amount), 0) AS average_basket
+                    FROM sales
+                    GROUP BY DATE_FORMAT(sale_date, '%Y-%m')
+                    ORDER BY sale_month DESC;
+                    """,
+                ["En Çok Satan Ürünler"] = """
+                    SELECT p.id, p.name,
+                           SUM(sd.quantity) AS total_quantity,
+                           SUM(sd.subtotal) AS total_revenue
+                    FROM sale_details sd
+                    INNER JOIN products p ON p.id = sd.product_id
+                    GROUP BY p.id, p.name
+                    ORDER BY total_quantity DESC
+                    LIMIT 20;
+                    """,
+                ["Kritik Stoktaki Ürünler"] = """
+                    SELECT p.id, p.name, p.stock_quantity, p.critical_stock
+                    FROM products p
+                    WHERE p.stock_quantity > 0
+                      AND p.stock_quantity <= p.critical_stock
+                    ORDER BY p.stock_quantity, p.name;
+                    """,
+                ["Stokta Biten Ürünler"] = """
+                    SELECT p.id, p.name, p.stock_quantity, p.critical_stock
+                    FROM products p
+                    WHERE p.stock_quantity <= 0
+                    ORDER BY p.name;
+                    """,
+                ["Kategori Bazlı Ürün Sayısı"] = """
+                    SELECT c.id, c.name AS category_name,
+                           COUNT(p.id) AS product_count
+                    FROM categories c
+                    LEFT JOIN products p ON p.category_id = c.id
+                    GROUP BY c.id, c.name
+                    ORDER BY product_count DESC, c.name;
+                    """,
+                ["Kategori Bazlı Satış Toplamı"] = """
+                    SELECT c.id, c.name AS category_name,
+                           COALESCE(SUM(sd.quantity), 0) AS sold_quantity,
+                           COALESCE(SUM(sd.subtotal), 0) AS total_revenue
+                    FROM categories c
+                    LEFT JOIN products p ON p.category_id = c.id
+                    LEFT JOIN sale_details sd ON sd.product_id = p.id
+                    GROUP BY c.id, c.name
+                    ORDER BY total_revenue DESC, c.name;
+                    """,
+                ["Müşteri Bazlı Satış Toplamı"] = """
+                    SELECT c.id, c.full_name,
+                           COUNT(s.id) AS sale_count,
+                           COALESCE(SUM(s.total_amount), 0) AS total_amount
+                    FROM customers c
+                    LEFT JOIN sales s ON s.customer_id = c.id
+                    GROUP BY c.id, c.full_name
+                    ORDER BY c.full_name;
+                    """,
+                ["En Çok Alışveriş Yapan Müşteriler"] = """
+                    SELECT c.id, c.full_name,
+                           COUNT(s.id) AS sale_count,
+                           SUM(s.total_amount) AS total_amount
+                    FROM sales s
+                    INNER JOIN customers c ON c.id = s.customer_id
+                    GROUP BY c.id, c.full_name
+                    ORDER BY total_amount DESC
+                    LIMIT 20;
+                    """,
+                ["Bekleyen İade Talepleri"] = """
+                    SELECT rr.request_no, rr.sale_id, e.full_name AS employee_name,
+                           MIN(rr.requested_at) AS requested_at,
+                           SUM(rr.quantity) AS total_quantity
+                    FROM return_requests rr
+                    LEFT JOIN employees e ON e.id = rr.employee_id
+                    WHERE rr.status IN ('Beklemede', 'Onay Bekliyor')
+                    GROUP BY rr.request_no, rr.sale_id, e.full_name
+                    ORDER BY requested_at DESC;
+                    """,
+                ["Onaylanan İade Talepleri"] = """
+                    SELECT rr.request_no, rr.sale_id, e.full_name AS employee_name,
+                           MIN(rr.requested_at) AS requested_at,
+                           MAX(rr.reviewed_at) AS reviewed_at,
+                           SUM(rr.quantity) AS total_quantity
+                    FROM return_requests rr
+                    LEFT JOIN employees e ON e.id = rr.employee_id
+                    WHERE rr.status = 'Onaylandı'
+                    GROUP BY rr.request_no, rr.sale_id, e.full_name
+                    ORDER BY reviewed_at DESC;
+                    """,
+                ["Bekleyen Toptan Satış Talepleri"] = """
+                    SELECT w.id, w.request_date, c.full_name AS customer_name,
+                           e.full_name AS employee_name, w.total_amount, w.status
+                    FROM wholesale_sale_requests w
+                    INNER JOIN customers c ON c.id = w.customer_id
+                    LEFT JOIN employees e ON e.id = w.employee_id
+                    WHERE w.status IN ('Beklemede', 'Onay Bekliyor')
+                    ORDER BY w.request_date DESC;
+                    """,
+                ["Onaylanan Toptan Satış Talepleri"] = """
+                    SELECT w.id, w.request_date, w.approved_at,
+                           c.full_name AS customer_name,
+                           e.full_name AS employee_name, w.total_amount
+                    FROM wholesale_sale_requests w
+                    INNER JOIN customers c ON c.id = w.customer_id
+                    LEFT JOIN employees e ON e.id = w.employee_id
+                    WHERE w.status = 'Onaylandı'
+                    ORDER BY w.approved_at DESC;
+                    """,
+                ["Bekleyen Kasa Kapanışları"] = """
+                    SELECT crc.id, crc.closing_date, e.full_name AS employee_name,
+                           crc.total_sales_amount, crc.declared_cash_amount,
+                           crc.cash_difference, crc.status
+                    FROM cash_register_closings crc
+                    INNER JOIN employees e ON e.id = crc.employee_id
+                    WHERE crc.status = 'Beklemede'
+                    ORDER BY crc.closing_date DESC;
+                    """,
+                ["Kasa Kapanış Toplamları"] = """
+                    SELECT DATE(closing_date) AS closing_day,
+                           COUNT(*) AS closing_count,
+                           SUM(cash_sales_total) AS cash_sales_total,
+                           SUM(card_sales_total) AS card_sales_total,
+                           SUM(total_sales_amount) AS total_sales_amount,
+                           SUM(cash_difference) AS total_cash_difference
+                    FROM cash_register_closings
+                    GROUP BY DATE(closing_date)
+                    ORDER BY closing_day DESC;
+                    """,
+                ["Bekleyen İzin Talepleri"] = """
+                    SELECT el.id, e.full_name, e.position, el.start_date,
+                           el.end_date, el.leave_reason, el.status
+                    FROM employee_leaves el
+                    INNER JOIN employees e ON e.id = el.employee_id
+                    WHERE el.status IN ('Beklemede', 'Onay Bekliyor')
+                    ORDER BY el.start_date;
+                    """,
+                ["Personel Bazlı İzin Kullanımı"] = """
+                    SELECT e.id, e.full_name, e.position,
+                           COUNT(el.id) AS approved_leave_count,
+                           COALESCE(SUM(DATEDIFF(el.end_date, el.start_date) + 1), 0) AS used_leave_days
+                    FROM employees e
+                    LEFT JOIN employee_leaves el
+                      ON el.employee_id = e.id
+                     AND el.status = 'Onaylandı'
+                    GROUP BY e.id, e.full_name, e.position
+                    ORDER BY used_leave_days DESC, e.full_name;
+                    """,
+                ["Tedarikçi Bazlı Ürün Sayısı"] = """
+                    SELECT s.id, s.company_name,
+                           COUNT(p.id) AS product_count
+                    FROM suppliers s
+                    LEFT JOIN products p ON p.supplier_id = s.id
+                    GROUP BY s.id, s.company_name
+                    ORDER BY product_count DESC, s.company_name;
+                    """,
+                ["Satın Alma Sipariş Durumu"] = """
+                    SELECT po.status,
+                           COUNT(*) AS order_count,
+                           COALESCE(SUM(po.total_amount), 0) AS total_amount
+                    FROM purchase_orders po
+                    GROUP BY po.status
+                    ORDER BY order_count DESC;
+                    """,
+                ["Düşük Stok ve Tedarikçi Listesi"] = """
+                    SELECT p.id, p.name, p.stock_quantity, p.critical_stock,
+                           s.company_name AS supplier_name, s.phone, s.email
+                    FROM products p
+                    LEFT JOIN suppliers s ON s.id = p.supplier_id
+                    WHERE p.stock_quantity <= p.critical_stock
+                    ORDER BY p.stock_quantity, p.name;
+                    """,
+                ["Ödeme Tipi Bazlı Satış Dağılımı"] = """
+                    SELECT COALESCE(NULLIF(payment_type, ''), 'Belirtilmedi') AS payment_type,
+                           COUNT(*) AS sale_count,
+                           SUM(total_amount) AS total_amount
+                    FROM sales
+                    GROUP BY COALESCE(NULLIF(payment_type, ''), 'Belirtilmedi')
+                    ORDER BY total_amount DESC;
+                    """,
+                ["Günlük Satış Adet ve Tutar Grafiği"] = """
+                    SELECT DATE(sale_date) AS sale_day,
+                           COUNT(*) AS sale_count,
+                           SUM(total_amount) AS total_amount
+                    FROM sales
+                    WHERE sale_date >= CURDATE() - INTERVAL 29 DAY
+                    GROUP BY DATE(sale_date)
+                    ORDER BY sale_day;
+                    """,
+                ["İade Oranı Raporu"] = """
+                    SELECT COUNT(DISTINCT rr.request_no) AS return_request_count,
+                           COUNT(DISTINCT rr.sale_id) AS returned_sale_count,
+                           (SELECT COUNT(*) FROM sales) AS total_sale_count,
+                           ROUND(
+                               COUNT(DISTINCT rr.sale_id) * 100.0
+                               / NULLIF((SELECT COUNT(*) FROM sales), 0),
+                               2
+                           ) AS return_rate_percent
+                    FROM return_requests rr;
+                    """,
+                ["Ürün Bazlı Kâr Tahmini"] = """
+                    SELECT p.id, p.name,
+                           SUM(sd.quantity) AS sold_quantity,
+                           SUM(sd.subtotal) AS sales_revenue,
+                           SUM(sd.quantity * p.purchase_price) AS estimated_cost,
+                           SUM(sd.subtotal - (sd.quantity * p.purchase_price)) AS estimated_profit
+                    FROM sale_details sd
+                    INNER JOIN products p ON p.id = sd.product_id
+                    GROUP BY p.id, p.name
+                    ORDER BY estimated_profit DESC;
+                    """
+            };
+
+            var existingQueries = await context.SavedQueries.ToListAsync();
+
+            foreach (var preparedQuery in preparedQueries)
+            {
+                var existingQuery = existingQueries.FirstOrDefault(q =>
+                    string.Equals(
+                        q.Title?.Trim(),
+                        preparedQuery.Key,
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (existingQuery == null)
+                {
+                    context.SavedQueries.Add(new SavedQuery
+                    {
+                        Title = preparedQuery.Key,
+                        SqlQuery = preparedQuery.Value.Trim()
+                    });
+                }
+                else
+                {
+                    existingQuery.SqlQuery = preparedQuery.Value.Trim();
+                }
+            }
 
             await context.SaveChangesAsync();
         }
@@ -256,7 +523,9 @@ namespace MarketERP.Data
                 "support.view",
                 "support.manage",
                 "return.approve",
-                "cash.closing.approve"
+                "cash.closing.approve",
+                "leave.request.view",
+                "leave.request.approve"
             );
 
             await AssignPermissionsToRoleAsync(context, "Kasiyer",
@@ -264,7 +533,8 @@ namespace MarketERP.Data
                 "sale.retail.create",
                 "sale.view.own",
                 "return.request",
-                "cash.closing.create"
+                "cash.closing.create",
+                "leave.request.create"
             );
 
             await AssignPermissionsToRoleAsync(context, "Toptan Satış Sorumlusu",
@@ -278,7 +548,8 @@ namespace MarketERP.Data
                 "sale.view.own",
                 "sale.discount",
                 "stock.view",
-                "reports.sales"
+                "reports.sales",
+                "leave.request.create"
             );
 
             await AssignPermissionsToRoleAsync(context, "Depo Sorumlusu",
@@ -292,7 +563,8 @@ namespace MarketERP.Data
                 "stock.transfer",
                 "stock.count",
                 "reports.stock",
-                "supplier.view"
+                "supplier.view",
+                "leave.request.create"
             );
 
             await AssignPermissionsToRoleAsync(context, "Satın Alma Sorumlusu",
@@ -424,6 +696,124 @@ namespace MarketERP.Data
                 position: "Müşteri Hizmetleri",
                 email: "musteri@marketerp.com"
             );
+        }
+
+        private static async Task EnsureProjectManagementDataAsync(AppDbContext context)
+        {
+            var project = await context.ProjectModules
+                .OrderBy(p => p.Id)
+                .FirstOrDefaultAsync();
+
+            if (project == null)
+            {
+                project = new ProjectModule
+                {
+                    Name = "MarketERP",
+                    Description = "Market operasyonlarının satış, stok, satın alma, personel ve finans süreçlerini yöneten ERP geliştirme projesi.",
+                    Budget = 650000m,
+                    Income = 780000m,
+                    Expense = 525000m
+                };
+                context.ProjectModules.Add(project);
+            }
+
+            project.Name = "MarketERP";
+            project.Description = "Market operasyonlarının satış, stok, satın alma, personel ve finans süreçlerini yöneten ERP geliştirme projesi.";
+            project.StartDate = new DateTime(2026, 5, 1);
+            project.EndDate = new DateTime(2026, 6, 20);
+            project.Status = "Devam Ediyor";
+            await context.SaveChangesAsync();
+
+            var memberDefinitions = new[]
+            {
+                new { FullName = "Hakan Bozkurt", Role = "Proje Yöneticisi", Email = "hakan.proje@marketerp.demo", Estimated = 420m, Actual = 365m },
+                new { FullName = "Ayşe Yılmaz", Role = "Backend Geliştirici", Email = "ayse.backend@marketerp.demo", Estimated = 520m, Actual = 470m },
+                new { FullName = "Mert Kaya", Role = "Frontend Geliştirici", Email = "mert.frontend@marketerp.demo", Estimated = 460m, Actual = 410m },
+                new { FullName = "Selin Acar", Role = "İş Analisti", Email = "selin.analiz@marketerp.demo", Estimated = 300m, Actual = 270m },
+                new { FullName = "Emre Demir", Role = "Test ve DevOps", Email = "emre.test@marketerp.demo", Estimated = 340m, Actual = 245m }
+            };
+
+            foreach (var definition in memberDefinitions)
+            {
+                if (!await context.ProjectTeamMembers.AnyAsync(m => m.Email == definition.Email))
+                {
+                    context.ProjectTeamMembers.Add(new ProjectTeamMember
+                    {
+                        FullName = definition.FullName,
+                        Role = definition.Role,
+                        Email = definition.Email,
+                        EstimatedWorkHours = definition.Estimated,
+                        ActualWorkHours = definition.Actual
+                    });
+                }
+            }
+
+            await context.SaveChangesAsync();
+            var members = await context.ProjectTeamMembers.ToDictionaryAsync(m => m.Email);
+            var taskDefinitions = new[]
+            {
+                new { Title = "Veritabanı tasarımı", Description = "ERP tabloları, anahtarlar ve ilişkilerin tasarlanması.", Start = new DateTime(2026, 5, 1), End = new DateTime(2026, 5, 5), Progress = 100, Status = "Tamamlandı", Priority = "Kritik", Budget = 42000m, Cost = 39500m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)null, Critical = true, Slack = (int?)0 },
+                new { Title = "Login ve rol sistemi", Description = "Oturum, rol ve permission altyapısının geliştirilmesi.", Start = new DateTime(2026, 5, 6), End = new DateTime(2026, 5, 10), Progress = 100, Status = "Tamamlandı", Priority = "Kritik", Budget = 48000m, Cost = 45500m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Veritabanı tasarımı", Critical = true, Slack = (int?)0 },
+                new { Title = "Ürün ve stok modülü", Description = "Ürün, kategori, tedarikçi ve stok işlemleri.", Start = new DateTime(2026, 5, 11), End = new DateTime(2026, 5, 16), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 52000m, Cost = 49000m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Login ve rol sistemi", Critical = true, Slack = (int?)0 },
+                new { Title = "Satış modülü", Description = "Perakende satış ve satış detaylarının geliştirilmesi.", Start = new DateTime(2026, 5, 17), End = new DateTime(2026, 5, 22), Progress = 100, Status = "Tamamlandı", Priority = "Kritik", Budget = 60000m, Cost = 56500m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Ürün ve stok modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "Toptan satış modülü", Description = "Teklif, iskonto ve toptan satış yönetimi.", Start = new DateTime(2026, 5, 23), End = new DateTime(2026, 5, 27), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 44000m, Cost = 41500m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Satış modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "İade modülü", Description = "İade talebi, değerlendirme ve durum yönetimi.", Start = new DateTime(2026, 5, 28), End = new DateTime(2026, 5, 31), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 30000m, Cost = 28200m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Toptan satış modülü", Critical = false, Slack = (int?)1 },
+                new { Title = "Kasa kapanış modülü", Description = "Gün sonu kasa kapanışı ve muhasebe kontrolü.", Start = new DateTime(2026, 5, 28), End = new DateTime(2026, 5, 31), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 32000m, Cost = 30500m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Toptan satış modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "Satın alma modülü", Description = "Sipariş, onay ve mal kabul süreçleri.", Start = new DateTime(2026, 6, 1), End = new DateTime(2026, 6, 4), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 46000m, Cost = 43000m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Kasa kapanış modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "İzin modülü", Description = "Çalışan izin talebi ve yönetici onay süreci.", Start = new DateTime(2026, 6, 5), End = new DateTime(2026, 6, 7), Progress = 100, Status = "Tamamlandı", Priority = "Orta", Budget = 26000m, Cost = 24400m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Satın alma modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "Vardiya modülü", Description = "Haftalık şift planı ve dışa aktarma özellikleri.", Start = new DateTime(2026, 6, 8), End = new DateTime(2026, 6, 10), Progress = 90, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 38000m, Cost = 35500m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"İzin modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "Muhasebe dashboardu", Description = "Finans odaklı rol dashboardunun hazırlanması.", Start = new DateTime(2026, 6, 10), End = new DateTime(2026, 6, 12), Progress = 85, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 28000m, Cost = 25000m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)"Vardiya modülü", Critical = false, Slack = (int?)1 },
+                new { Title = "Depo dashboardu", Description = "Stok ve satın alma odaklı depo dashboardu.", Start = new DateTime(2026, 6, 10), End = new DateTime(2026, 6, 12), Progress = 85, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 28000m, Cost = 24800m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Vardiya modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "Gelir-gider ekranı", Description = "Gelir, gider, net durum ve grafiklerin hazırlanması.", Start = new DateTime(2026, 6, 12), End = new DateTime(2026, 6, 14), Progress = 80, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 34000m, Cost = 29500m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)"Muhasebe dashboardu", Critical = false, Slack = (int?)1 },
+                new { Title = "İstatistik ve grafikler", Description = "ERP KPI kartları ve Chart.js grafiklerinin hazırlanması.", Start = new DateTime(2026, 6, 13), End = new DateTime(2026, 6, 15), Progress = 75, Status = "Planlandı", Priority = "Orta", Budget = 36000m, Cost = 30200m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Gelir-gider ekranı", Critical = false, Slack = (int?)1 },
+                new { Title = "Demo veri seed sistemi", Description = "Tekrar çalışabilir ve ilişkisel demo veri üretimi.", Start = new DateTime(2026, 6, 14), End = new DateTime(2026, 6, 16), Progress = 75, Status = "Planlandı", Priority = "Kritik", Budget = 40000m, Cost = 37000m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Depo dashboardu", Critical = true, Slack = (int?)0 },
+                new { Title = "ER diyagramı", Description = "Tablolar ve ilişkiler için anlaşılır ER görünümü.", Start = new DateTime(2026, 6, 15), End = new DateTime(2026, 6, 17), Progress = 60, Status = "Planlandı", Priority = "Orta", Budget = 18000m, Cost = 16200m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)"Demo veri seed sistemi", Critical = true, Slack = (int?)0 },
+                new { Title = "Proje yönetimi modülü", Description = "Görev, ekip, bütçe ve ilerleme yönetiminin geliştirilmesi.", Start = new DateTime(2026, 6, 16), End = new DateTime(2026, 6, 18), Progress = 60, Status = "Planlandı", Priority = "Kritik", Budget = 42000m, Cost = 26000m, Member = "hakan.proje@marketerp.demo", DependsOn = (string?)"ER diyagramı", Critical = true, Slack = (int?)0 },
+                new { Title = "Gantt ve kritik yol ekranları", Description = "Gantt, kritik yol, bolluk süresi ve proje raporlarının hazırlanması.", Start = new DateTime(2026, 6, 17), End = new DateTime(2026, 6, 19), Progress = 55, Status = "Planlandı", Priority = "Kritik", Budget = 30000m, Cost = 16500m, Member = "hakan.proje@marketerp.demo", DependsOn = (string?)"Proje yönetimi modülü", Critical = true, Slack = (int?)0 },
+                new { Title = "Test ve son düzenleme", Description = "Entegrasyon testleri, hata düzeltmeleri ve sunum hazırlığı.", Start = new DateTime(2026, 6, 19), End = new DateTime(2026, 6, 20), Progress = 30, Status = "Planlandı", Priority = "Kritik", Budget = 46000m, Cost = 8500m, Member = "emre.test@marketerp.demo", DependsOn = (string?)"Gantt ve kritik yol ekranları", Critical = true, Slack = (int?)0 }
+            };
+
+            var existingTasks = await context.ProjectTasks.ToDictionaryAsync(t => t.Title);
+            foreach (var definition in taskDefinitions)
+            {
+                if (!existingTasks.TryGetValue(definition.Title, out var task))
+                {
+                    task = new ProjectTask { Title = definition.Title };
+                    context.ProjectTasks.Add(task);
+                    existingTasks[task.Title] = task;
+                }
+
+                task.Description = definition.Description;
+                task.StartDate = definition.Start;
+                task.EndDate = definition.End;
+                task.DurationDays = (definition.End - definition.Start).Days + 1;
+                task.ProgressPercent = definition.Progress;
+                task.Status = definition.Status;
+                task.Priority = definition.Priority;
+                task.Budget = definition.Budget;
+                task.Cost = definition.Cost;
+                task.AssignedMemberId = members[definition.Member].Id;
+                task.IsCritical = definition.Critical;
+                task.SlackDays = definition.Slack;
+                await context.SaveChangesAsync();
+            }
+
+            foreach (var definition in taskDefinitions)
+            {
+                var task = existingTasks[definition.Title];
+                task.DependsOnTaskId = definition.DependsOn != null
+                    && existingTasks.TryGetValue(definition.DependsOn, out var dependency)
+                        ? dependency.Id
+                        : null;
+            }
+
+            var progressValues = await context.ProjectTasks
+                .Select(t => t.ProgressPercent)
+                .ToListAsync();
+            project.ProgressPercent = progressValues.Count == 0
+                ? 0
+                : (int)Math.Round(progressValues.Average());
+            await context.SaveChangesAsync();
         }
 
         private static async Task EnsureUserAsync(

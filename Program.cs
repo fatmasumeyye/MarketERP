@@ -25,6 +25,14 @@ namespace MarketERP
             {
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 await DbSeeder.SeedAsync(context);
+
+                // Set DemoData:RebuildOnStartup to true for one development run
+                // when the complete demo dataset should be rebuilt.
+                if (app.Environment.IsDevelopment()
+                    && builder.Configuration.GetValue<bool>("DemoData:RebuildOnStartup"))
+                {
+                    await DemoDataSeeder.SeedDemoDataAsync(context);
+                }
             }
 
             // Configure the HTTP request pipeline.

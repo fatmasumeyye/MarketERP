@@ -1,589 +1,361 @@
-﻿@{
+@using MarketERP.Models
+@{
     ViewData["Title"] = "Dashboard";
 
-    var lowStockProducts = ViewBag.LowStockProducts as List<MarketERP.Models.Product> ?? new List<MarketERP.Models.Product>();
-    var recentSales = ViewBag.RecentSales as List<MarketERP.Models.Sale> ?? new List<MarketERP.Models.Sale>();
+    var isStoreManager = (bool?)ViewBag.IsStoreManager == true;
+    var lowStockProducts = ViewBag.LowStockProducts as List<Product> ?? new List<Product>();
+    var recentSales = ViewBag.RecentSales as List<Sale> ?? new List<Sale>();
+    var topProductLabels = ViewBag.TopProductLabels as List<string> ?? new List<string>();
+    var topProductData = ViewBag.TopProductData as List<int> ?? new List<int>();
 }
 
 <style>
     .dashboard-card {
         display: block;
-        border: none;
-        border-radius: 18px;
-        color: white;
-        padding: 10px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.10);
-        transition: 0.3s;
+        min-height: 126px;
+        border: 0;
+        border-radius: 16px;
+        color: #fff;
         text-decoration: none;
-        min-height: 125px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .1);
+        transition: transform .2s ease, box-shadow .2s ease;
     }
 
-        .dashboard-card:hover {
-            transform: translateY(-3px);
-            color: white;
-        }
-
-        .dashboard-card h5 {
-            font-size: 14px;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-
-        .dashboard-card h2 {
-            font-size: 28px;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        .dashboard-card small {
-            opacity: 0.85;
-        }
-
-    .bg-card-blue {
-        background: linear-gradient(135deg, #1f3b73, #355c9a);
+    .dashboard-card:hover {
+        color: #fff;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .14);
     }
 
-    .bg-card-green {
-        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+    .dashboard-card h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
     }
 
-    .bg-card-orange {
-        background: linear-gradient(135deg, #9a6700, #ca8a04);
+    .dashboard-panel {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, .07);
     }
 
-    .bg-card-red {
-        background: linear-gradient(135deg, #7f1d1d, #b91c1c);
-    }
-
-    .bg-card-gray {
-        background: linear-gradient(135deg, #374151, #4b5563);
-    }
-
-    .bg-card-purple {
-        background: linear-gradient(135deg, #4c1d95, #7c3aed);
-    }
-
-    .bg-card-teal {
-        background: linear-gradient(135deg, #115e59, #0f766e);
-    }
-
-    .section-title {
-        font-weight: 600;
-        margin-bottom: 15px;
-    }
-
-    .custom-table {
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-
-    .dashboard-note {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 14px;
-        padding: 14px 18px;
-        margin-bottom: 20px;
-    }
-
-    .healthy-stock-box {
-        background: #e9f7ef;
-        border: 1px solid #badbcc;
-        color: #0f5132;
-        border-radius: 14px;
-        padding: 18px;
-        margin-bottom: 30px;
-    }
-
-    .chart-card {
-        border-radius: 18px;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-        min-height: 360px;
-    }
-
-        .chart-card h5 {
-            font-weight: 700;
-            margin-bottom: 15px;
-        }
-
-    .chart-description {
-        color: #6c757d;
-        font-size: 13px;
-        margin-bottom: 12px;
-    }
+    .bg-card-blue { background: linear-gradient(135deg, #1f3b73, #355c9a); }
+    .bg-card-green { background: linear-gradient(135deg, #1b4332, #2d6a4f); }
+    .bg-card-orange { background: linear-gradient(135deg, #9a6700, #ca8a04); }
+    .bg-card-red { background: linear-gradient(135deg, #7f1d1d, #b91c1c); }
+    .bg-card-gray { background: linear-gradient(135deg, #374151, #4b5563); }
+    .bg-card-purple { background: linear-gradient(135deg, #4c1d95, #7c3aed); }
+    .bg-card-teal { background: linear-gradient(135deg, #115e59, #0f766e); }
 </style>
 
-<h2 class="mb-4">Admin Dashboard</h2>
-
-<div class="dashboard-note">
-    <strong>Yönetici ekranı:</strong>
-    Satış, ciro, stok, ödeme tipi ve bekleyen yönetim işlemlerini bu ekrandan takip edebilirsiniz.
+<div class="mb-4">
+    <h2 class="mb-1">@(isStoreManager ? "Mağaza Müdürü Dashboard" : "Admin Dashboard")</h2>
+    <p class="text-muted mb-0">
+        @(isStoreManager
+            ? "Günlük mağaza operasyonları ve onay bekleyen işlemler"
+            : "Satış, stok ve yönetim işlemlerinin genel özeti")
+    </p>
 </div>
 
-@if (ViewBag.CriticalStockCount > 0)
-{
-    <div class="alert alert-danger shadow-sm">
-        ⚠ @ViewBag.CriticalStockCount ürün kritik stok seviyesinde!
-        <a href="/PurchaseOrders/Suggestions" class="btn btn-sm btn-outline-danger ms-2">
-            Sipariş Önerilerine Git
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="today"
+           class="card dashboard-card bg-card-green">
+            <div class="card-body">
+                <div>Bugünkü Satış Tutarı</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.TodayRevenue).ToString("N2")) ₺</h2>
+            </div>
         </a>
     </div>
-}
-
-<div class="row mb-4">
-
-    <div class="col-md-3">
-        <a href="/Sales?dateFilter=today" class="dashboard-card bg-card-blue mb-3">
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="today"
+           class="card dashboard-card bg-card-blue">
             <div class="card-body">
-                <h5>Bugünkü Satış</h5>
-                <h2>@ViewBag.TodaySalesCount</h2>
-                <small>Bugün yapılan satış adedi</small>
+                <div>Bugünkü Satış Adedi</div>
+                <h2 class="mt-2 mb-0">@ViewBag.TodaySalesCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Returns" asp-action="Index" asp-route-status="Beklemede"
+           class="card dashboard-card bg-card-red">
+            <div class="card-body">
+                <div>Bekleyen İade Talepleri</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingReturnRequestsCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="CashRegister" asp-action="Index" asp-route-status="Beklemede"
+           class="card dashboard-card bg-card-purple">
+            <div class="card-body">
+                <div>Bekleyen Kasa Kapanışları</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingCashClosingCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="WholesaleSales" asp-action="Index" asp-route-status="Onay Bekliyor"
+           class="card dashboard-card bg-card-orange">
+            <div class="card-body">
+                <div>Bekleyen Toptan Talepler</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingWholesaleRequestCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+           class="card dashboard-card bg-card-orange">
+            <div class="card-body">
+                <div>Kritik Stoktaki Ürünler</div>
+                <h2 class="mt-2 mb-0">@ViewBag.CriticalStockCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+           class="card dashboard-card bg-card-red">
+            <div class="card-body">
+                <div>Stokta Biten Ürünler</div>
+                <h2 class="mt-2 mb-0">@ViewBag.OutOfStockCount</h2>
+            </div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="EmployeeLeaves" asp-action="Index"
+           class="card dashboard-card bg-card-teal">
+            <div class="card-body">
+                <div>Bekleyen İzin Talepleri</div>
+                <h2 class="mt-2 mb-0">@ViewBag.PendingLeavesCount</h2>
             </div>
         </a>
     </div>
 
-    <div class="col-md-3">
-        <a href="/Sales?dateFilter=today" class="dashboard-card bg-card-green mb-3">
-            <div class="card-body">
-                <h5>Bugünkü Ciro</h5>
-                <h2>@ViewBag.TodayRevenue.ToString("N2") ₺</h2>
-                <small>Bugünün satış geliri</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/Sales?dateFilter=week" class="dashboard-card bg-card-gray mb-3">
-            <div class="card-body">
-                <h5>Haftalık Ciro</h5>
-                <h2>@ViewBag.WeeklyRevenue.ToString("N2") ₺</h2>
-                <small>Bu haftanın satış geliri</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/Sales?dateFilter=month" class="dashboard-card bg-card-purple mb-3">
-            <div class="card-body">
-                <h5>Aylık Ciro</h5>
-                <h2>@ViewBag.MonthlyRevenue.ToString("N2") ₺</h2>
-                <small>Bu ayın satış geliri</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/Sales?dateFilter=year" class="dashboard-card bg-card-teal mb-3">
-            <div class="card-body">
-                <h5>Yıllık Ciro</h5>
-                <h2>@ViewBag.YearlyRevenue.ToString("N2") ₺</h2>
-                <small>Bu yılın satış geliri</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/Products" class="dashboard-card bg-card-gray mb-3">
-            <div class="card-body">
-                <h5>Ürün Sayısı</h5>
-                <h2>@ViewBag.ProductCount</h2>
-                <small>Sistemde kayıtlı ürünler</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/Products?stockStatus=critical" class="dashboard-card bg-card-red mb-3">
-            <div class="card-body">
-                <h5>Kritik Stok</h5>
-                <h2>@ViewBag.CriticalStockCount</h2>
-                <small>Kritik seviyedeki ürünler</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/EmployeeLeaves" class="dashboard-card bg-card-orange mb-3">
-            <div class="card-body">
-                <h5>Bekleyen İzinler</h5>
-                <h2>@ViewBag.PendingLeavesCount</h2>
-                <small>Onay bekleyen izin talepleri</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/SupportTickets" class="dashboard-card bg-card-purple mb-3">
-            <div class="card-body">
-                <h5>Bekleyen Destek Talepleri</h5>
-                <h2>@ViewBag.PendingSupportTicketsCount</h2>
-                <small>Açık veya bekleyen destek kayıtları</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/Returns" class="dashboard-card bg-card-red mb-3">
-            <div class="card-body">
-                <h5>İade Talepleri</h5>
-                <h2>@ViewBag.PendingReturnRequestsCount</h2>
-                <small>Bekleyen iade talepleri</small>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-3">
-        <a href="/EmployeeBonuses" class="dashboard-card bg-card-orange mb-3">
-            <div class="card-body">
-                <h5>Prim Kayıtları</h5>
-                <h2>@ViewBag.PendingBonusesCount</h2>
-                <small>Prim ekranına git</small>
-            </div>
-        </a>
-    </div>
-
+    @if (!isStoreManager)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="week"
+               class="card dashboard-card bg-card-gray">
+                <div class="card-body">
+                    <div>Haftalık Ciro</div>
+                    <h2 class="mt-2 mb-0">@(((decimal)ViewBag.WeeklyRevenue).ToString("N2")) ₺</h2>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="month"
+               class="card dashboard-card bg-card-purple">
+                <div class="card-body">
+                    <div>Aylık Ciro</div>
+                    <h2 class="mt-2 mb-0">@(((decimal)ViewBag.MonthlyRevenue).ToString("N2")) ₺</h2>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="year"
+               class="card dashboard-card bg-card-teal">
+                <div class="card-body">
+                    <div>Yıllık Ciro</div>
+                    <h2 class="mt-2 mb-0">@(((decimal)ViewBag.YearlyRevenue).ToString("N2")) ₺</h2>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Products" asp-action="Index" class="card dashboard-card bg-card-gray">
+                <div class="card-body">
+                    <div>Toplam Ürün</div>
+                    <h2 class="mt-2 mb-0">@ViewBag.ProductCount</h2>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="SupportTickets" asp-action="Index"
+               class="card dashboard-card bg-card-purple">
+                <div class="card-body">
+                    <div>Bekleyen Destek Talepleri</div>
+                    <h2 class="mt-2 mb-0">@ViewBag.PendingSupportTicketsCount</h2>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="EmployeeBonuses" asp-action="Index"
+               class="card dashboard-card bg-card-orange">
+                <div class="card-body">
+                    <div>Prim Kayıtları</div>
+                    <h2 class="mt-2 mb-0">@ViewBag.PendingBonusesCount</h2>
+                </div>
+            </a>
+        </div>
+    }
 </div>
 
-<h4 class="section-title">Kritik Stok Durumu</h4>
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card dashboard-panel h-100">
+            <div class="card-header bg-white fw-semibold">Bugünün En Çok Satan Ürünleri</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Ürün</th><th class="text-end">Satılan Adet</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (topProductLabels.Any())
+                        {
+                            for (var i = 0; i < topProductLabels.Count; i++)
+                            {
+                                <tr>
+                                    <td>@topProductLabels[i]</td>
+                                    <td class="text-end">@(i < topProductData.Count ? topProductData[i] : 0)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="2" class="text-center text-muted py-4">Bugün henüz satış yapılmadı.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card dashboard-panel h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Kritik Stok Durumu</span>
+                <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
+                   class="btn btn-sm btn-outline-danger">Tümünü Gör</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Ürün</th><th class="text-end">Stok</th><th class="text-end">Kritik Seviye</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (lowStockProducts.Any())
+                        {
+                            foreach (var product in lowStockProducts)
+                            {
+                                <tr>
+                                    <td>@product.Name</td>
+                                    <td class="text-end"><span class="badge bg-danger">@product.StockQuantity</span></td>
+                                    <td class="text-end">@product.CriticalStock</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="3" class="text-center text-muted py-4">Kritik stokta ürün bulunmuyor.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
-@if (lowStockProducts.Any())
-{
-    <div class="custom-table mb-4">
-        <table class="table table-bordered table-striped mb-0 align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Ürün</th>
-                    <th>Stok</th>
-                    <th>Kritik Stok</th>
-                    <th>İşlem</th>
-                </tr>
+<div class="card dashboard-panel mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Son Satışlar</span>
+        <a asp-controller="Sales" asp-action="Index" class="btn btn-sm btn-outline-primary">Satış Listesi</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Satış No</th><th>Müşteri</th><th>Tutar</th><th>Ödeme</th><th>Tarih</th><th></th></tr>
             </thead>
-
             <tbody>
-                @foreach (var product in lowStockProducts)
+                @if (recentSales.Any())
                 {
-                    <tr>
-                        <td>@product.Name</td>
-                        <td>
-                            <span class="badge bg-danger">@product.StockQuantity</span>
-                        </td>
-                        <td>@product.CriticalStock</td>
-                        <td>
-                            <a href="/PurchaseOrders/Suggestions" class="btn btn-sm btn-outline-danger">
-                                Sipariş Önerisine Git
-                            </a>
-                        </td>
-                    </tr>
+                    foreach (var sale in recentSales)
+                    {
+                        <tr>
+                            <td>#@sale.Id</td>
+                            <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
+                            <td>@sale.TotalAmount.ToString("N2") ₺</td>
+                            <td>@(string.IsNullOrWhiteSpace(sale.PaymentType) ? "-" : sale.PaymentType)</td>
+                            <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td class="text-end">
+                                <a asp-controller="Sales" asp-action="Invoice" asp-route-id="@sale.Id"
+                                   class="btn btn-sm btn-outline-info">Fatura</a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">Satış kaydı bulunmuyor.</td></tr>
                 }
             </tbody>
         </table>
     </div>
-}
-else
+</div>
+
+@if (!isStoreManager)
 {
-    <div class="healthy-stock-box">
-        ✅ Kritik stokta ürün bulunmuyor. Stok durumu normal görünüyor.
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card dashboard-panel p-4 h-100">
+                <h5>Son 7 Günlük Ciro</h5>
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card dashboard-panel p-4 h-100">
+                <h5>Son 7 Günlük Satış Adedi</h5>
+                <canvas id="salesCountChart"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card dashboard-panel p-4 h-100">
+                <h5>Bu Ay Ödeme Tipi Dağılımı</h5>
+                <canvas id="paymentTypeChart"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card dashboard-panel p-4 h-100">
+                <h5>Bugünün En Çok Satan Ürünleri</h5>
+                <canvas id="topProductsChart"></canvas>
+            </div>
+        </div>
     </div>
 }
 
-<h4 class="section-title">Son Satışlar</h4>
-
-<div class="custom-table mb-5">
-    <table class="table table-bordered table-striped mb-0 align-middle">
-        <thead class="table-dark">
-            <tr>
-                <th>Satış ID</th>
-                <th>Müşteri</th>
-                <th>Toplam Tutar</th>
-                <th>Ödeme Tipi</th>
-                <th>Tarih</th>
-                <th>İşlem</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @if (recentSales.Any())
-            {
-                foreach (var sale in recentSales)
-                {
-                    <tr>
-                        <td>@sale.Id</td>
-                        <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
-                        <td>@sale.TotalAmount.ToString("N2") ₺</td>
-                        <td>@(string.IsNullOrWhiteSpace(sale.PaymentType) ? "-" : sale.PaymentType)</td>
-                        <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
-                        <td>
-                            <a href="/Sales/Invoice/@sale.Id?returnUrl=/" class="btn btn-sm btn-info">
-                                Fatura
-                            </a>
-                        </td>
-                    </tr>
+@section Scripts {
+    @if (!isStoreManager)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            new Chart(document.getElementById('revenueChart'), {
+                type: 'line',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.RevenueChartLabels)),
+                    datasets: [{ label: 'Ciro', data: @Html.Raw(Json.Serialize(ViewBag.RevenueChartData)), tension: .35 }]
                 }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="6" class="text-center text-muted">
-                        Henüz satış kaydı bulunmuyor.
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+            });
 
-<div class="mt-5">
+            new Chart(document.getElementById('salesCountChart'), {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.RevenueChartLabels)),
+                    datasets: [{ label: 'Satış Adedi', data: @Html.Raw(Json.Serialize(ViewBag.SalesCountChartData)) }]
+                }
+            });
 
-    <h4 class="section-title">
-        Satış ve Ciro Analizi
-    </h4>
+            new Chart(document.getElementById('paymentTypeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeLabels)),
+                    datasets: [{ data: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeData)) }]
+                }
+            });
 
-    <div class="row">
-
-        <div class="col-md-6 mb-4">
-            <div class="card p-4 chart-card">
-                <h5>Son 7 Günlük Ciro</h5>
-                <div class="chart-description">
-                    Gün bazında toplam satış gelirini gösterir.
-                </div>
-                <canvas id="revenueChart" height="150"></canvas>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card p-4 chart-card">
-                <h5>Son 7 Günlük Satış Adedi</h5>
-                <div class="chart-description">
-                    Gün bazında kaç satış yapıldığını gösterir.
-                </div>
-                <canvas id="salesCountChart" height="150"></canvas>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card p-4 chart-card">
-                <h5>Bu Ay Ödeme Tipi Dağılımı</h5>
-                <div class="chart-description">
-                    Nakit, kart veya diğer ödeme tiplerinin toplam cirodaki dağılımını gösterir.
-                </div>
-                <canvas id="paymentTypeChart" height="150"></canvas>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card p-4 chart-card">
-                <h5>En Çok Satan 5 Ürün</h5>
-                <div class="chart-description">
-                    Satılan adet miktarına göre en çok satılan ürünleri gösterir.
-                </div>
-                <canvas id="topProductsChart" height="150"></canvas>
-            </div>
-        </div>
-
-    </div>
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-    const revenueCtx = document.getElementById('revenueChart');
-
-    new Chart(revenueCtx, {
-    type: 'line',
-
-    data: {
-    labels: @Html.Raw(Json.Serialize(ViewBag.RevenueChartLabels)),
-
-    datasets: [{
-    label: 'Günlük Ciro',
-    data: @Html.Raw(Json.Serialize(ViewBag.RevenueChartData)),
-    tension: 0.35,
-    fill: true,
-    borderWidth: 3,
-    pointRadius: 5,
-    pointHoverRadius: 7
-    }]
-    },
-
-    options: {
-    responsive: true,
-
-    plugins: {
-    legend: {
-    display: true
-    },
-
-    tooltip: {
-    callbacks: {
-    label: function(context) {
-    let value = context.raw || 0;
-    return 'Ciro: ' + value.toLocaleString('tr-TR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-    }) + ' ₺';
+            new Chart(document.getElementById('topProductsChart'), {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.TopProductLabels)),
+                    datasets: [{ label: 'Satılan Adet', data: @Html.Raw(Json.Serialize(ViewBag.TopProductData)) }]
+                },
+                options: { indexAxis: 'y' }
+            });
+        </script>
     }
-    }
-    }
-    },
-
-    scales: {
-    y: {
-    beginAtZero: true,
-
-    ticks: {
-    callback: function(value) {
-    return value.toLocaleString('tr-TR') + ' ₺';
-    }
-    },
-
-    grid: {
-    color: 'rgba(0,0,0,0.05)'
-    }
-    },
-
-    x: {
-    grid: {
-    display: false
-    }
-    }
-    }
-    }
-    });
-
-
-    const salesCountCtx = document.getElementById('salesCountChart');
-
-    new Chart(salesCountCtx, {
-    type: 'bar',
-
-    data: {
-    labels: @Html.Raw(Json.Serialize(ViewBag.RevenueChartLabels)),
-
-    datasets: [{
-    label: 'Satış Adedi',
-    data: @Html.Raw(Json.Serialize(ViewBag.SalesCountChartData)),
-    borderRadius: 10
-    }]
-    },
-
-    options: {
-    responsive: true,
-
-    plugins: {
-    legend: {
-    display: true
-    }
-    },
-
-    scales: {
-    y: {
-    beginAtZero: true,
-
-    ticks: {
-    precision: 0
-    },
-
-    grid: {
-    color: 'rgba(0,0,0,0.05)'
-    }
-    },
-
-    x: {
-    grid: {
-    display: false
-    }
-    }
-    }
-    }
-    });
-
-
-    const paymentTypeCtx = document.getElementById('paymentTypeChart');
-
-    new Chart(paymentTypeCtx, {
-    type: 'doughnut',
-
-    data: {
-    labels: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeLabels)),
-
-    datasets: [{
-    label: 'Ödeme Tipi',
-    data: @Html.Raw(Json.Serialize(ViewBag.PaymentTypeData))
-    }]
-    },
-
-    options: {
-    responsive: true,
-
-    plugins: {
-    legend: {
-    display: true,
-    position: 'bottom'
-    },
-
-    tooltip: {
-    callbacks: {
-    label: function(context) {
-    let value = context.raw || 0;
-
-    return context.label + ': ' + value.toLocaleString('tr-TR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-    }) + ' ₺';
-    }
-    }
-    }
-    }
-    }
-    });
-
-
-    const topProductsCtx = document.getElementById('topProductsChart');
-
-    new Chart(topProductsCtx, {
-    type: 'bar',
-
-    data: {
-    labels: @Html.Raw(Json.Serialize(ViewBag.TopProductLabels)),
-
-    datasets: [{
-    label: 'Satılan Adet',
-    data: @Html.Raw(Json.Serialize(ViewBag.TopProductData)),
-    borderRadius: 10
-    }]
-    },
-
-    options: {
-    indexAxis: 'y',
-    responsive: true,
-
-    plugins: {
-    legend: {
-    display: true
-    }
-    },
-
-    scales: {
-    x: {
-    beginAtZero: true,
-
-    ticks: {
-    precision: 0
-    },
-
-    grid: {
-    color: 'rgba(0,0,0,0.05)'
-    }
-    },
-
-    y: {
-    grid: {
-    display: false
-    }
-    }
-    }
-    }
-    });
-</script>
+}

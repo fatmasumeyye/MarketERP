@@ -1,4 +1,4 @@
-﻿@model MarketERP.Models.PurchaseOrder
+@model MarketERP.Models.PurchaseOrder
 
 @{
     ViewData["Title"] = "Sipariş Detayı";
@@ -158,7 +158,7 @@
                         formaction="/PurchaseOrders/Approve/@Model.Id"
                         formmethod="post"
                         class="btn btn-primary"
-                        onclick="return confirm('Bu siparişi onaylamak istiyor musunuz?')">
+                                data-confirm-message="Bu siparişi onaylamak istiyor musunuz?">
                     Siparişi Onayla
                 </button>
 
@@ -166,7 +166,7 @@
                         formaction="/PurchaseOrders/Cancel/@Model.Id"
                         formmethod="post"
                         class="btn btn-outline-danger"
-                        onclick="return confirm('Bu siparişi iptal etmek istiyor musunuz?')">
+                                data-confirm-message="Bu siparişi iptal etmek istiyor musunuz?">
                     İptal Et
                 </button>
             }
@@ -177,13 +177,13 @@
                         formaction="/PurchaseOrders/ReceiveAll/@Model.Id"
                         formmethod="post"
                         class="btn btn-success"
-                        onclick="return confirm('Bu sipariş tam olarak geldi mi? Tüm ürünler sipariş miktarı kadar stoğa eklenecek.')">
+                                data-confirm-message="Bu sipariş tam olarak geldi mi? Tüm ürünler sipariş miktarı kadar stoğa eklenecek.">
                     Sipariş Tam Geldi / Stoğa Ekle
                 </button>
 
                 <button type="submit"
                         class="btn btn-outline-success"
-                        onclick="return confirm('Girilen gelen miktarlar stoğa eklensin mi?')">
+                                data-confirm-message="Girilen gelen miktarlar stoğa eklensin mi?">
                     Kısmi Teslim Al / Stoğa Ekle
                 </button>
             }

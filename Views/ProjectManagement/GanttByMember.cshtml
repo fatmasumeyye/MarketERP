@@ -1,0 +1,86 @@
+@model MarketERP.Models.ProjectGanttViewModel
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Ekip Gantt Şeması";
+    var timelineWidth = Math.Max(1000, Model.TotalDays * 7);
+}
+
+<style>
+    .gantt-shell { border: 1px solid #dee2e6; border-radius: 12px; overflow: hidden; background: #fff; }
+    .gantt-scroll { overflow-x: auto; }
+    .gantt-content { min-width: @(timelineWidth)px; }
+    .gantt-header, .gantt-row { display: grid; grid-template-columns: 280px 1fr; }
+    .gantt-header { background: #f8f9fa; border-bottom: 1px solid #dee2e6; font-weight: 600; }
+    .gantt-label { padding: .65rem .8rem; border-right: 1px solid #dee2e6; }
+    .gantt-track { position: relative; min-height: 48px; background-image: linear-gradient(to right, rgba(148,163,184,.18) 1px, transparent 1px); background-size: calc(100% / @Math.Max(1, Model.WeekMarkers.Count)) 100%; }
+    .gantt-row { border-bottom: 1px solid #edf0f3; }
+    .gantt-bar { position: absolute; top: 9px; height: 30px; border-radius: 6px; color: #fff; min-width: 16px; overflow: hidden; box-shadow: 0 2px 5px rgba(15,23,42,.18); }
+    .gantt-bar.critical { border: 2px solid #842029; top: 7px; height: 34px; }
+    .gantt-progress { height: 100%; background: rgba(255,255,255,.22); border-right: 1px solid rgba(255,255,255,.65); }
+    .gantt-bar-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .gantt-weeks { position: relative; height: 44px; }
+    .gantt-week { position: absolute; top: 0; padding: .65rem .35rem; font-size: .72rem; color: #475569; white-space: nowrap; transform: translateX(-1px); }
+    .member-heading { background: #eaf2ff; border-top: 1px solid #cfe2ff; border-bottom: 1px solid #cfe2ff; padding: .55rem .8rem; }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-1">Ekip Üyesine Göre Gantt Şeması</h2>
+        <p class="text-muted mb-0">Görevlerin sorumlu ekip üyelerine göre gruplanmış görünümü</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Gantt" class="btn btn-outline-primary">Göreve Göre</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Proje Dashboardu</a>
+    </div>
+</div>
+
+@if (Model.InvalidTaskCount > 0)
+{
+    <div class="alert alert-warning py-2">@Model.InvalidTaskCount görev geçersiz tarih aralığı nedeniyle şemaya eklenmedi.</div>
+}
+
+<div class="gantt-shell">
+    <div class="gantt-scroll">
+        <div class="gantt-content">
+            <div class="gantt-header">
+                <div class="gantt-label">Ekip Üyesi / Görev</div>
+                <div class="gantt-weeks">
+                    @foreach (var marker in Model.WeekMarkers)
+                    {
+                        var markerLeft = (marker - Model.TimelineStart).Days * 100m / Model.TotalDays;
+                        <span class="gantt-week" style="left:@markerLeft.ToString("0.####", CultureInfo.InvariantCulture)%">@marker.ToString("dd MMM")</span>
+                    }
+                </div>
+            </div>
+            @foreach (var group in Model.MemberGroups)
+            {
+                <div class="member-heading">
+                    <strong>@group.MemberName</strong>
+                    <span class="text-muted small ms-1">@group.MemberRole · @group.Rows.Count görev</span>
+                </div>
+                @foreach (var row in group.Rows)
+                {
+                    <div class="gantt-row">
+                        <div class="gantt-label">
+                            <div class="fw-semibold">@row.Task.Title</div>
+                            <small class="text-muted">@row.Task.StartDate.ToString("dd.MM") - @row.Task.EndDate.ToString("dd.MM.yyyy")</small>
+                        </div>
+                        <div class="gantt-track">
+                            <div class="gantt-bar @row.StatusCssClass @(row.Task.IsCritical ? "critical" : "")"
+                                 title="@row.Task.Title - %@row.Task.ProgressPercent"
+                                 style="left:@row.LeftPercent.ToString("0.####", CultureInfo.InvariantCulture)%; width:@row.WidthPercent.ToString("0.####", CultureInfo.InvariantCulture)%">
+                                <div class="gantt-progress" style="width:@row.Task.ProgressPercent%"></div>
+                                <span class="gantt-bar-text">%@row.Task.ProgressPercent</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            @if (!Model.MemberGroups.Any())
+            {
+                <div class="p-4 text-muted">Ekip Gantt şemasında gösterilecek görev bulunamadı.</div>
+            }
+        </div>
+    </div>
+</div>

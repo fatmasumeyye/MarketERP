@@ -1,54 +1,106 @@
-﻿@model List<MarketERP.Models.SavedQuery>
+@model List<MarketERP.Models.SavedQuery>
 
 @{
     ViewData["Title"] = "Kayıtlı Sorgular";
 }
 
-<h2 class="mb-4">Kayıtlı Sorgular</h2>
+<style>
+    .query-card {
+        border: 0;
+        border-radius: 14px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
+    }
 
-<a href="/SqlEditor" class="btn btn-secondary mb-3">
-    SQL Paneline Dön
-</a>
+    .query-code {
+        max-height: 160px;
+        overflow: auto;
+        white-space: pre-wrap;
+        font-size: .78rem;
+        color: #334155;
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h2 class="mb-1">Kayıtlı Sorgular</h2>
+        <p class="text-muted mb-0">@Model.Count hazır ve kullanıcı tanımlı sorgu</p>
+    </div>
+    <div class="d-flex gap-2">
+        <input id="queryFilter"
+               type="search"
+               class="form-control form-control-sm"
+               placeholder="Sorgu ara..."
+               aria-label="Kayıtlı sorgularda ara" />
+        <a asp-controller="SqlEditor" asp-action="Index" class="btn btn-sm btn-outline-secondary text-nowrap">
+            SQL Paneline Dön
+        </a>
+    </div>
+</div>
 
 @if (Model.Count == 0)
 {
-    <div class="alert alert-warning">
-        Henüz kayıtlı sorgu bulunmuyor.
-    </div>
+    <div class="alert alert-warning">Henüz kayıtlı sorgu bulunmuyor.</div>
 }
 else
 {
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                <th>Başlık</th>
-                <th>SQL Sorgusu</th>
-                <th>İşlem</th>
-            </tr>
-        </thead>
+    <div id="queryEmptyState" class="alert alert-warning d-none">
+        Arama ölçütüne uygun sorgu bulunamadı.
+    </div>
 
-        <tbody>
-            @foreach (var query in Model)
-            {
-                <tr>
-                    <td>@query.Title</td>
-                    <td>
-                        <code>@query.SqlQuery</code>
-                    </td>
-                    <td>
-                        <a href="/SqlEditor?query=@Uri.EscapeDataString(query.SqlQuery)"
-                               class="btn btn-primary btn-sm">
-                            Aç
-                        </a>
+    <div id="queryGrid" class="row g-3">
+        @foreach (var query in Model)
+        {
+            <div class="col-md-6 col-xl-4 query-item"
+                 data-query-search="@($"{query.Title} {query.SqlQuery}".ToLowerInvariant())">
+                <div class="card query-card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">@query.Title</h5>
+                        <pre class="query-code bg-light border rounded p-2 flex-grow-1"><code>@query.SqlQuery</code></pre>
+                        <div class="d-flex justify-content-between gap-2 mt-2">
+                            <a asp-controller="SqlEditor"
+                               asp-action="Index"
+                               asp-route-query="@query.SqlQuery"
+                               class="btn btn-sm btn-primary">
+                                Panelde Aç
+                            </a>
+                            <form asp-controller="SqlEditor"
+                                  asp-action="DeleteSavedQuery"
+                                  method="post"
+                                data-confirm-message="Bu kayıtlı sorguyu silmek istediğinize emin misiniz?">
+                                <input type="hidden" name="id" value="@query.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
 
-                        <a href="/SqlEditor/DeleteSavedQuery/@query.Id"
-                               class="btn btn-danger btn-sm"
-                               onclick="return confirm('Bu kayıtlı sorguyu silmek istediğinize emin misiniz?')">
-                            Sil
-                        </a>
-                    </td>
-                </tr>
+@section Scripts {
+    <script>
+        (() => {
+            const filter = document.getElementById('queryFilter');
+            const items = [...document.querySelectorAll('.query-item')];
+            const emptyState = document.getElementById('queryEmptyState');
+
+            if (!filter || items.length === 0) {
+                return;
             }
-        </tbody>
-    </table>
+
+            filter.addEventListener('input', () => {
+                const term = filter.value.trim().toLocaleLowerCase('tr-TR');
+                let visibleCount = 0;
+
+                items.forEach(item => {
+                    const isVisible = item.dataset.querySearch.includes(term);
+                    item.classList.toggle('d-none', !isVisible);
+                    visibleCount += isVisible ? 1 : 0;
+                });
+
+                emptyState.classList.toggle('d-none', visibleCount > 0);
+            });
+        })();
+    </script>
 }

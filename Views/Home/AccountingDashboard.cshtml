@@ -1,0 +1,312 @@
+@using MarketERP.Helpers
+@using MarketERP.Models
+@{
+    ViewData["Title"] = "Muhasebe Dashboard";
+
+    var canViewSales =
+        Context.HasPermission("sale.view.all")
+        || Context.HasPermission("sale.view.branch");
+    var canViewFinance = Context.HasPermission("finance.view");
+    var canViewPurchasing = Context.HasPermission("purchase.view");
+
+    var paymentTypeSummary =
+        ViewBag.PaymentTypeSummary as List<KeyValuePair<string, decimal>>
+        ?? new List<KeyValuePair<string, decimal>>();
+    var recentCashClosings =
+        ViewBag.RecentCashClosings as List<CashRegisterClosing>
+        ?? new List<CashRegisterClosing>();
+    var recentExpenses =
+        ViewBag.RecentExpenses as List<Expense>
+        ?? new List<Expense>();
+    var recentSales =
+        ViewBag.RecentSales as List<Sale>
+        ?? new List<Sale>();
+
+    string Money(decimal value) => $"{value:N2} ₺";
+}
+
+<style>
+    .accounting-card {
+        display: block;
+        min-height: 132px;
+        border: 0;
+        border-radius: 14px;
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 5px 16px rgba(15, 23, 42, .1);
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .accounting-card:hover {
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 9px 22px rgba(15, 23, 42, .16);
+    }
+
+    .accounting-card .value {
+        font-size: 1.55rem;
+        font-weight: 700;
+    }
+
+    .accounting-panel {
+        border: 0;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, .07);
+    }
+
+    .finance-blue { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
+    .finance-green { background: linear-gradient(135deg, #166534, #16a34a); }
+    .finance-teal { background: linear-gradient(135deg, #115e59, #0d9488); }
+    .finance-red { background: linear-gradient(135deg, #991b1b, #dc2626); }
+    .finance-orange { background: linear-gradient(135deg, #9a3412, #ea580c); }
+    .finance-purple { background: linear-gradient(135deg, #581c87, #9333ea); }
+    .finance-slate { background: linear-gradient(135deg, #334155, #64748b); }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <h2 class="mb-1">Muhasebe Dashboard</h2>
+        <p class="text-muted mb-0">Finansal durum, tahsilat ve ödeme kontrol özeti</p>
+    </div>
+    @if (canViewFinance)
+    {
+        <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
+            Gelir-Gider Detayı
+        </a>
+    }
+</div>
+
+<div class="row g-3 mb-4">
+    @if (canViewSales)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="today"
+               class="card accounting-card finance-green">
+                <div class="card-body">
+                    <div>Bugünkü Ciro</div>
+                    <div class="value mt-2">@Money((decimal)ViewBag.TodayRevenue)</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="month"
+               class="card accounting-card finance-blue">
+                <div class="card-body">
+                    <div>Bu Ayki Ciro</div>
+                    <div class="value mt-2">@Money((decimal)ViewBag.MonthlyRevenue)</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Sales" asp-action="Index"
+               class="card accounting-card finance-teal">
+                <div class="card-body">
+                    <div>Toplam Tahsilat</div>
+                    <div class="value mt-2">@Money((decimal)ViewBag.TotalCollections)</div>
+                </div>
+            </a>
+        </div>
+    }
+
+    @if (canViewFinance)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Expenses" asp-action="Index"
+               class="card accounting-card finance-red">
+                <div class="card-body">
+                    <div>Bu Ay Toplam Gider</div>
+                    <div class="value mt-2">@Money((decimal)ViewBag.MonthlyExpense)</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Expenses" asp-action="Index"
+               class="card accounting-card @((decimal)ViewBag.MonthlyNet >= 0 ? "finance-green" : "finance-red")">
+                <div class="card-body">
+                    <div>Bu Ay Net Durum</div>
+                    <div class="value mt-2">@Money((decimal)ViewBag.MonthlyNet)</div>
+                </div>
+            </a>
+        </div>
+    }
+
+    @if (canViewSales)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="CashRegister" asp-action="Index" asp-route-status="Beklemede"
+               class="card accounting-card finance-orange">
+                <div class="card-body">
+                    <div>Bekleyen Kasa Kapanışı</div>
+                    <div class="value mt-2">@ViewBag.PendingCashClosingCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="CashRegister" asp-action="Index" asp-route-status="Onaylandı"
+               class="card accounting-card finance-teal">
+                <div class="card-body">
+                    <div>Onaylanan Kasa Kapanışı</div>
+                    <div class="value mt-2">@ViewBag.ApprovedCashClosingCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="Returns" asp-action="Index" asp-route-status="Beklemede"
+               class="card accounting-card finance-red">
+                <div class="card-body">
+                    <div>Ödeme İadesi Bekleyenler</div>
+                    <div class="value mt-2">@ViewBag.PendingReturnCount</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="WholesaleSales" asp-action="Index" asp-route-status="Onay Bekliyor"
+               class="card accounting-card finance-purple">
+                <div class="card-body">
+                    <div>Bekleyen Toptan Kontrol</div>
+                    <div class="value mt-2">@ViewBag.PendingWholesaleCount</div>
+                    <small>@Money((decimal)ViewBag.PendingWholesaleAmount)</small>
+                </div>
+            </a>
+        </div>
+    }
+
+    @if (canViewPurchasing)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <a asp-controller="PurchaseOrders" asp-action="Index" asp-route-status="Onay Bekliyor"
+               class="card accounting-card finance-slate">
+                <div class="card-body">
+                    <div>Bekleyen Satın Alma</div>
+                    <div class="value mt-2">@ViewBag.PendingPurchaseOrderCount</div>
+                    <small>@Money((decimal)ViewBag.PendingPurchaseOrderAmount)</small>
+                </div>
+            </a>
+        </div>
+    }
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card accounting-panel h-100">
+            <div class="card-header bg-white fw-semibold">Bu Ay Ödeme Dağılımı</div>
+            <div class="card-body">
+                @if (paymentTypeSummary.Any())
+                {
+                    foreach (var payment in paymentTypeSummary)
+                    {
+                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                            <span>@payment.Key</span>
+                            <strong>@Money(payment.Value)</strong>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">Bu ay satış kaydı yok.</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card accounting-panel h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Son Kasa Kapanışları</span>
+                <a asp-controller="CashRegister" asp-action="Index" class="btn btn-sm btn-outline-primary">Tümünü Gör</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Çalışan</th><th>Tarih</th><th>Tutar</th><th>Fark</th><th>Durum</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (recentCashClosings.Any())
+                        {
+                            foreach (var closing in recentCashClosings)
+                            {
+                                <tr>
+                                    <td>@(closing.Employee?.FullName ?? "-")</td>
+                                    <td>@closing.ClosingDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@Money(closing.TotalSalesAmount)</td>
+                                    <td>@Money(closing.CashDifference)</td>
+                                    <td><span class="badge bg-secondary">@closing.Status</span></td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="5" class="text-center text-muted py-4">Kasa kapanışı kaydı yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card accounting-panel h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Son Gider Kayıtları</span>
+                <a asp-controller="Expenses" asp-action="Index" class="btn btn-sm btn-outline-primary">Tümünü Gör</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Gider</th><th>Tarih</th><th class="text-end">Tutar</th></tr></thead>
+                    <tbody>
+                        @if (recentExpenses.Any())
+                        {
+                            foreach (var expense in recentExpenses)
+                            {
+                                <tr>
+                                    <td>@expense.Title</td>
+                                    <td>@expense.ExpenseDate.ToString("dd.MM.yyyy")</td>
+                                    <td class="text-end">@Money(expense.Amount)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="3" class="text-center text-muted py-4">Gider kaydı yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card accounting-panel h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Son Satışlar</span>
+                <a asp-controller="Sales" asp-action="Index" class="btn btn-sm btn-outline-primary">Tümünü Gör</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>No</th><th>Müşteri</th><th>Ödeme</th><th>Tarih</th><th class="text-end">Tutar</th></tr></thead>
+                    <tbody>
+                        @if (recentSales.Any())
+                        {
+                            foreach (var sale in recentSales)
+                            {
+                                <tr>
+                                    <td>#@sale.Id</td>
+                                    <td>@(sale.Customer?.FullName ?? "Nihai Tüketici")</td>
+                                    <td>@(string.IsNullOrWhiteSpace(sale.PaymentType) ? "-" : sale.PaymentType)</td>
+                                    <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td class="text-end">@Money(sale.TotalAmount)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="5" class="text-center text-muted py-4">Satış kaydı yok.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

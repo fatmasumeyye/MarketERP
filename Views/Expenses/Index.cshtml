@@ -1,114 +1,325 @@
-﻿@model List<MarketERP.Models.Expense>
+@model List<MarketERP.Models.Expense>
 
 @{
-    ViewData["Title"] = "Gelir Gider Yönetimi";
+    ViewData["Title"] = "Gelir-Gider Yönetimi";
+    var categories = ViewBag.ExpenseCategories as string[] ?? Array.Empty<string>();
+    var categorySummary =
+        ViewBag.ExpenseCategorySummary as List<Tuple<string, decimal>>
+        ?? new List<Tuple<string, decimal>>();
 }
 
-<h2 class="mb-4">Gelir Gider Yönetimi</h2>
+<style>
+    .finance-card {
+        min-height: 125px;
+        border: 0;
+        border-radius: 16px;
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .1);
+    }
 
-<div class="row mb-4">
+    .finance-card h2 {
+        font-size: 1.65rem;
+        font-weight: 700;
+    }
 
-    <div class="col-md-4">
-        <div class="card text-bg-success mb-3">
-            <div class="card-body">
-                <h5>Toplam Gelir</h5>
-                <h2>@ViewBag.TotalIncome ₺</h2>
-            </div>
-        </div>
-    </div>
+    .finance-panel {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, .07);
+    }
 
-    <div class="col-md-4">
-        <div class="card text-bg-danger mb-3">
-            <div class="card-body">
-                <h5>Toplam Gider</h5>
-                <h2>@ViewBag.TotalExpense ₺</h2>
-            </div>
-        </div>
-    </div>
+    .finance-chart {
+        position: relative;
+        min-height: 320px;
+    }
 
-    <div class="col-md-4">
-        <div class="card text-bg-dark mb-3">
-            <div class="card-body">
-                <h5>Net Kâr</h5>
-                <h2>@ViewBag.NetProfit ₺</h2>
-            </div>
-        </div>
-    </div>
+    .bg-finance-green { background: linear-gradient(135deg, #166534, #2d6a4f); }
+    .bg-finance-red { background: linear-gradient(135deg, #7f1d1d, #b91c1c); }
+    .bg-finance-blue { background: linear-gradient(135deg, #1e3a8a, #355c9a); }
+    .bg-finance-purple { background: linear-gradient(135deg, #4c1d95, #7c3aed); }
+    .bg-finance-orange { background: linear-gradient(135deg, #9a6700, #ca8a04); }
+    .bg-finance-dark { background: linear-gradient(135deg, #1f2937, #4b5563); }
+</style>
 
+<div class="mb-4">
+    <h2 class="mb-1">Gelir-Gider Yönetimi</h2>
+    <p class="text-muted mb-0">
+        Gelirler satışlardan, giderler kayıtlı gider hareketlerinden hesaplanır.
+    </p>
 </div>
 
-<form asp-action="Add" method="post" class="mb-4">
-    <div class="row mb-2">
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
 
-        <div class="col-md-3">
-            <input type="text"
-                   name="Title"
-                   class="form-control"
-                   placeholder="Gider başlığı"
-                   required />
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-4">
+        <div class="card finance-card bg-finance-green">
+            <div class="card-body">
+                <div>Toplam Gelir</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.TotalIncome).ToString("N2")) ₺</h2>
+            </div>
         </div>
-
-        <div class="col-md-2">
-            <input type="number"
-                   step="0.01"
-                   name="Amount"
-                   class="form-control"
-                   placeholder="Tutar"
-                   required />
-        </div>
-
-        <div class="col-md-2">
-            <input type="date"
-                   name="ExpenseDate"
-                   class="form-control"
-                   required />
-        </div>
-
-        <div class="col-md-3">
-            <input type="text"
-                   name="Description"
-                   class="form-control"
-                   placeholder="Açıklama" />
-        </div>
-
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">
-                Gider Ekle
-            </button>
-        </div>
-
     </div>
-</form>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card finance-card bg-finance-red">
+            <div class="card-body">
+                <div>Toplam Gider</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.TotalExpense).ToString("N2")) ₺</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card finance-card @(((decimal)ViewBag.NetProfit) >= 0 ? "bg-finance-blue" : "bg-finance-red")">
+            <div class="card-body">
+                <div>Net Kâr / Zarar</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.NetProfit).ToString("N2")) ₺</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card finance-card bg-finance-purple">
+            <div class="card-body">
+                <div>Bu Ay Gelir</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.MonthlyIncome).ToString("N2")) ₺</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card finance-card bg-finance-orange">
+            <div class="card-body">
+                <div>Bu Ay Gider</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.MonthlyExpense).ToString("N2")) ₺</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-4">
+        <div class="card finance-card @(((decimal)ViewBag.MonthlyNet) >= 0 ? "bg-finance-dark" : "bg-finance-red")">
+            <div class="card-body">
+                <div>Bu Ay Net Durum</div>
+                <h2 class="mt-2 mb-0">@(((decimal)ViewBag.MonthlyNet).ToString("N2")) ₺</h2>
+            </div>
+        </div>
+    </div>
+</div>
 
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>ID</th>
-            <th>Başlık</th>
-            <th>Tutar</th>
-            <th>Tarih</th>
-            <th>Açıklama</th>
-            <th>İşlem</th>
-        </tr>
-    </thead>
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card finance-panel h-100">
+            <div class="card-header bg-white fw-semibold">Gelir Kaynakları</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between border-bottom py-2">
+                    <span>Perakende satış geliri</span>
+                    <strong>@(((decimal)ViewBag.RetailIncome).ToString("N2")) ₺</strong>
+                </div>
+                <div class="d-flex justify-content-between border-bottom py-2">
+                    <span>Toptan satış geliri</span>
+                    <strong>@(((decimal)ViewBag.WholesaleIncome).ToString("N2")) ₺</strong>
+                </div>
+                <div class="d-flex justify-content-between py-2">
+                    <span>Diğer gelirler</span>
+                    <strong>@(((decimal)ViewBag.OtherIncome).ToString("N2")) ₺</strong>
+                </div>
+                <small class="text-muted d-block mt-3">
+                    Toptan gelir, satış kaydına bağlanmış onaylı toptan talepler üzerinden ayrıştırılır.
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card finance-panel h-100">
+            <div class="card-header bg-white fw-semibold">Yeni Gider Kaydı</div>
+            <div class="card-body">
+                <form asp-action="Add" method="post">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Gider kategorisi</label>
+                            <select name="Title" class="form-select" required>
+                                <option value="">Kategori seçin</option>
+                                @foreach (var category in categories)
+                                {
+                                    <option value="@category">@category</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tutar</label>
+                            <input type="number" min="0.01" step="0.01" name="Amount"
+                                   class="form-control" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tarih</label>
+                            <input type="date" name="ExpenseDate"
+                                   value="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                   class="form-control" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Açıklama</label>
+                            <input type="text" name="Description" class="form-control"
+                                   placeholder="Fatura dönemi, firma veya gider detayı" />
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-primary">Gider Ekle</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <tbody>
-        @foreach (var expense in Model)
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card finance-panel h-100">
+            <div class="card-header bg-white fw-semibold">Son 12 Ay Gelir-Gider</div>
+            <div class="card-body finance-chart">
+                @if ((bool)ViewBag.HasMonthlyFinanceData)
+                {
+                    <canvas id="monthlyFinanceChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Son 12 ay için gelir veya gider verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card finance-panel h-100">
+            <div class="card-header bg-white fw-semibold">Gider Kategori Dağılımı</div>
+            <div class="card-body finance-chart">
+                @if ((bool)ViewBag.HasExpenseCategoryData)
+                {
+                    <canvas id="expenseCategoryChart"></canvas>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-muted">
+                        Gider verisi bulunmuyor.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card finance-panel h-100">
+            <div class="card-header bg-white fw-semibold">Gider Kategori Özeti</div>
+            <div class="card-body">
+                @if (categorySummary.Any())
+                {
+                    foreach (var category in categorySummary)
+                    {
+                        <div class="d-flex justify-content-between border-bottom py-2">
+                            <span>@category.Item1</span>
+                            <strong>@category.Item2.ToString("N2") ₺</strong>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-muted">Gider kaydı bulunmuyor.</div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card finance-panel">
+            <div class="card-header bg-white fw-semibold">Son Gider Kayıtları</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Kategori</th>
+                            <th>Açıklama</th>
+                            <th>Tarih</th>
+                            <th class="text-end">Tutar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var expense in Model)
+                            {
+                                <tr>
+                                    <td>@expense.Title</td>
+                                    <td>@(string.IsNullOrWhiteSpace(expense.Description) ? "-" : expense.Description)</td>
+                                    <td>@expense.ExpenseDate.ToString("dd.MM.yyyy")</td>
+                                    <td class="text-end">@expense.Amount.ToString("N2") ₺</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="4" class="text-center text-muted py-4">Gider kaydı bulunmuyor.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        @if ((bool)ViewBag.HasMonthlyFinanceData)
         {
-            <tr>
-                <td>@expense.Id</td>
-                <td>@expense.Title</td>
-                <td>@expense.Amount ₺</td>
-                <td>@expense.ExpenseDate.ToString("dd.MM.yyyy")</td>
-                <td>@expense.Description</td>
-                <td>
-                    <a href="/Expenses/Delete/@expense.Id"
-                           class="btn btn-danger btn-sm"
-                           onclick="return confirm('Bu gider kaydını silmek istediğinize emin misiniz?')">
-                        Sil
-                    </a>
-                </td>
-            </tr>
+            <text>
+            new Chart(document.getElementById('monthlyFinanceChart'), {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.MonthlyChartLabels)),
+                    datasets: [
+                        {
+                            label: 'Gelir',
+                            data: @Html.Raw(Json.Serialize(ViewBag.MonthlyIncomeData)),
+                            backgroundColor: '#2d6a4f'
+                        },
+                        {
+                            label: 'Gider',
+                            data: @Html.Raw(Json.Serialize(ViewBag.MonthlyExpenseData)),
+                            backgroundColor: '#b91c1c'
+                        }
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+            </text>
         }
-    </tbody>
-</table>
+
+        @if ((bool)ViewBag.HasExpenseCategoryData)
+        {
+            <text>
+            new Chart(document.getElementById('expenseCategoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(Json.Serialize(ViewBag.ExpenseCategoryLabels)),
+                    datasets: [{
+                        data: @Html.Raw(Json.Serialize(ViewBag.ExpenseCategoryData)),
+                        backgroundColor: [
+                            '#355c9a', '#2d6a4f', '#ca8a04', '#b91c1c',
+                            '#7c3aed', '#0f766e', '#4b5563', '#0ea5e9',
+                            '#db2777', '#65a30d', '#ea580c', '#0891b2',
+                            '#9333ea', '#64748b'
+                        ]
+                    }]
+                },
+                options: { maintainAspectRatio: false }
+            });
+            </text>
+        }
+    </script>
+}

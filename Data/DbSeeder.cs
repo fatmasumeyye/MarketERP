@@ -16,7 +16,6 @@ namespace MarketERP.Data
             await EnsureSavedQueriesAsync(context);
             await EnsureRolePermissionsAsync(context);
             await EnsureDefaultUsersAsync(context);
-            await EnsureProjectManagementDataAsync(context);
         }
 
         private static async Task EnsureRolesAsync(AppDbContext context)
@@ -696,124 +695,6 @@ namespace MarketERP.Data
                 position: "Müşteri Hizmetleri",
                 email: "musteri@marketerp.com"
             );
-        }
-
-        private static async Task EnsureProjectManagementDataAsync(AppDbContext context)
-        {
-            var project = await context.ProjectModules
-                .OrderBy(p => p.Id)
-                .FirstOrDefaultAsync();
-
-            if (project == null)
-            {
-                project = new ProjectModule
-                {
-                    Name = "MarketERP",
-                    Description = "Market operasyonlarının satış, stok, satın alma, personel ve finans süreçlerini yöneten ERP geliştirme projesi.",
-                    Budget = 650000m,
-                    Income = 780000m,
-                    Expense = 525000m
-                };
-                context.ProjectModules.Add(project);
-            }
-
-            project.Name = "MarketERP";
-            project.Description = "Market operasyonlarının satış, stok, satın alma, personel ve finans süreçlerini yöneten ERP geliştirme projesi.";
-            project.StartDate = new DateTime(2026, 5, 1);
-            project.EndDate = new DateTime(2026, 6, 20);
-            project.Status = "Devam Ediyor";
-            await context.SaveChangesAsync();
-
-            var memberDefinitions = new[]
-            {
-                new { FullName = "Hakan Bozkurt", Role = "Proje Yöneticisi", Email = "hakan.proje@marketerp.demo", Estimated = 420m, Actual = 365m },
-                new { FullName = "Ayşe Yılmaz", Role = "Backend Geliştirici", Email = "ayse.backend@marketerp.demo", Estimated = 520m, Actual = 470m },
-                new { FullName = "Mert Kaya", Role = "Frontend Geliştirici", Email = "mert.frontend@marketerp.demo", Estimated = 460m, Actual = 410m },
-                new { FullName = "Selin Acar", Role = "İş Analisti", Email = "selin.analiz@marketerp.demo", Estimated = 300m, Actual = 270m },
-                new { FullName = "Emre Demir", Role = "Test ve DevOps", Email = "emre.test@marketerp.demo", Estimated = 340m, Actual = 245m }
-            };
-
-            foreach (var definition in memberDefinitions)
-            {
-                if (!await context.ProjectTeamMembers.AnyAsync(m => m.Email == definition.Email))
-                {
-                    context.ProjectTeamMembers.Add(new ProjectTeamMember
-                    {
-                        FullName = definition.FullName,
-                        Role = definition.Role,
-                        Email = definition.Email,
-                        EstimatedWorkHours = definition.Estimated,
-                        ActualWorkHours = definition.Actual
-                    });
-                }
-            }
-
-            await context.SaveChangesAsync();
-            var members = await context.ProjectTeamMembers.ToDictionaryAsync(m => m.Email);
-            var taskDefinitions = new[]
-            {
-                new { Title = "Veritabanı tasarımı", Description = "ERP tabloları, anahtarlar ve ilişkilerin tasarlanması.", Start = new DateTime(2026, 5, 1), End = new DateTime(2026, 5, 5), Progress = 100, Status = "Tamamlandı", Priority = "Kritik", Budget = 42000m, Cost = 39500m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)null, Critical = true, Slack = (int?)0 },
-                new { Title = "Login ve rol sistemi", Description = "Oturum, rol ve permission altyapısının geliştirilmesi.", Start = new DateTime(2026, 5, 6), End = new DateTime(2026, 5, 10), Progress = 100, Status = "Tamamlandı", Priority = "Kritik", Budget = 48000m, Cost = 45500m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Veritabanı tasarımı", Critical = true, Slack = (int?)0 },
-                new { Title = "Ürün ve stok modülü", Description = "Ürün, kategori, tedarikçi ve stok işlemleri.", Start = new DateTime(2026, 5, 11), End = new DateTime(2026, 5, 16), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 52000m, Cost = 49000m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Login ve rol sistemi", Critical = true, Slack = (int?)0 },
-                new { Title = "Satış modülü", Description = "Perakende satış ve satış detaylarının geliştirilmesi.", Start = new DateTime(2026, 5, 17), End = new DateTime(2026, 5, 22), Progress = 100, Status = "Tamamlandı", Priority = "Kritik", Budget = 60000m, Cost = 56500m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Ürün ve stok modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "Toptan satış modülü", Description = "Teklif, iskonto ve toptan satış yönetimi.", Start = new DateTime(2026, 5, 23), End = new DateTime(2026, 5, 27), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 44000m, Cost = 41500m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Satış modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "İade modülü", Description = "İade talebi, değerlendirme ve durum yönetimi.", Start = new DateTime(2026, 5, 28), End = new DateTime(2026, 5, 31), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 30000m, Cost = 28200m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Toptan satış modülü", Critical = false, Slack = (int?)1 },
-                new { Title = "Kasa kapanış modülü", Description = "Gün sonu kasa kapanışı ve muhasebe kontrolü.", Start = new DateTime(2026, 5, 28), End = new DateTime(2026, 5, 31), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 32000m, Cost = 30500m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Toptan satış modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "Satın alma modülü", Description = "Sipariş, onay ve mal kabul süreçleri.", Start = new DateTime(2026, 6, 1), End = new DateTime(2026, 6, 4), Progress = 100, Status = "Tamamlandı", Priority = "Yüksek", Budget = 46000m, Cost = 43000m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Kasa kapanış modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "İzin modülü", Description = "Çalışan izin talebi ve yönetici onay süreci.", Start = new DateTime(2026, 6, 5), End = new DateTime(2026, 6, 7), Progress = 100, Status = "Tamamlandı", Priority = "Orta", Budget = 26000m, Cost = 24400m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Satın alma modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "Vardiya modülü", Description = "Haftalık şift planı ve dışa aktarma özellikleri.", Start = new DateTime(2026, 6, 8), End = new DateTime(2026, 6, 10), Progress = 90, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 38000m, Cost = 35500m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"İzin modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "Muhasebe dashboardu", Description = "Finans odaklı rol dashboardunun hazırlanması.", Start = new DateTime(2026, 6, 10), End = new DateTime(2026, 6, 12), Progress = 85, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 28000m, Cost = 25000m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)"Vardiya modülü", Critical = false, Slack = (int?)1 },
-                new { Title = "Depo dashboardu", Description = "Stok ve satın alma odaklı depo dashboardu.", Start = new DateTime(2026, 6, 10), End = new DateTime(2026, 6, 12), Progress = 85, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 28000m, Cost = 24800m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Vardiya modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "Gelir-gider ekranı", Description = "Gelir, gider, net durum ve grafiklerin hazırlanması.", Start = new DateTime(2026, 6, 12), End = new DateTime(2026, 6, 14), Progress = 80, Status = "Devam Ediyor", Priority = "Yüksek", Budget = 34000m, Cost = 29500m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)"Muhasebe dashboardu", Critical = false, Slack = (int?)1 },
-                new { Title = "İstatistik ve grafikler", Description = "ERP KPI kartları ve Chart.js grafiklerinin hazırlanması.", Start = new DateTime(2026, 6, 13), End = new DateTime(2026, 6, 15), Progress = 75, Status = "Planlandı", Priority = "Orta", Budget = 36000m, Cost = 30200m, Member = "mert.frontend@marketerp.demo", DependsOn = (string?)"Gelir-gider ekranı", Critical = false, Slack = (int?)1 },
-                new { Title = "Demo veri seed sistemi", Description = "Tekrar çalışabilir ve ilişkisel demo veri üretimi.", Start = new DateTime(2026, 6, 14), End = new DateTime(2026, 6, 16), Progress = 75, Status = "Planlandı", Priority = "Kritik", Budget = 40000m, Cost = 37000m, Member = "ayse.backend@marketerp.demo", DependsOn = (string?)"Depo dashboardu", Critical = true, Slack = (int?)0 },
-                new { Title = "ER diyagramı", Description = "Tablolar ve ilişkiler için anlaşılır ER görünümü.", Start = new DateTime(2026, 6, 15), End = new DateTime(2026, 6, 17), Progress = 60, Status = "Planlandı", Priority = "Orta", Budget = 18000m, Cost = 16200m, Member = "selin.analiz@marketerp.demo", DependsOn = (string?)"Demo veri seed sistemi", Critical = true, Slack = (int?)0 },
-                new { Title = "Proje yönetimi modülü", Description = "Görev, ekip, bütçe ve ilerleme yönetiminin geliştirilmesi.", Start = new DateTime(2026, 6, 16), End = new DateTime(2026, 6, 18), Progress = 60, Status = "Planlandı", Priority = "Kritik", Budget = 42000m, Cost = 26000m, Member = "hakan.proje@marketerp.demo", DependsOn = (string?)"ER diyagramı", Critical = true, Slack = (int?)0 },
-                new { Title = "Gantt ve kritik yol ekranları", Description = "Gantt, kritik yol, bolluk süresi ve proje raporlarının hazırlanması.", Start = new DateTime(2026, 6, 17), End = new DateTime(2026, 6, 19), Progress = 55, Status = "Planlandı", Priority = "Kritik", Budget = 30000m, Cost = 16500m, Member = "hakan.proje@marketerp.demo", DependsOn = (string?)"Proje yönetimi modülü", Critical = true, Slack = (int?)0 },
-                new { Title = "Test ve son düzenleme", Description = "Entegrasyon testleri, hata düzeltmeleri ve sunum hazırlığı.", Start = new DateTime(2026, 6, 19), End = new DateTime(2026, 6, 20), Progress = 30, Status = "Planlandı", Priority = "Kritik", Budget = 46000m, Cost = 8500m, Member = "emre.test@marketerp.demo", DependsOn = (string?)"Gantt ve kritik yol ekranları", Critical = true, Slack = (int?)0 }
-            };
-
-            var existingTasks = await context.ProjectTasks.ToDictionaryAsync(t => t.Title);
-            foreach (var definition in taskDefinitions)
-            {
-                if (!existingTasks.TryGetValue(definition.Title, out var task))
-                {
-                    task = new ProjectTask { Title = definition.Title };
-                    context.ProjectTasks.Add(task);
-                    existingTasks[task.Title] = task;
-                }
-
-                task.Description = definition.Description;
-                task.StartDate = definition.Start;
-                task.EndDate = definition.End;
-                task.DurationDays = (definition.End - definition.Start).Days + 1;
-                task.ProgressPercent = definition.Progress;
-                task.Status = definition.Status;
-                task.Priority = definition.Priority;
-                task.Budget = definition.Budget;
-                task.Cost = definition.Cost;
-                task.AssignedMemberId = members[definition.Member].Id;
-                task.IsCritical = definition.Critical;
-                task.SlackDays = definition.Slack;
-                await context.SaveChangesAsync();
-            }
-
-            foreach (var definition in taskDefinitions)
-            {
-                var task = existingTasks[definition.Title];
-                task.DependsOnTaskId = definition.DependsOn != null
-                    && existingTasks.TryGetValue(definition.DependsOn, out var dependency)
-                        ? dependency.Id
-                        : null;
-            }
-
-            var progressValues = await context.ProjectTasks
-                .Select(t => t.ProgressPercent)
-                .ToListAsync();
-            project.ProgressPercent = progressValues.Count == 0
-                ? 0
-                : (int)Math.Round(progressValues.Average());
-            await context.SaveChangesAsync();
         }
 
         private static async Task EnsureUserAsync(

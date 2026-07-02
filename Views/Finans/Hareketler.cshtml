@@ -1,0 +1,15 @@
+@model MarketERP.Models.FinansHareketlerViewModel
+@{ ViewData["Title"] = "Finans Hareketleri"; var tipler = ViewBag.Tipler as string[] ?? []; var durumlar = ViewBag.Durumlar as string[] ?? []; }
+<div class="d-flex justify-content-between mb-4"><div><h2>Finans Hareketleri</h2><p class="text-muted">Gelir ve gider kayıtlarını filtreleyin.</p></div><a asp-action="HareketEkle" class="btn btn-primary">Yeni Hareket</a></div>
+<div class="card border-0 shadow-sm mb-4"><div class="card-body"><form method="get" class="row g-3 align-items-end">
+<div class="col-md-2"><label class="form-label">Tip</label><select name="tip" class="form-select"><option value="">Tümü</option>@foreach(var x in tipler){<option value="@x" selected="@(Model.Tip == x)">@x</option>}</select></div>
+<div class="col-md-2"><label class="form-label">Durum</label><select name="durum" class="form-select"><option value="">Tümü</option>@foreach(var x in durumlar){<option value="@x" selected="@(Model.Durum == x)">@x</option>}</select></div>
+<div class="col-md-2"><label class="form-label">Kategori</label><select name="kategori" class="form-select"><option value="">Tümü</option>@foreach(var x in Model.Kategoriler){<option value="@x" selected="@(Model.Kategori == x)">@x</option>}</select></div>
+<div class="col-md-2"><label class="form-label">Başlangıç</label><input type="date" name="baslangicTarihi" value="@Model.BaslangicTarihi?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+<div class="col-md-2"><label class="form-label">Bitiş</label><input type="date" name="bitisTarihi" value="@Model.BitisTarihi?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+<div class="col-md-2 d-flex gap-2"><button class="btn btn-primary">Filtrele</button><a asp-action="Hareketler" class="btn btn-outline-secondary">Temizle</a></div>
+</form></div></div>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+<thead class="table-light"><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Başlık</th><th>Ödeme</th><th>Durum</th><th class="text-end">Tutar</th></tr></thead>
+<tbody>@if(Model.Hareketler.Count == 0){<tr><td colspan="7" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>}else{@foreach(var x in Model.Hareketler){<tr><td>@x.Tarih.ToString("dd.MM.yyyy")</td><td><span class="badge @(x.Tip == "Gelir" ? "bg-success" : "bg-danger")">@x.Tip</span></td><td>@x.Kategori</td><td><strong>@x.Baslik</strong><div class="small text-muted">@x.Aciklama</div></td><td>@x.OdemeYontemi</td><td>@x.Durum</td><td class="text-end">@x.Tutar.ToString("N2") ₺</td></tr>}}</tbody>
+</table></div></div>

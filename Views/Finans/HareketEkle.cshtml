@@ -1,0 +1,17 @@
+@model MarketERP.Models.FinansHareketi
+@{ ViewData["Title"]="Finans Hareketi Ekle"; var tipler=ViewBag.Tipler as string[] ?? []; var durumlar=ViewBag.Durumlar as string[] ?? []; var odemeler=ViewBag.OdemeYontemleri as string[] ?? []; var kategoriler=ViewBag.Kategoriler as string[] ?? []; var sabitler=ViewBag.SabitGiderler as List<MarketERP.Models.SabitGider> ?? []; }
+<div class="d-flex justify-content-between mb-4"><div><h2>Finans Hareketi Ekle</h2><p class="text-muted">Gerçekleşen veya bekleyen gelir/gider kaydı oluşturun.</p></div><a asp-action="Hareketler" class="btn btn-outline-secondary">Listeye Dön</a></div>
+<div class="card border-0 shadow-sm"><div class="card-body"><form asp-action="HareketEkle" method="post">
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div><div class="row g-3">
+<div class="col-md-3"><label asp-for="Tip" class="form-label">Tip</label><select asp-for="Tip" class="form-select">@foreach(var x in tipler){<option value="@x">@x</option>}</select></div>
+<div class="col-md-3"><label asp-for="Kategori" class="form-label">Kategori</label><input asp-for="Kategori" class="form-control" list="finansKategorileri" /><datalist id="finansKategorileri">@foreach(var x in kategoriler){<option value="@x"></option>}</datalist><span asp-validation-for="Kategori" class="text-danger"></span></div>
+<div class="col-md-6"><label asp-for="Baslik" class="form-label">Başlık</label><input asp-for="Baslik" class="form-control" /><span asp-validation-for="Baslik" class="text-danger"></span></div>
+<div class="col-md-3"><label for="TutarMetni" class="form-label">Tutar</label><input id="TutarMetni" name="tutarMetni" type="text" inputmode="decimal" value="@(ViewData["TutarMetni"] ?? (Model.Tutar > 0 ? Model.Tutar.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) : ""))" class="form-control" placeholder="Ã–rn. 35000,50" /><span class="text-danger">@Html.ValidationMessage("TutarMetni")</span></div>
+<div class="col-md-3"><label asp-for="Tarih" class="form-label">Tarih</label><input asp-for="Tarih" type="date" class="form-control" /></div>
+<div class="col-md-3"><label asp-for="Durum" class="form-label">Durum</label><select asp-for="Durum" class="form-select">@foreach(var x in durumlar){<option value="@x">@x</option>}</select></div>
+<div class="col-md-3"><label asp-for="OdemeYontemi" class="form-label">Ödeme Yöntemi</label><select asp-for="OdemeYontemi" class="form-select">@foreach(var x in odemeler){<option value="@x">@x</option>}</select></div>
+<div class="col-md-6"><label asp-for="SabitGiderId" class="form-label">Sabit Gider Bağlantısı</label><select asp-for="SabitGiderId" class="form-select"><option value="">Bağlantı yok</option>@foreach(var x in sabitler){<option value="@x.Id">@x.GiderAdi - @x.Tutar.ToString("N2") ₺</option>}</select></div>
+<div class="col-md-6"><label asp-for="Aciklama" class="form-label">Açıklama</label><textarea asp-for="Aciklama" class="form-control" rows="2"></textarea></div>
+<div class="col-12 text-end"><button class="btn btn-primary">Hareketi Kaydet</button></div>
+</div></form></div></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

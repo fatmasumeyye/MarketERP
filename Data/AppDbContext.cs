@@ -25,6 +25,8 @@ namespace MarketERP.Data
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<SavedQuery> SavedQueries { get; set; }
         public DbSet<Expense> Expenses { get; set; }
+        public DbSet<SabitGider> SabitGiderler { get; set; }
+        public DbSet<FinansHareketi> FinansHareketleri { get; set; }
 
         public DbSet<Role> Roles { get; set; }
         public DbSet<Permission> Permissions { get; set; }
@@ -166,6 +168,26 @@ namespace MarketERP.Data
                 .WithMany()
                 .HasForeignKey(i => i.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<SabitGider>()
+                .Property(g => g.Tutar)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinansHareketi>()
+                .Property(h => h.Tutar)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinansHareketi>()
+                .HasOne(h => h.SabitGider)
+                .WithMany(g => g.FinansHareketleri)
+                .HasForeignKey(h => h.SabitGiderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<FinansHareketi>()
+                .HasOne(h => h.OlusturanKullanici)
+                .WithMany()
+                .HasForeignKey(h => h.OlusturanKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

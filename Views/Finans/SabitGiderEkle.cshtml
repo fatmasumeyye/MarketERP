@@ -1,0 +1,17 @@
+@model MarketERP.Models.SabitGider
+@{ ViewData["Title"]="Sabit Gider Ekle"; var tekrarlar=ViewBag.TekrarTipleri as string[] ?? []; var kategoriler=ViewBag.Kategoriler as string[] ?? []; }
+<div class="d-flex justify-content-between mb-4"><div><h2>Sabit Gider Tanımla</h2><p class="text-muted">Bu tanım otomatik finans hareketi üretmez.</p></div><a asp-action="SabitGiderler" class="btn btn-outline-secondary">Listeye Dön</a></div>
+<div class="card border-0 shadow-sm"><div class="card-body"><form asp-action="SabitGiderEkle" method="post">
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div><div class="row g-3">
+<div class="col-md-6"><label asp-for="GiderAdi" class="form-label">Gider Adı</label><input asp-for="GiderAdi" class="form-control" /><span asp-validation-for="GiderAdi" class="text-danger"></span></div>
+<div class="col-md-3"><label asp-for="Kategori" class="form-label">Kategori</label><input asp-for="Kategori" class="form-control" list="sabitKategoriler" /><datalist id="sabitKategoriler">@foreach(var x in kategoriler){<option value="@x"></option>}</datalist><span asp-validation-for="Kategori" class="text-danger"></span></div>
+<div class="col-md-3"><label for="TutarMetni" class="form-label">Tutar</label><input id="TutarMetni" name="tutarMetni" type="text" inputmode="decimal" value="@(ViewData["TutarMetni"] ?? (Model.Tutar > 0 ? Model.Tutar.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) : ""))" class="form-control" placeholder="Ã–rn. 35000,50" /><span class="text-danger">@Html.ValidationMessage("TutarMetni")</span></div>
+<div class="col-md-3"><label asp-for="TekrarTipi" class="form-label">Tekrar Tipi</label><select asp-for="TekrarTipi" class="form-select">@foreach(var x in tekrarlar){<option value="@x">@x</option>}</select></div>
+<div class="col-md-3"><label asp-for="OdemeGunu" class="form-label">Ödeme Günü</label><input asp-for="OdemeGunu" type="number" min="1" max="31" class="form-control" /><span asp-validation-for="OdemeGunu" class="text-danger"></span></div>
+<div class="col-md-3"><label asp-for="BaslangicTarihi" class="form-label">Başlangıç</label><input asp-for="BaslangicTarihi" type="date" class="form-control" /></div>
+<div class="col-md-3"><label asp-for="BitisTarihi" class="form-label">Bitiş</label><input asp-for="BitisTarihi" type="date" class="form-control" /></div>
+<div class="col-md-9"><label asp-for="Aciklama" class="form-label">Açıklama</label><textarea asp-for="Aciklama" class="form-control" rows="2"></textarea></div>
+<div class="col-md-3 d-flex align-items-center"><div class="form-check mt-4"><input asp-for="AktifMi" class="form-check-input" /><label asp-for="AktifMi" class="form-check-label">Aktif</label></div></div>
+<div class="col-12 text-end"><button class="btn btn-primary">Sabit Gideri Kaydet</button></div>
+</div></form></div></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

@@ -342,6 +342,7 @@ else
                                                                 data-bs-target="#editShiftModal"
                                                                 data-id="@shift.Id"
                                                                 data-employee-id="@shift.EmployeeId"
+                                                                data-employee-name="@row.EmployeeName"
                                                                 data-date="@shift.ShiftDate.ToString("yyyy-MM-dd")"
                                                                 data-shift-type="@shift.ShiftTypeValue"
                                                                 data-note="@shift.Note">
@@ -432,23 +433,24 @@ else
                     </div>
                     <div class="modal-body">
                         <input type="hidden" id="editShiftId" name="id" />
+                        <input type="hidden" id="editEmployeeId" name="employeeId" />
+                        <input type="hidden" id="editShiftDate" name="shiftDate" />
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Çalışan</label>
-                                <select id="editEmployeeId"
-                                        name="employeeId"
-                                        class="form-select"
-                                        asp-items="employees"
-                                        required>
-                                </select>
+                                <div class="erp-readonly-field">
+                                    <i class="bi bi-person"></i>
+                                    <span id="editEmployeeName">-</span>
+                                    <i class="bi bi-lock-fill erp-field-lock"></i>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Vardiya tarihi</label>
-                                <input id="editShiftDate"
-                                       type="date"
-                                       name="shiftDate"
-                                       class="form-control"
-                                       required />
+                                <div class="erp-readonly-field">
+                                    <i class="bi bi-calendar3"></i>
+                                    <span id="editShiftDateDisplay">-</span>
+                                    <i class="bi bi-lock-fill erp-field-lock"></i>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Şift tipi</label>
@@ -495,6 +497,11 @@ else
                     document.getElementById('editShiftId').value = button.dataset.id;
                     document.getElementById('editEmployeeId').value = button.dataset.employeeId;
                     document.getElementById('editShiftDate').value = button.dataset.date;
+                    document.getElementById('editEmployeeName').textContent = button.dataset.employeeName || '-';
+                    const dateParts = (button.dataset.date || '').split('-');
+                    document.getElementById('editShiftDateDisplay').textContent = dateParts.length === 3
+                        ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}`
+                        : '-';
                     document.getElementById('editShiftType').value = button.dataset.shiftType || 'Sabah';
                     document.getElementById('editNote').value = button.dataset.note || '';
                 });

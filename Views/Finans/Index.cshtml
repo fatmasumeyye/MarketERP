@@ -1,15 +1,15 @@
 @model MarketERP.Models.FinansIndexViewModel
 @{ ViewData["Title"] = "Finans Özeti"; }
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-    <div><h2 class="mb-1">Finans Özeti</h2><p class="text-muted mb-0">Bu ayın gerçekleşmiş gelir ve gider görünümü.</p></div>
-    <div class="d-flex gap-2"><a asp-action="HareketEkle" class="btn btn-primary">Hareket Ekle</a><a asp-action="SabitGiderEkle" class="btn btn-outline-primary">Sabit Gider Tanımla</a></div>
+<div class="erp-page-header">
+    <div><span class="erp-page-eyebrow">FİNANS YÖNETİMİ</span><h2>Finans Özeti</h2><p>Bu ayın gerçekleşmiş gelir ve gider görünümünü takip edin.</p></div>
+    <div class="erp-page-actions"><a asp-action="HareketEkle" class="btn btn-primary">Hareket Ekle</a><a asp-action="SabitGiderEkle" class="btn btn-outline-primary">Sabit Gider Tanımla</a></div>
 </div>
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3"><div class="card h-100 border-0 shadow-sm border-start border-success border-4"><div class="card-body"><small class="text-muted">Bu Ay Toplam Gelir</small><div class="fs-4 fw-bold text-success mt-2">@Model.BuAyToplamGelir.ToString("N2") ₺</div></div></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card h-100 border-0 shadow-sm border-start border-danger border-4"><div class="card-body"><small class="text-muted">Bu Ay Toplam Gider</small><div class="fs-4 fw-bold text-danger mt-2">@Model.BuAyToplamGider.ToString("N2") ₺</div></div></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card h-100 border-0 shadow-sm border-start @(Model.BuAyNetDurum >= 0 ? "border-primary" : "border-danger") border-4"><div class="card-body"><small class="text-muted">Bu Ay Net Durum</small><div class="fs-4 fw-bold mt-2">@Model.BuAyNetDurum.ToString("N2") ₺</div></div></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body"><small class="text-muted">Gider Takibi</small><div class="mt-2"><span class="badge bg-warning text-dark">@Model.BekleyenGiderSayisi bekleyen</span></div><div class="mt-2"><span class="badge bg-danger">@Model.GecikenGiderSayisi geciken</span></div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card erp-kpi-card erp-kpi-success h-100"><div class="card-body"><i class="bi bi-graph-up-arrow"></i><small>Bu Ay Toplam Gelir</small><strong class="text-success">@Model.BuAyToplamGelir.ToString("N2") ₺</strong></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card erp-kpi-card erp-kpi-danger h-100"><div class="card-body"><i class="bi bi-graph-down-arrow"></i><small>Bu Ay Toplam Gider</small><strong class="text-danger">@Model.BuAyToplamGider.ToString("N2") ₺</strong></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card erp-kpi-card @(Model.BuAyNetDurum >= 0 ? "erp-kpi-primary" : "erp-kpi-danger") h-100"><div class="card-body"><i class="bi bi-wallet2"></i><small>Bu Ay Net Durum</small><strong>@Model.BuAyNetDurum.ToString("N2") ₺</strong></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card erp-kpi-card erp-kpi-warning h-100"><div class="card-body"><i class="bi bi-clock-history"></i><small>Gider Takibi</small><strong>@Model.BekleyenGiderSayisi bekleyen</strong><span>@Model.GecikenGiderSayisi geciken kayıt</span></div></div></div>
 </div>
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between"><strong>Son Finans Hareketleri</strong><a asp-action="Hareketler" class="btn btn-sm btn-outline-secondary">Tümünü Gör</a></div>

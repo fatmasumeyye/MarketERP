@@ -25,25 +25,78 @@
 <style>
     .erp-stat-card {
         display: block;
-        min-height: 126px;
-        border: 0;
+        min-height: 150px;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #2563eb;
         border-radius: 16px;
-        color: #fff;
+        background: #fff;
+        color: #0f172a;
         text-decoration: none;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, .1);
+        box-shadow: 0 2px 5px rgba(15, 23, 42, .04), 0 10px 26px rgba(15, 23, 42, .05);
         transition: transform .2s ease, box-shadow .2s ease;
     }
 
     .erp-stat-card:hover {
-        color: #fff;
-        transform: translateY(-3px);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, .14);
+        color: #0f172a;
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .09);
+    }
+
+    .erp-stat-card .card-body {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr);
+        align-content: center;
+        column-gap: 16px;
+        min-height: 146px;
+        padding: 22px;
+    }
+
+    .erp-stat-icon {
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        align-self: center;
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 21px;
+    }
+
+    .erp-stat-card .card-body > div:not(.erp-stat-icon),
+    .erp-stat-card .card-body > h2,
+    .erp-stat-card .card-body > small {
+        grid-column: 2;
+    }
+
+    .erp-stat-card .card-body > div:not(.erp-stat-icon) {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 500;
     }
 
     .erp-stat-card h2 {
+        margin-top: 8px !important;
+        color: #0f172a;
         font-size: 1.75rem;
         font-weight: 700;
     }
+
+    .erp-stat-card small { color: #64748b; }
+
+    .erp-stat-primary { border-left-color: #2563eb; }
+    .erp-stat-info { border-left-color: #0891b2; }
+    .erp-stat-warning { border-left-color: #f59e0b; }
+    .erp-stat-danger { border-left-color: #dc2626; }
+    .erp-stat-success { border-left-color: #16a34a; }
+    .erp-stat-muted { border-left-color: #64748b; }
+    .erp-stat-info .erp-stat-icon { background: #ecfeff; color: #0891b2; }
+    .erp-stat-warning .erp-stat-icon { background: #fffbeb; color: #b45309; }
+    .erp-stat-danger .erp-stat-icon { background: #fef2f2; color: #dc2626; }
+    .erp-stat-success .erp-stat-icon { background: #f0fdf4; color: #16a34a; }
+    .erp-stat-muted .erp-stat-icon { background: #f1f5f9; color: #64748b; }
 
     .erp-panel {
         border: 0;
@@ -60,12 +113,6 @@
         min-height: 280px;
     }
 
-    .bg-erp-blue { background: linear-gradient(135deg, #1f3b73, #355c9a); }
-    .bg-erp-green { background: linear-gradient(135deg, #1b4332, #2d6a4f); }
-    .bg-erp-orange { background: linear-gradient(135deg, #9a6700, #ca8a04); }
-    .bg-erp-red { background: linear-gradient(135deg, #7f1d1d, #b91c1c); }
-    .bg-erp-purple { background: linear-gradient(135deg, #4c1d95, #7c3aed); }
-    .bg-erp-teal { background: linear-gradient(135deg, #115e59, #0f766e); }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -78,8 +125,9 @@
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="today"
-           class="card erp-stat-card bg-erp-blue">
+           class="card erp-stat-card erp-stat-primary">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-currency-exchange"></i>
                 <div>Günlük Satış Toplamı</div>
                 <h2 class="mt-2 mb-0">@(((decimal)ViewBag.TodayRevenue).ToString("N2")) ₺</h2>
             </div>
@@ -87,24 +135,27 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="Sales" asp-action="Index" asp-route-dateFilter="month"
-           class="card erp-stat-card bg-erp-green">
+           class="card erp-stat-card erp-stat-success">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-calendar2-check"></i>
                 <div>Aylık Satış Toplamı</div>
                 <h2 class="mt-2 mb-0">@(((decimal)ViewBag.MonthlyRevenue).ToString("N2")) ₺</h2>
             </div>
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a asp-controller="Sales" asp-action="Index" class="card erp-stat-card bg-erp-purple">
+        <a asp-controller="Sales" asp-action="Index" class="card erp-stat-card erp-stat-primary">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-receipt"></i>
                 <div>Toplam Satış Sayısı</div>
                 <h2 class="mt-2 mb-0">@ViewBag.SaleCount</h2>
             </div>
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a asp-controller="Customers" asp-action="Index" class="card erp-stat-card bg-erp-teal">
+        <a asp-controller="Customers" asp-action="Index" class="card erp-stat-card erp-stat-info">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-people"></i>
                 <div>Müşteri Sayısı</div>
                 <h2 class="mt-2 mb-0">@ViewBag.CustomerCount</h2>
             </div>
@@ -112,8 +163,9 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
-           class="card erp-stat-card bg-erp-orange">
+           class="card erp-stat-card erp-stat-warning">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-exclamation-triangle"></i>
                 <div>Kritik Stoktaki Ürünler</div>
                 <h2 class="mt-2 mb-0">@ViewBag.CriticalStockCount</h2>
             </div>
@@ -121,8 +173,9 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical"
-           class="card erp-stat-card bg-erp-red">
+           class="card erp-stat-card erp-stat-danger">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-box-seam"></i>
                 <div>Stokta Biten Ürünler</div>
                 <h2 class="mt-2 mb-0">@ViewBag.OutOfStockCount</h2>
             </div>
@@ -130,8 +183,9 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="Returns" asp-action="Index" asp-route-status="Beklemede"
-           class="card erp-stat-card bg-erp-red">
+           class="card erp-stat-card erp-stat-warning">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-arrow-return-left"></i>
                 <div>Bekleyen İade Talepleri</div>
                 <h2 class="mt-2 mb-0">@ViewBag.PendingReturnRequestCount</h2>
                 <small>Satışlara oranı: %@ViewBag.ReturnRate</small>
@@ -140,8 +194,9 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="WholesaleSales" asp-action="Index" asp-route-status="Onay Bekliyor"
-           class="card erp-stat-card bg-erp-orange">
+           class="card erp-stat-card erp-stat-warning">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-truck"></i>
                 <div>Bekleyen Toptan Talepler</div>
                 <h2 class="mt-2 mb-0">@ViewBag.PendingWholesaleRequestCount</h2>
             </div>
@@ -149,8 +204,9 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="CashRegister" asp-action="Index" asp-route-status="Beklemede"
-           class="card erp-stat-card bg-erp-blue">
+           class="card erp-stat-card erp-stat-warning">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-cash-stack"></i>
                 <div>Bekleyen Kasa Kapanışları</div>
                 <h2 class="mt-2 mb-0">@ViewBag.PendingCashClosingCount</h2>
             </div>
@@ -158,8 +214,9 @@
     </div>
     <div class="col-sm-6 col-xl-3">
         <a asp-controller="EmployeeLeaves" asp-action="Index"
-           class="card erp-stat-card bg-erp-teal">
+           class="card erp-stat-card erp-stat-info">
             <div class="card-body">
+                <i class="erp-stat-icon bi bi-calendar2-week"></i>
                 <div>Bekleyen İzin Talepleri</div>
                 <h2 class="mt-2 mb-0">@ViewBag.PendingLeaveCount</h2>
             </div>

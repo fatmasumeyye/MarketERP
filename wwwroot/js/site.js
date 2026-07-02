@@ -3,6 +3,33 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     const currentPath = window.location.pathname.toLowerCase();
+    const drawerToggle = document.querySelector('[data-erp-drawer-toggle]');
+    const drawerCloseButtons = document.querySelectorAll('[data-erp-drawer-close]');
+    const sidebar = document.getElementById('erpSidebar');
+
+    const setDrawerState = isOpen => {
+        document.body.classList.toggle('sidebar-open', isOpen);
+        drawerToggle?.setAttribute('aria-expanded', String(isOpen));
+        sidebar?.setAttribute('aria-hidden', String(!isOpen && window.innerWidth < 1200));
+        if (!isOpen) drawerToggle?.focus({ preventScroll: true });
+    };
+
+    drawerToggle?.addEventListener('click', () => setDrawerState(true));
+    drawerCloseButtons.forEach(button => button.addEventListener('click', () => setDrawerState(false)));
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+            setDrawerState(false);
+        }
+    });
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 1200) setDrawerState(false);
+    });
+
+    sidebar?.querySelectorAll('a[href]:not([href="#"])').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 1200) setDrawerState(false);
+        });
+    });
 
     document.querySelectorAll('.erp-sidebar a.nav-link, .erp-sidebar a.dropdown-item').forEach(link => {
         const href = link.getAttribute('href');
@@ -36,6 +63,41 @@ document.addEventListener('DOMContentLoaded', () => {
         body.insertAdjacentHTML('beforeend', `<tr class="erp-empty-state"><td colspan="${columns}"><i class="bi bi-inbox"></i><strong>Kayıt bulunamadı</strong><span>Bu görünüm için henüz gösterilecek veri yok.</span></td></tr>`);
     });
 
+    document.querySelectorAll('main table').forEach(table => {
+        if (table.closest('.table-responsive') || table.closest('.invoice-container')) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-responsive';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+    });
+
+    document.querySelectorAll('main h3, main h4, main h5').forEach(heading => {
+        if (heading.closest('.summary-card, .dashboard-card, .finance-card, .warehouse-card, .accounting-card, .erp-kpi-card, .modal, .alert, .accordion-header, .invoice-container')) return;
+        const isSectionHeading = heading.parentElement === document.querySelector('main')
+            || heading.parentElement?.classList.contains('admin-box')
+            || heading.nextElementSibling?.matches('.table-responsive, .custom-table, .card, form');
+        if (isSectionHeading) heading.classList.add('erp-section-heading');
+    });
+
+    document.querySelectorAll('.summary-card, .finance-card, .dashboard-card, .warehouse-card, .accounting-card, .erp-kpi-card')
+        .forEach(card => {
+            card.classList.add('erp-kpi-surface');
+            card.querySelector('h2, h3, .value, strong')?.classList.add('erp-kpi-value');
+            card.querySelector('h5, h6, small, .card-body > div:first-child')?.classList.add('erp-kpi-title');
+        });
+
+    document.querySelectorAll('.card-header').forEach(header => {
+        header.classList.add('erp-card-header');
+        const title = header.querySelector('strong, .fw-semibold, h3, h4, h5');
+        title?.classList.add('erp-card-title');
+        header.querySelector('small, .text-muted')?.classList.add('erp-card-subtitle');
+        if (header.closest('.card')?.querySelector('table')) header.classList.add('erp-table-title');
+    });
+
+    document.querySelectorAll('.card').forEach(card => {
+        if (card.querySelector('canvas, .chart-wrap, .finance-chart')) card.classList.add('erp-chart-card');
+    });
+
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', () => {
             if (!form.checkValidity()) return;
@@ -60,5 +122,15 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (/onay/.test(text)) icon = 'check2-circle';
         else if (/reddet/.test(text)) icon = 'x-circle';
         button.insertAdjacentHTML('afterbegin', `<i class="bi bi-${icon}" aria-hidden="true"></i>`);
+
+        const actionCell = button.closest('table td:last-child');
+        if (actionCell && button.classList.contains('btn-sm')) {
+            button.classList.add('erp-icon-action');
+            button.setAttribute('aria-label', button.textContent.trim());
+            button.setAttribute('title', button.textContent.trim());
+            Array.from(button.childNodes)
+                .filter(node => node.nodeType === Node.TEXT_NODE)
+                .forEach(node => node.remove());
+        }
     });
 });

@@ -1,8 +1,12 @@
 @model List<MarketERP.Models.PurchaseOrder>
+@using MarketERP.Helpers
 
 @{
     ViewData["Title"] = "Satın Alma Siparişleri";
     string status = ViewBag.Status ?? "";
+    var canCreatePurchase = Context.HasPermission("purchase.create");
+    var canApprovePurchase = Context.HasPermission("purchase.approve");
+    var canReceivePurchase = Context.HasPermission("stock.adjust");
 
     var groupedOrders = Model
         .GroupBy(o => o.OrderDate.Date)
@@ -71,26 +75,35 @@
 
 <div class="order-toolbar">
     <div class="toolbar-group">
+        @if (canCreatePurchase)
+        {
         <a href="/PurchaseOrders/Create" class="btn btn-primary">
             + Manuel Sipariş Oluştur
         </a>
         <a href="/PurchaseOrders/Suggestions" class="btn btn-outline-danger">
             Kritik Stok Sipariş Önerileri
         </a>
+        }
 
+        @if (canApprovePurchase)
+        {
         <form asp-action="ApproveAllPending" method="post"
                                 data-confirm-message="Tüm onay bekleyen siparişleri onaylamak istediğinize emin misiniz?">
             <button type="submit" class="btn btn-success">
                 Tüm Onay Bekleyenleri Onayla
             </button>
         </form>
+        }
 
+        @if (canReceivePurchase)
+        {
         <form asp-action="ReceiveAllApproved" method="post"
                                 data-confirm-message="Tüm onaylanmış siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.">
             <button type="submit" class="btn btn-outline-success">
                 Tüm Onaylananları Geldi İşaretle
             </button>
         </form>
+        }
     </div>
 
     <form method="get" class="toolbar-group">
@@ -150,17 +163,19 @@
 </div>
 
 <form method="post">
+    @if (canApprovePurchase || canReceivePurchase)
+    {
     <div class="selection-toolbar">
         <div class="toolbar-group">
             <span class="fw-bold">Seçim:</span>
 
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllPending(true)">
+            @if (canApprovePurchase) { <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllPending(true)">
                 Onay Bekleyenleri Seç
-            </button>
+            </button> }
 
-            <button type="button" class="btn btn-outline-success btn-sm" onclick="selectAllApproved(true)">
+            @if (canReceivePurchase) { <button type="button" class="btn btn-outline-success btn-sm" onclick="selectAllApproved(true)">
                 Onaylananları Seç
-            </button>
+            </button> }
 
             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllSelections()">
                 Seçimi Temizle
@@ -168,23 +183,24 @@
         </div>
 
         <div class="toolbar-group">
-            <button type="submit"
+            @if (canApprovePurchase) { <button type="submit"
                     class="btn btn-primary btn-sm"
                     formaction="/PurchaseOrders/ApproveSelected"
                     formmethod="post"
                                 data-confirm-message="Seçili onay bekleyen siparişleri onaylamak istediğinize emin misiniz?">
                 Seçili Siparişleri Onayla
-            </button>
+            </button> }
 
-            <button type="submit"
+            @if (canReceivePurchase) { <button type="submit"
                     class="btn btn-success btn-sm"
                     formaction="/PurchaseOrders/ReceiveSelected"
                     formmethod="post"
                                 data-confirm-message="Seçili onaylı siparişler geldi/kontrol edildi olarak işaretlensin mi? Stoklar artacak.">
                 Seçili Siparişleri Geldi İşaretle
-            </button>
+            </button> }
         </div>
     </div>
+    }
 
     @if (groupedOrders.Count == 0)
     {
@@ -247,7 +263,7 @@
                                     {
                                         <tr>
                                             <td class="text-center">
-                                                @if (order.Status == "Onay Bekliyor")
+                                                @if (canApprovePurchase && order.Status == "Onay Bekliyor")
                                                 {
                                                     <input type="checkbox"
                                                            name="selectedOrderIds"
@@ -255,7 +271,7 @@
                                                            class="form-check-input pending-check"
                                                            title="Onaylamak için seç" />
                                                 }
-                                                else if (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı")
+                                                else if (canReceivePurchase && (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı"))
                                                 {
                                                     <input type="checkbox"
                                                            name="selectedReceiveOrderIds"
@@ -331,7 +347,7 @@
                                                         Ürün Detayı
                                                     </a>
 
-                                                    @if (order.Status == "Onay Bekliyor")
+                                                    @if (canApprovePurchase && order.Status == "Onay Bekliyor")
                                                     {
                                                         <button type="submit"
                                                                 formaction="/PurchaseOrders/Approve/@order.Id"
@@ -342,7 +358,7 @@
                                                         </button>
                                                     }
 
-                                                    @if (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı")
+                                                    @if (canReceivePurchase && (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı"))
                                                     {
                                                         <button type="submit"
                                                                 formaction="/PurchaseOrders/ReceiveAll/@order.Id"

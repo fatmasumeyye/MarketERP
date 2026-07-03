@@ -23,6 +23,9 @@ namespace MarketERP.Models
         [Column("discount_rate")]
         public decimal DiscountRate { get; set; }
 
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
+
         public ICollection<ProductSupplier> ProductSuppliers { get; set; } = new List<ProductSupplier>();
 
         public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();

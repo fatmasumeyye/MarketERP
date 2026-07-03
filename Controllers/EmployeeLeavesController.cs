@@ -38,7 +38,7 @@ namespace MarketERP.Controllers
             }
 
             ViewBag.Employees = new SelectList(
-                await _context.Employees.OrderBy(e => e.FullName).ToListAsync(),
+                await _context.Employees.Where(e => e.IsActive).OrderBy(e => e.FullName).ToListAsync(),
                 "Id",
                 "FullName");
             ViewBag.PendingCount = leaves.Count(l => l.Status == PendingStatus);
@@ -249,7 +249,7 @@ namespace MarketERP.Controllers
             string? leaveReason,
             bool includePendingLeaves)
         {
-            if (!await _context.Employees.AnyAsync(e => e.Id == employeeId))
+            if (!await _context.Employees.AnyAsync(e => e.Id == employeeId && e.IsActive))
             {
                 return "Çalışan bulunamadı.";
             }

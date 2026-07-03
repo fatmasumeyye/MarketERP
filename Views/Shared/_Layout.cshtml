@@ -97,6 +97,14 @@
             && Context.HasPermission("product.view")
             && !isAccounting
             && !isWarehouseManager;
+        var showStockReconciliation =
+            showProducts
+            && (
+                Context.HasPermission("stock.view")
+                || Context.HasPermission("stock.adjust")
+                || Context.HasPermission("product.update")
+                || Context.HasPermission("role.manage")
+            );
         var showCategories =
             showProducts
             && !isWholesaleStaff;
@@ -257,6 +265,12 @@
             isLoggedIn
             && isWarehouseManager
             && Context.HasPermission("product.view");
+        var showWarehouseStockReconciliation =
+            showWarehouseProducts
+            && (
+                Context.HasPermission("stock.view")
+                || Context.HasPermission("stock.adjust")
+            );
         var showWarehousePurchaseOrders =
             isLoggedIn
             && isWarehouseManager
@@ -444,6 +458,10 @@
                                         <li><a class="dropdown-item" asp-controller="Products" asp-action="Index">Ürünler / Stok</a></li>
                                         <li><a class="dropdown-item" asp-controller="Products" asp-action="Index" asp-route-stockStatus="critical">Kritik Stoklar</a></li>
                                     }
+                                    @if (showWarehouseStockReconciliation)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Products" asp-action="StockReconciliation">Stok Mutabakatı</a></li>
+                                    }
                                 </ul>
                             </li>
                         }
@@ -553,6 +571,10 @@
                                     @if (showProducts)
                                     {
                                         <li><a class="dropdown-item" asp-controller="Products" asp-action="Index">Ürünler / Stok</a></li>
+                                    }
+                                    @if (showStockReconciliation)
+                                    {
+                                        <li><a class="dropdown-item" asp-controller="Products" asp-action="StockReconciliation">Stok Mutabakatı</a></li>
                                     }
                                     @if (showCategories)
                                     {

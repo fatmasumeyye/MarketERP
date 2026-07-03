@@ -69,7 +69,7 @@
         border-left: 4px solid #0d6efd;
         border-radius: 9px;
         background: #fff;
-        padding: .45rem;
+        padding: .65rem;
     }
 
     .shift-entry + .shift-entry {
@@ -77,8 +77,8 @@
     }
 
     .shift-entry.leave-entry {
-        border-left-color: #dc3545;
-        background: #fff5f5;
+        border-left-color: #7c3aed;
+        background: #f5f3ff;
     }
 
     .shift-time {
@@ -208,6 +208,11 @@ else
 
 @if (Model.CanManageShifts)
 {
+    <div class="card shift-panel mb-4">
+        <div class="card-header bg-white"><div class="fw-semibold">Toplu Vardiya Ata</div><small class="text-muted">Aynı gün vardiyası veya onaylı izni bulunan çalışanlar otomatik olarak atlanır.</small></div>
+        <div class="card-body"><form asp-action="BulkAdd" method="post"><input type="hidden" name="weekStart" value="@Model.WeekStart.ToString("yyyy-MM-dd")" /><div class="row g-3 align-items-end"><div class="col-lg-4"><label class="form-label">Çalışanlar</label><select name="employeeIds" class="form-select" asp-items="employees" multiple size="5" required></select><small class="text-muted">Birden fazla seçim için Ctrl/Cmd tuşunu kullanın.</small></div><div class="col-md-3 col-lg-2"><label class="form-label">Gün</label><input type="date" name="shiftDate" value="@defaultShiftDate.ToString("yyyy-MM-dd")" class="form-control" required /></div><div class="col-md-4 col-lg-3"><label class="form-label">Vardiya tipi</label><select name="shiftType" class="form-select" required>@foreach(var shiftType in Model.ShiftTypes.Where(x => !x.IsEmpty)){var text=string.IsNullOrWhiteSpace(shiftType.TimeRange)?shiftType.Label:$"{shiftType.Label} ({shiftType.TimeRange})";<option value="@shiftType.Value">@text</option>}</select></div><div class="col-md-3 col-lg-2"><label class="form-label">Açıklama</label><input name="note" class="form-control" maxlength="250" /></div><div class="col-lg-1"><button class="btn btn-primary w-100" title="Toplu ata"><i class="bi bi-people"></i></button></div></div></form></div>
+    </div>
+
     <div class="card shift-panel mb-4" id="addShiftPanel">
         <div class="card-header bg-white">
             <div class="fw-semibold">Haftalık Plana Vardiya Ata</div>
@@ -318,7 +323,7 @@ else
                                         foreach (var shift in dayShifts)
                                         {
                                             <div class="shift-entry @(shift.IsLeave ? "leave-entry" : "")">
-                                                <span class="badge @(shift.IsLeave ? "bg-danger" : "bg-primary")">
+                                                <span class="badge @(shift.IsLeave ? "erp-shift-leave-badge" : "bg-primary")">
                                                     @shift.ShiftLabel
                                                 </span>
                                                 @if (!shift.IsLeave)
@@ -350,14 +355,18 @@ else
                                                         </button>
                                                         <form asp-action="Delete"
                                                               method="post"
-                                data-confirm-message="Bu vardiyayı silmek istediğinize emin misiniz?">
+                                                              data-confirm-title="Vardiyayı Kaldır"
+                                                              data-confirm-message="Bu vardiya atamasını haftalık plandan kaldırmak istiyor musunuz?"
+                                                              data-confirm-button="Vardiyayı Kaldır"
+                                                              data-confirm-type="warning">
                                                             <input type="hidden" name="id" value="@shift.Id" />
                                                             <input type="hidden"
                                                                    name="weekStart"
                                                                    value="@Model.WeekStart.ToString("yyyy-MM-dd")" />
                                                             <button type="submit"
-                                                                    class="btn btn-sm btn-outline-danger py-0">
-                                                                Sil
+                                                                    class="btn btn-sm btn-outline-danger py-0"
+                                                                    title="Vardiya atamasını haftalık plandan kaldır">
+                                                                Vardiyayı Kaldır
                                                             </button>
                                                         </form>
                                                     </div>

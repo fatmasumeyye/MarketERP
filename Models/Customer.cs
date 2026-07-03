@@ -25,5 +25,8 @@ namespace MarketERP.Models
         [Range(0, 100, ErrorMessage = "İskonto oranı 0 ile 100 arasında olmalıdır.")]
         [Column("discount_rate", TypeName = "decimal(5,2)")]
         public decimal DiscountRate { get; set; } = 0;
+
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
     }
 }

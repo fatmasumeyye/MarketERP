@@ -4,6 +4,8 @@ using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using MarketERP.Services;
+using System.Data;
 using System.Text.Json;
 
 namespace MarketERP.Controllers
@@ -11,10 +13,14 @@ namespace MarketERP.Controllers
     public class SalesController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly IStockMovementService _stockMovementService;
 
-        public SalesController(AppDbContext context)
+        public SalesController(
+            AppDbContext context,
+            IStockMovementService stockMovementService)
         {
             _context = context;
+            _stockMovementService = stockMovementService;
         }
 
         [PermissionAuthorize("sale.view.all", "sale.view.branch")]
@@ -75,8 +81,13 @@ namespace MarketERP.Controllers
 
             ViewBag.DateFilter = dateFilter;
             ViewBag.Search = search;
-            ViewBag.TotalSalesRevenue = filteredSales.Sum(s => s.TotalAmount);
-            ViewBag.TotalSalesCount = filteredSales.Count;
+            var activeSales = filteredSales
+                .Where(s => s.Status != Sale.CancelledStatus)
+                .ToList();
+
+            ViewBag.TotalSalesRevenue = activeSales.Sum(s => s.TotalAmount);
+            ViewBag.TotalSalesCount = activeSales.Count;
+            ViewBag.CancelledSalesCount = filteredSales.Count - activeSales.Count;
 
             return View(filteredSales);
         }
@@ -85,12 +96,13 @@ namespace MarketERP.Controllers
         public IActionResult Retail()
         {
             ViewBag.ProductList = _context.Products
+                .Where(p => p.IsActive)
                 .OrderBy(p => p.Name)
                 .ToList();
 
             ViewBag.Customers = new SelectList(
                 _context.Customers
-                    .Where(c => c.FullName != "Nihai Tüketici")
+                    .Where(c => c.IsActive && c.FullName != "Nihai Tüketici")
                     .OrderBy(c => c.FullName)
                     .ToList(),
                 "Id",
@@ -115,7 +127,15 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
+            if (!_context.Employees.Any(e => e.Id == employeeId.Value && e.IsActive))
+            {
+                HttpContext.Session.Clear();
+                TempData["Error"] = "Çalışan kaydınız pasif olduğu için yeni işlem oluşturamazsınız.";
+                return RedirectToAction("Index", "Login");
+            }
+
             var sales = _context.Sales
+                .ActiveSales()
                 .Include(s => s.Customer)
                 .Where(s => s.EmployeeId == employeeId.Value)
                 .OrderByDescending(s => s.SaleDate)
@@ -128,7 +148,7 @@ namespace MarketERP.Controllers
         public IActionResult Wholesale()
         {
             var customers = _context.Customers
-                .Where(c => c.FullName != "Nihai Tüketici")
+                .Where(c => c.IsActive && c.FullName != "Nihai Tüketici")
                 .OrderBy(c => c.FullName)
                 .ToList();
 
@@ -151,6 +171,7 @@ namespace MarketERP.Controllers
             );
 
             ViewBag.Products = _context.Products
+                .Where(p => p.IsActive)
                 .OrderBy(p => p.Name)
                 .ToList();
 
@@ -183,7 +204,7 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Wholesale");
             }
 
-            var customer = _context.Customers.FirstOrDefault(c => c.Id == customerId);
+            var customer = _context.Customers.FirstOrDefault(c => c.Id == customerId && c.IsActive);
 
             if (customer == null)
             {
@@ -215,7 +236,7 @@ namespace MarketERP.Controllers
                     continue;
                 }
 
-                var product = _context.Products.Find(productId);
+                var product = _context.Products.FirstOrDefault(p => p.Id == productId && p.IsActive);
 
                 if (product == null)
                 {
@@ -318,7 +339,7 @@ namespace MarketERP.Controllers
             }
 
             var product = _context.Products
-                .FirstOrDefault(p => p.Barcode == barcode);
+                .FirstOrDefault(p => p.Barcode == barcode && p.IsActive);
 
             if (product == null)
             {
@@ -353,8 +374,9 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [PermissionAuthorize("sale.retail.create")]
-        public IActionResult CompleteSale(int? customerId, string paymentType)
+        public async Task<IActionResult> CompleteSale(int? customerId, string paymentType)
         {
             var cart = GetCart();
 
@@ -376,123 +398,262 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Retail");
             }
 
-            if (customerId == null)
+            if (customerId.HasValue && !await _context.Customers
+                    .AnyAsync(c => c.Id == customerId.Value && c.IsActive))
             {
-                var defaultCustomer = _context.Customers
-                    .FirstOrDefault(c => c.FullName == "Nihai Tüketici");
-
-                if (defaultCustomer == null)
-                {
-                    defaultCustomer = new Customer
-                    {
-                        FullName = "Nihai Tüketici",
-                        Phone = "-",
-                        Email = "-",
-                        Address = "-"
-                    };
-
-                    _context.Customers.Add(defaultCustomer);
-                    _context.SaveChanges();
-                }
-
-                customerId = defaultCustomer.Id;
-            }
-
-            foreach (var item in cart)
-            {
-                var product = _context.Products.Find(item.ProductId);
-
-                if (product == null)
-                {
-                    TempData["Error"] = item.ProductName + " ürünü bulunamadı.";
-                    return RedirectToAction("Retail");
-                }
-
-                if (product.StockQuantity < item.Quantity)
-                {
-                    TempData["Error"] = item.ProductName + " için stok yetersiz.";
-                    return RedirectToAction("Retail");
-                }
+                TempData["Error"] = "Seçilen müşteri aktif değil veya bulunamadı.";
+                return RedirectToAction("Retail");
             }
 
             decimal total = cart.Sum(x => x.Subtotal);
             var employeeId = HttpContext.Session.GetInt32("EmployeeId");
 
-            var sale = new Sale
+            if (!employeeId.HasValue || !await _context.Employees
+                    .AnyAsync(e => e.Id == employeeId.Value && e.IsActive))
             {
-                CustomerId = customerId,
-                EmployeeId = employeeId,
-                SaleDate = DateTime.Now,
-                TotalAmount = total,
-                PaymentType = paymentType
-            };
-
-            _context.Sales.Add(sale);
-            _context.SaveChanges();
-
-            foreach (var item in cart)
-            {
-                var product = _context.Products.Find(item.ProductId);
-
-                if (product == null)
-                {
-                    TempData["Error"] = item.ProductName + " ürünü bulunamadı.";
-                    return RedirectToAction("Retail");
-                }
-
-                var detail = new SaleDetail
-                {
-                    SaleId = sale.Id,
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    Subtotal = item.Subtotal
-                };
-
-                _context.SaleDetails.Add(detail);
-
-                product.StockQuantity -= item.Quantity;
+                HttpContext.Session.Clear();
+                TempData["Error"] = "Çalışan kaydınız pasif olduğu için yeni satış oluşturamazsınız.";
+                return RedirectToAction("Index", "Login");
             }
 
-            _context.SaveChanges();
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
 
-            HttpContext.Session.Remove("Cart");
+            try
+            {
+                if (!customerId.HasValue)
+                {
+                    var defaultCustomer = await _context.Customers
+                        .FirstOrDefaultAsync(c => c.FullName == "Nihai Tüketici" && c.IsActive);
 
-            TempData["Success"] = "Perakende satış başarıyla tamamlandı.";
+                    if (defaultCustomer == null)
+                    {
+                        defaultCustomer = new Customer
+                        {
+                            FullName = "Nihai Tüketici",
+                            Phone = "-",
+                            Email = "-",
+                            Address = "-",
+                            IsActive = true
+                        };
+
+                        _context.Customers.Add(defaultCustomer);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    customerId = defaultCustomer.Id;
+                }
+
+                var productIds = cart.Select(x => x.ProductId).Distinct().ToList();
+                var products = await _context.Products
+                    .Where(p => productIds.Contains(p.Id) && p.IsActive)
+                    .ToDictionaryAsync(p => p.Id);
+
+                foreach (var item in cart)
+                {
+                    if (!products.TryGetValue(item.ProductId, out var product))
+                    {
+                        await transaction.RollbackAsync();
+                        TempData["Error"] = item.ProductName + " ürünü bulunamadı.";
+                        return RedirectToAction("Retail");
+                    }
+
+                    if (product.StockQuantity < item.Quantity)
+                    {
+                        await transaction.RollbackAsync();
+                        TempData["Error"] = item.ProductName + " için stok yetersiz.";
+                        return RedirectToAction("Retail");
+                    }
+                }
+
+                var sale = new Sale
+                {
+                    CustomerId = customerId,
+                    EmployeeId = employeeId,
+                    SaleDate = DateTime.Now,
+                    TotalAmount = total,
+                    PaymentType = paymentType
+                };
+
+                _context.Sales.Add(sale);
+                await _context.SaveChangesAsync();
+
+                var saleDetails = cart.Select(item => new SaleDetail
+                    {
+                        SaleId = sale.Id,
+                        ProductId = item.ProductId,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        Subtotal = item.Subtotal
+                    })
+                    .ToList();
+
+                _context.SaleDetails.AddRange(saleDetails);
+                await _context.SaveChangesAsync();
+
+                string saleNo = $"SAT-{sale.Id:D6}";
+                foreach (var detail in saleDetails)
+                {
+                    await _stockMovementService.RecordAsync(new StockMovementCommand(
+                        ProductId: detail.ProductId,
+                        MovementType: StockMovementService.OutboundMovement,
+                        ReasonType: "Satis",
+                        Quantity: detail.Quantity,
+                        MovementDate: sale.SaleDate,
+                        SourceType: "Sale",
+                        SourceId: sale.Id,
+                        SourceLineId: detail.Id,
+                        SourceNo: saleNo,
+                        Description: "Perakende satış stok çıkışı.",
+                        CreatedByEmployeeId: employeeId));
+                }
+
+                _context.FinansHareketleri.Add(new FinansHareketi
+                {
+                    Tip = "Gelir",
+                    Kategori = "Satis",
+                    Baslik = "Perakende Satış",
+                    Tutar = sale.TotalAmount,
+                    Tarih = sale.SaleDate,
+                    Durum = "Odendi",
+                    OdemeYontemi = paymentType == "Kart" ? "POS" : "Nakit",
+                    Aciklama = $"{saleNo} numaralı perakende satış tahsilatı.",
+                    OlusturanKullaniciId = employeeId,
+                    OlusturmaTarihi = DateTime.Now,
+                    KaynakTipi = "Sale",
+                    KaynakId = sale.Id,
+                    KaynakNo = saleNo,
+                    OtomatikMi = true
+                });
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                HttpContext.Session.Remove("Cart");
+                TempData["Success"] = "Perakende satış başarıyla tamamlandı ve finans hareketi oluşturuldu.";
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Satış tamamlanamadı. Satış, stok ve finans kayıtlarında değişiklik yapılmadı.";
+            }
 
             return RedirectToAction("Retail");
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         [PermissionAuthorize("sale.cancel")]
-        public IActionResult Cancel(int id)
+        public async Task<IActionResult> Cancel(int id, string? cancellationReason)
         {
-            var sale = _context.Sales
-                .Include(s => s.Customer)
-                .FirstOrDefault(s => s.Id == id);
+            cancellationReason = cancellationReason?.Trim();
 
-            if (sale == null)
+            if (string.IsNullOrWhiteSpace(cancellationReason))
             {
-                return NotFound();
+                TempData["Error"] = "Satış iptal nedeni zorunludur.";
+                return RedirectToAction(nameof(Index));
             }
 
-            var details = _context.SaleDetails
-                .Include(d => d.Product)
-                .Where(d => d.SaleId == sale.Id)
-                .ToList();
-
-            foreach (var detail in details)
+            if (cancellationReason.Length > 500)
             {
-                if (detail.Product != null)
+                TempData["Error"] = "Satış iptal nedeni en fazla 500 karakter olabilir.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var employeeId = HttpContext.Session.GetInt32("EmployeeId");
+            if (!employeeId.HasValue)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            try
+            {
+                var sale = await _context.Sales
+                    .FromSqlInterpolated($"SELECT * FROM sales WHERE id = {id} FOR UPDATE")
+                    .SingleOrDefaultAsync();
+
+                if (sale == null)
                 {
-                    detail.Product.StockQuantity += detail.Quantity;
+                    await transaction.RollbackAsync();
+                    return NotFound();
                 }
+
+                if (sale.Status == Sale.CancelledStatus)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Bu satış daha önce iptal edilmiş.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var details = await _context.SaleDetails
+                    .Include(d => d.Product)
+                    .Where(d => d.SaleId == sale.Id)
+                    .ToListAsync();
+
+                if (details.Any(d => d.Product == null))
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Satış kalemlerinden birinin ürün kaydı bulunamadığı için iptal tamamlanamadı.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                string cancellationSourceNo = $"SAT-{sale.Id:D6}";
+                foreach (var detail in details)
+                {
+                    int? originalMovementId = await _context.StockMovements
+                        .Where(m => m.SourceType == "Sale"
+                            && m.SourceId == sale.Id
+                            && m.SourceLineId == detail.Id)
+                        .Select(m => (int?)m.Id)
+                        .FirstOrDefaultAsync();
+
+                    await _stockMovementService.RecordAsync(new StockMovementCommand(
+                        ProductId: detail.ProductId,
+                        MovementType: StockMovementService.InboundMovement,
+                        ReasonType: "SatisIptali",
+                        Quantity: detail.Quantity,
+                        MovementDate: DateTime.Now,
+                        SourceType: "SaleCancellation",
+                        SourceId: sale.Id,
+                        SourceLineId: detail.Id,
+                        SourceNo: cancellationSourceNo,
+                        Description: $"Satış iptali: {cancellationReason}",
+                        CreatedByEmployeeId: employeeId.Value,
+                        ReversalOfMovementId: originalMovementId,
+                        AllowInactiveProduct: true));
+                }
+
+                sale.Status = Sale.CancelledStatus;
+                sale.CancellationReason = cancellationReason;
+                sale.CancelledAt = DateTime.Now;
+                sale.CancelledByEmployeeId = employeeId.Value;
+
+                var automaticFinanceMovement = await _context.FinansHareketleri
+                    .FirstOrDefaultAsync(h =>
+                        h.OtomatikMi
+                        && h.KaynakTipi == "Sale"
+                        && h.KaynakId == sale.Id);
+
+                if (automaticFinanceMovement != null)
+                {
+                    automaticFinanceMovement.Durum = "Iptal";
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Success"] = "Satış iptal durumuna alındı ve ürün stokları geri eklendi.";
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Satış iptal edilirken işlem tamamlanamadı. Hiçbir değişiklik kaydedilmedi.";
             }
 
-            _context.SaleDetails.RemoveRange(details);
-            _context.Sales.Remove(sale);
-            _context.SaveChanges();
-
-            return RedirectToAction("Index");
+            return RedirectToAction(nameof(Index));
         }
 
         [PermissionAuthorize(
@@ -515,6 +676,7 @@ namespace MarketERP.Controllers
             var sale = _context.Sales
                 .Include(s => s.Customer)
                 .Include(s => s.Employee)
+                .Include(s => s.CancelledByEmployee)
                 .FirstOrDefault(s => s.Id == id);
 
             if (sale == null)
@@ -535,7 +697,7 @@ namespace MarketERP.Controllers
 
         private IActionResult AddProductToCart(int productId, int quantity)
         {
-            var product = _context.Products.Find(productId);
+            var product = _context.Products.FirstOrDefault(p => p.Id == productId && p.IsActive);
 
             if (product == null)
             {

@@ -17,6 +17,7 @@
     string belgeKodu = $"ETTN-{Model.Id.ToString("D8")}-{Model.SaleDate.ToString("yyyyMMddHHmmss")}";
     string satisKanali = "Mağaza / Kasa Satışı";
     string paraBirimi = "TRY";
+    bool isCancelled = Model.Status == MarketERP.Models.Sale.CancelledStatus;
 }
 
 <style>
@@ -28,6 +29,27 @@
         max-width: 1050px;
         margin: auto;
         font-size: 12px;
+    }
+
+    .invoice-cancelled-banner {
+        border: 2px solid #dc2626;
+        background: #fef2f2;
+        color: #991b1b;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        text-align: center;
+        font-weight: 700;
+        letter-spacing: .02em;
+    }
+
+    .invoice-cancelled-details {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 6px;
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0;
     }
 
     .invoice-top {
@@ -259,6 +281,12 @@
             font-size: 10px;
         }
 
+        .invoice-cancelled-banner {
+            border-width: 2px;
+            padding: 7px;
+            margin-bottom: 8px;
+        }
+
         .company-name {
             font-size: 20px;
         }
@@ -312,6 +340,18 @@
 
 <div class="invoice-paper">
 
+    @if (isCancelled)
+    {
+        <div class="invoice-cancelled-banner">
+            İPTAL EDİLMİŞ SATIŞ BELGESİ
+            <div class="invoice-cancelled-details">
+                <span>İptal tarihi: @(Model.CancelledAt?.ToString("dd.MM.yyyy HH:mm") ?? "-")</span>
+                <span>İptal eden: @(Model.CancelledByEmployee?.FullName ?? "-")</span>
+                <span>Neden: @(Model.CancellationReason ?? "-")</span>
+            </div>
+        </div>
+    }
+
     <div class="invoice-top">
         <div>
             <div class="company-name">MarketERP Satış A.Ş.</div>
@@ -334,6 +374,10 @@
 
         <div class="invoice-title-box">
             <h2>FATURA</h2>
+            @if (isCancelled)
+            {
+                <div class="mt-1"><strong>İPTAL EDİLDİ</strong></div>
+            }
             <div><strong>@faturaNo</strong></div>
             <div class="muted-small mt-1">Belge Kodu / ETTN</div>
             <div class="muted-small">@belgeKodu</div>
@@ -411,6 +455,11 @@
                 <div class="info-label">Para Birimi</div>
                 <div>@paraBirimi</div>
             </div>
+
+            <div class="info-row">
+                <div class="info-label">Belge Durumu</div>
+                <div>@(isCancelled ? "İptal Edildi" : "Aktif")</div>
+            </div>
         </div>
     </div>
 
@@ -485,6 +534,10 @@
             <div>* Ürün iade işlemleri fatura/fiş ibrazı ile yapılır.</div>
             <div>* Garanti kapsamındaki ürünlerde üretici / servis şartları geçerlidir.</div>
             <div>* Resmî e-Fatura/e-Arşiv entegrasyonu ayrıca yapılandırılmalıdır.</div>
+            @if (isCancelled)
+            {
+                <div><strong>* Bu satış belgesi iptal edilmiştir ve aktif satış toplamlarına dahil edilmez.</strong></div>
+            }
         </div>
 
         <table class="totals-table">

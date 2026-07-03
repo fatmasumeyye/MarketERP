@@ -1,10 +1,12 @@
 ﻿using MarketERP.Data;
 using MarketERP.Models;
+using MarketERP.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP.Controllers
 {
+    [PermissionAuthorize("category.view")]
     public class CategoriesController : Controller
     {
         private readonly AppDbContext _context;
@@ -46,6 +48,8 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("category.manage")]
         public IActionResult Add(string name, int? parentCategoryId, string? defaultVatRateText)
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -102,6 +106,8 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("category.manage")]
         public IActionResult Update(int id, string name, int? parentCategoryId, string? defaultVatRateText)
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -167,6 +173,8 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("category.manage")]
         public IActionResult Delete(int id)
         {
             if (HttpContext.Session.GetString("Username") == null)

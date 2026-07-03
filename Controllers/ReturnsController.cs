@@ -1,18 +1,24 @@
 ﻿using MarketERP.Data;
 using MarketERP.Helpers;
 using MarketERP.Models;
+using MarketERP.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace MarketERP.Controllers
 {
     public class ReturnsController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly IStockMovementService _stockMovementService;
 
-        public ReturnsController(AppDbContext context)
+        public ReturnsController(
+            AppDbContext context,
+            IStockMovementService stockMovementService)
         {
             _context = context;
+            _stockMovementService = stockMovementService;
         }
 
         [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
@@ -105,6 +111,12 @@ namespace MarketERP.Controllers
                 return RedirectToAction("AccessDenied", "Login");
             }
 
+            if (sale.Status == Sale.CancelledStatus)
+            {
+                TempData["Error"] = "İptal edilmiş satış için iade talebi oluşturulamaz.";
+                return RedirectToAction("MySales", "Sales");
+            }
+
             var details = _context.SaleDetails
                 .Include(d => d.Product)
                 .Where(d => d.SaleId == sale.Id)
@@ -138,6 +150,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [PermissionAuthorize("return.request")]
         public IActionResult Create(int saleId, List<int> selectedSaleDetailIds, IFormCollection form)
         {
@@ -154,6 +167,12 @@ namespace MarketERP.Controllers
             if (sale == null)
             {
                 return RedirectToAction("AccessDenied", "Login");
+            }
+
+            if (sale.Status == Sale.CancelledStatus)
+            {
+                TempData["Error"] = "İptal edilmiş satış için iade talebi oluşturulamaz.";
+                return RedirectToAction("MySales", "Sales");
             }
 
             if (selectedSaleDetailIds == null || selectedSaleDetailIds.Count == 0)
@@ -309,8 +328,9 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [PermissionAuthorize("sale.view.all", "sale.view.branch", "role.manage")]
-        public IActionResult ApproveDocument(string requestNo, string? reviewNote, IFormCollection form)
+        public async Task<IActionResult> ApproveDocument(string requestNo, string? reviewNote, IFormCollection form)
         {
             if (string.IsNullOrWhiteSpace(requestNo))
             {
@@ -318,46 +338,155 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index");
             }
 
-            var requests = _context.ReturnRequests
-                .Include(r => r.Product)
-                .Where(r => r.RequestNo == requestNo && r.Status == "Beklemede")
-                .ToList();
+            requestNo = requestNo.Trim();
 
-            if (!requests.Any())
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            try
             {
-                TempData["Error"] = "Onaylanacak bekleyen iade belgesi bulunamadı.";
-                return RedirectToAction("Index");
-            }
+                const string pendingStatus = "Beklemede";
+                var requests = await _context.ReturnRequests
+                    .FromSqlInterpolated(
+                        $"SELECT * FROM return_requests WHERE request_no = {requestNo} AND status = {pendingStatus} ORDER BY id FOR UPDATE")
+                    .ToListAsync();
 
-            foreach (var request in requests)
-            {
-                string stockActionKey = $"stockAction_{request.Id}";
-                string stockAction = form[stockActionKey].ToString();
-
-                if (string.IsNullOrWhiteSpace(stockAction))
+                if (!requests.Any())
                 {
-                    TempData["Error"] = $"{request.Product?.Name} için stok işlemi seçmelisiniz.";
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Onaylanacak bekleyen iade belgesi bulunamadı.";
                     return RedirectToAction("Index");
                 }
 
-                bool addToStock = stockAction == "Satılabilir stoğa ekle";
+                var requestIds = requests.Select(r => r.Id).ToList();
+                await _context.ReturnRequests
+                    .Where(r => requestIds.Contains(r.Id))
+                    .Include(r => r.Product)
+                    .Include(r => r.SaleDetail)
+                    .Include(r => r.Sale)
+                    .LoadAsync();
 
-                if (addToStock && request.Product != null)
+                if (requests.Any(r => r.Sale == null || r.Sale.Status == Sale.CancelledStatus))
                 {
-                    request.Product.StockQuantity += request.Quantity;
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "İptal edilmiş satışa bağlı iade belgesi onaylanamaz.";
+                    return RedirectToAction("Index");
                 }
 
-                request.Status = "Onaylandı";
-                request.ReviewedAt = DateTime.Now;
+                if (requests.Any(r => r.SaleDetail == null || r.SaleDetail.Quantity <= 0))
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "İade satırlarından birinin satış detayı bulunamadı.";
+                    return RedirectToAction("Index");
+                }
 
-                request.ReviewNote =
-                    $"Stok işlemi: {stockAction}" +
-                    (string.IsNullOrWhiteSpace(reviewNote) ? "" : $" | Yönetici notu: {reviewNote}");
+                int saleId = requests[0].SaleId;
+                if (requests.Any(r => r.SaleId != saleId))
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "İade belgesinde birden fazla satışa ait satır bulunduğu için işlem tamamlanamadı.";
+                    return RedirectToAction("Index");
+                }
+
+                foreach (var request in requests)
+                {
+                    string stockActionKey = $"stockAction_{request.Id}";
+                    string stockAction = form[stockActionKey].ToString();
+
+                    if (stockAction != "Satılabilir stoğa ekle"
+                        && stockAction != "Hasarlı / fire, stoğa ekleme")
+                    {
+                        await transaction.RollbackAsync();
+                        TempData["Error"] = $"{request.Product?.Name} için geçerli bir stok işlemi seçmelisiniz.";
+                        return RedirectToAction("Index");
+                    }
+                }
+
+                var reviewedAt = DateTime.Now;
+                decimal originalLinesTotal = await _context.SaleDetails
+                    .Where(d => d.SaleId == saleId)
+                    .SumAsync(d => (decimal?)d.Subtotal) ?? 0m;
+
+                if (originalLinesTotal <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Satışın finansal toplamı doğrulanamadığı için iade onaylanamadı.";
+                    return RedirectToAction("Index");
+                }
+
+                decimal netSaleFactor = requests[0].Sale!.TotalAmount / originalLinesTotal;
+                decimal returnTotal = Math.Round(
+                    requests.Sum(r =>
+                        (r.SaleDetail!.Subtotal * r.Quantity / r.SaleDetail.Quantity) * netSaleFactor),
+                    2,
+                    MidpointRounding.AwayFromZero);
+                int sourceId = requests[0].Id;
+
+                foreach (var request in requests)
+                {
+                    string stockAction = form[$"stockAction_{request.Id}"].ToString();
+
+                    if (stockAction == "Satılabilir stoğa ekle")
+                    {
+                        await _stockMovementService.RecordAsync(new StockMovementCommand(
+                            ProductId: request.ProductId,
+                            MovementType: StockMovementService.InboundMovement,
+                            ReasonType: "Iade",
+                            Quantity: request.Quantity,
+                            MovementDate: reviewedAt,
+                            SourceType: "Return",
+                            SourceId: sourceId,
+                            SourceLineId: request.Id,
+                            SourceNo: requestNo,
+                            Description: "Satılabilir satış iadesi stok girişi.",
+                            CreatedByEmployeeId: HttpContext.Session.GetInt32("EmployeeId"),
+                            AllowInactiveProduct: true));
+                    }
+
+                    request.Status = "Onaylandı";
+                    request.ReviewedAt = reviewedAt;
+
+                    request.ReviewNote =
+                        $"Stok işlemi: {stockAction}" +
+                        (string.IsNullOrWhiteSpace(reviewNote) ? "" : $" | Yönetici notu: {reviewNote.Trim()}");
+                }
+
+                string paymentMethod = requests[0].Sale!.PaymentType switch
+                {
+                    "Nakit" => "Nakit",
+                    "Kart" => "POS",
+                    "Toptan" => "BankaHavalesi",
+                    _ => "Diger"
+                };
+
+                _context.FinansHareketleri.Add(new FinansHareketi
+                {
+                    Tip = "Gider",
+                    Kategori = "Iade",
+                    Baslik = "Satış İadesi",
+                    Tutar = returnTotal,
+                    Tarih = reviewedAt,
+                    Durum = "Odendi",
+                    OdemeYontemi = paymentMethod,
+                    Aciklama = $"{requestNo} numaralı satış iadesi.",
+                    OlusturanKullaniciId = HttpContext.Session.GetInt32("EmployeeId"),
+                    OlusturmaTarihi = reviewedAt,
+                    KaynakTipi = "Return",
+                    KaynakId = sourceId,
+                    KaynakNo = requestNo,
+                    OtomatikMi = true
+                });
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Success"] = $"{requestNo} numaralı iade belgesi onaylandı; stok ve finans işlemleri birlikte kaydedildi.";
             }
-
-            _context.SaveChanges();
-
-            TempData["Success"] = $"{requestNo} numaralı iade belgesi onaylandı. Ürün satırlarına göre stok işlemleri uygulandı.";
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "İade onaylanamadı. İade, stok ve finans kayıtlarında değişiklik yapılmadı.";
+            }
 
             return RedirectToAction("Index");
         }

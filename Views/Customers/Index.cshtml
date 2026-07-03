@@ -4,6 +4,9 @@
 @{
     ViewData["Title"] = "Müşteri Yönetimi";
 
+    var status = ViewBag.Status as string ?? "active";
+    var canUpdateCustomer = Context.HasPermission("customer.update");
+    var canCreateCustomer = Context.HasPermission("customer.create");
     var canManageDiscount =
         Context.HasPermission("sale.wholesale.create")
         || Context.HasPermission("role.manage")
@@ -22,6 +25,10 @@
     </div>
 }
 
+<form method="get" class="erp-filter-bar mb-3"><label for="status" class="form-label mb-0">Durum</label><select id="status" name="status" class="form-select" style="max-width:220px"><option value="active" selected="@(status == "active")">Aktif</option><option value="inactive" selected="@(status == "inactive")">Pasif</option><option value="all" selected="@(status == "all")">Tümü</option></select><button type="submit" class="btn btn-outline-primary">Filtrele</button></form>
+
+@if (canCreateCustomer)
+{
 <form asp-action="Add" method="post" class="mb-4">
     <div class="row mb-2">
         <div class="col-md-3">
@@ -69,6 +76,7 @@
         Müşteri Ekle
     </button>
 </form>
+}
 
 <table class="table table-bordered table-striped">
     <thead class="table-dark">
@@ -84,19 +92,19 @@
                 <th>İskonto Oranı</th>
             }
 
-            <th>İşlem</th>
+            <th>Durum</th><th>İşlem</th>
         </tr>
     </thead>
 
     <tbody>
         @foreach (var customer in Model)
         {
-            <tr>
+            <tr class="@(!customer.IsActive ? "erp-inactive-row" : null)">
                 <td>@customer.Id</td>
                 <td>@customer.FullName</td>
-                <td>@customer.Phone</td>
-                <td>@customer.Email</td>
-                <td>@customer.Address</td>
+                <td>@(string.IsNullOrWhiteSpace(customer.Phone) ? "—" : customer.Phone)</td>
+                <td>@(string.IsNullOrWhiteSpace(customer.Email) ? "—" : customer.Email)</td>
+                <td>@(string.IsNullOrWhiteSpace(customer.Address) ? "—" : customer.Address)</td>
 
                 @if (canManageDiscount)
                 {
@@ -118,12 +126,24 @@
                     </td>
                 }
 
-                <td>
-                    <a href="/Customers/Delete/@customer.Id"
-                           class="btn btn-danger btn-sm"
-                                data-confirm-message="Bu müşteriyi silmek istediğinize emin misiniz?">
-                        Sil
-                    </a>
+                <td><span class="badge @(customer.IsActive ? "bg-success" : "bg-secondary")">@(customer.IsActive ? "Aktif" : "Pasif")</span></td><td>
+                    <a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-outline-secondary btn-sm" title="Detay"><i class="bi bi-eye"></i></a>
+                    @if (canUpdateCustomer) { <a asp-action="Edit" asp-route-id="@customer.Id" class="btn btn-outline-primary btn-sm" title="Düzenle"><i class="bi bi-pencil"></i></a> }
+                    @if (canUpdateCustomer && customer.IsActive)
+                    {
+                    <form asp-action="Delete" asp-route-id="@customer.Id" method="post" class="d-inline"
+                          data-confirm-title="Müşteriyi Pasif Yap"
+                          data-confirm-message="Müşteri yeni işlemlerde seçilemeyecek; geçmiş kayıtları korunacaktır."
+                          data-confirm-button="Pasif Yap"
+                          data-confirm-type="warning">
+                        <button type="submit" class="btn btn-outline-warning btn-sm"><i class="bi bi-pause-circle"></i><span>Pasif Yap</span>
+                        </button>
+                    </form>
+                    }
+                    else if (canUpdateCustomer)
+                    {
+                    <form asp-action="Activate" asp-route-id="@customer.Id" method="post" class="d-inline" data-confirm-title="Müşteriyi Aktifleştir" data-confirm-message="Müşteri yeniden yeni işlemlerde kullanılabilecektir." data-confirm-button="Aktifleştir" data-confirm-type="success"><button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle"></i><span>Aktifleştir</span></button></form>
+                    }
                 </td>
             </tr>
         }

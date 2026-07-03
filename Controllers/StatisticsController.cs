@@ -1,5 +1,6 @@
 using MarketERP.Data;
 using MarketERP.Helpers;
+using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,15 +22,15 @@ namespace MarketERP.Controllers
             var tomorrow = today.AddDays(1);
             var monthStart = new DateTime(today.Year, today.Month, 1);
 
-            ViewBag.TodayRevenue = _context.Sales
+            ViewBag.TodayRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= today && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            ViewBag.MonthlyRevenue = _context.Sales
+            ViewBag.MonthlyRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            var saleCount = _context.Sales.Count();
+            var saleCount = _context.Sales.ActiveSales().Count();
             ViewBag.SaleCount = saleCount;
             ViewBag.CustomerCount = _context.Customers.Count();
 
@@ -79,7 +80,7 @@ namespace MarketERP.Controllers
                 .Take(10)
                 .ToList();
 
-            ViewBag.RecentSales = _context.Sales
+            ViewBag.RecentSales = _context.Sales.ActiveSales()
                 .Include(s => s.Customer)
                 .Include(s => s.Employee)
                 .OrderByDescending(s => s.SaleDate)
@@ -87,7 +88,9 @@ namespace MarketERP.Controllers
                 .ToList();
 
             var topSellingProducts = _context.SaleDetails
-                .Where(sd => sd.Product != null)
+                .Where(sd => sd.Product != null
+                    && sd.Sale != null
+                    && sd.Sale.Status != Sale.CancelledStatus)
                 .GroupBy(sd => sd.Product!.Name)
                 .Select(g => new
                 {
@@ -103,7 +106,7 @@ namespace MarketERP.Controllers
                 .Select(x => Tuple.Create(x.ProductName, x.TotalQuantity, x.TotalRevenue))
                 .ToList();
 
-            var paymentTypeDistribution = _context.Sales
+            var paymentTypeDistribution = _context.Sales.ActiveSales()
                 .GroupBy(s => s.PaymentType == null || s.PaymentType == ""
                     ? "Belirtilmedi"
                     : s.PaymentType)
@@ -119,7 +122,7 @@ namespace MarketERP.Controllers
                 .Select(x => Tuple.Create(x.PaymentType, x.TotalAmount))
                 .ToList();
 
-            var topCustomers = _context.Sales
+            var topCustomers = _context.Sales.ActiveSales()
                 .Where(s => s.CustomerId != null)
                 .GroupBy(s => new
                 {
@@ -143,7 +146,7 @@ namespace MarketERP.Controllers
                 .ToList();
 
             var chartStart = today.AddDays(-29);
-            var dailySales = _context.Sales
+            var dailySales = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= chartStart && s.SaleDate < tomorrow)
                 .GroupBy(s => s.SaleDate.Date)
                 .Select(g => new
@@ -175,6 +178,7 @@ namespace MarketERP.Controllers
             ViewBag.HasDailySalesData = dailySalesRevenue.Any(x => x > 0);
 
             var categorySales = _context.SaleDetails
+                .Where(sd => sd.Sale != null && sd.Sale.Status != Sale.CancelledStatus)
                 .GroupBy(sd => sd.Product != null && sd.Product.Category != null
                     ? sd.Product.Category.Name
                     : "Kategorisiz")

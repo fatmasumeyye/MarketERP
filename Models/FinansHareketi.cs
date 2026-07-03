@@ -48,6 +48,20 @@ public class FinansHareketi
     [Column("olusturma_tarihi")]
     public DateTime OlusturmaTarihi { get; set; } = DateTime.Now;
 
+    [MaxLength(50)]
+    [Column("kaynak_tipi")]
+    public string? KaynakTipi { get; set; }
+
+    [Column("kaynak_id")]
+    public int? KaynakId { get; set; }
+
+    [MaxLength(100)]
+    [Column("kaynak_no")]
+    public string? KaynakNo { get; set; }
+
+    [Column("otomatik_mi")]
+    public bool OtomatikMi { get; set; }
+
     public SabitGider? SabitGider { get; set; }
     public Employee? OlusturanKullanici { get; set; }
 }

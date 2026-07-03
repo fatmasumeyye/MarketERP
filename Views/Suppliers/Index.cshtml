@@ -1,11 +1,20 @@
 ﻿@model List<MarketERP.Models.Supplier>
 
+@using MarketERP.Helpers
 @{
     ViewData["Title"] = "Tedarikçi Yönetimi";
+    var status = ViewBag.Status as string ?? "active";
+    var canManageSupplier = Context.HasPermission("supplier.manage");
 }
 
-<h2 class="mb-4">Tedarikçi Yönetimi</h2>
+<div class="erp-page-header">
+    <div><span class="erp-page-eyebrow">SATIN ALMA</span><h2>Tedarikçi Yönetimi</h2><p>Tedarikçi ana kayıtlarını ve iletişim bilgilerini yönetin.</p></div>
+</div>
 
+<form method="get" class="erp-filter-bar mb-3"><label for="status" class="form-label mb-0">Durum</label><select id="status" name="status" class="form-select" style="max-width:220px"><option value="active" selected="@(status == "active")">Aktif</option><option value="inactive" selected="@(status == "inactive")">Pasif</option><option value="all" selected="@(status == "all")">Tümü</option></select><button type="submit" class="btn btn-outline-primary">Filtrele</button></form>
+
+@if (canManageSupplier)
+{
 <form asp-action="Add" method="post" class="mb-4">
     <div class="row mb-2">
         <div class="col-md-3">
@@ -29,8 +38,9 @@
         </div>
     </div>
 </form>
+}
 
-<table class="table table-bordered table-striped">
+<div class="table-responsive"><table class="table table-bordered table-striped align-middle">
     <thead class="table-dark">
         <tr>
             <th>ID</th>
@@ -38,23 +48,39 @@
             <th>Telefon</th>
             <th>E-posta</th>
             <th>Adres</th>
-            <th>İşlem</th>
+            <th>Durum</th><th>İşlem</th>
         </tr>
     </thead>
 
     <tbody>
         @foreach (var supplier in Model)
         {
-            <tr>
+            <tr class="@(!supplier.IsActive ? "erp-inactive-row" : null)">
                 <td>@supplier.Id</td>
                 <td>@supplier.CompanyName</td>
-                <td>@supplier.Phone</td>
-                <td>@supplier.Email</td>
-                <td>@supplier.Address</td>
-                <td>
-                    <a href="/Suppliers/Delete/@supplier.Id" class="btn btn-danger btn-sm">Sil</a>
+                <td>@(string.IsNullOrWhiteSpace(supplier.Phone) ? "—" : supplier.Phone)</td>
+                <td>@(string.IsNullOrWhiteSpace(supplier.Email) ? "—" : supplier.Email)</td>
+                <td>@(string.IsNullOrWhiteSpace(supplier.Address) ? "—" : supplier.Address)</td>
+                <td><span class="badge @(supplier.IsActive ? "bg-success" : "bg-secondary")">@(supplier.IsActive ? "Aktif" : "Pasif")</span></td><td>
+                    <a asp-action="Details" asp-route-id="@supplier.Id" class="btn btn-outline-secondary btn-sm" title="Detay"><i class="bi bi-eye"></i></a>
+                    @if (canManageSupplier) { <a asp-action="Edit" asp-route-id="@supplier.Id" class="btn btn-outline-primary btn-sm" title="Düzenle"><i class="bi bi-pencil"></i></a> }
+                    @if (canManageSupplier && supplier.IsActive)
+                    {
+                    <form asp-action="Delete" asp-route-id="@supplier.Id" method="post" class="d-inline"
+                          data-confirm-title="Tedarikçiyi Pasif Yap"
+                          data-confirm-message="Tedarikçi yeni satın alma işlemlerinde seçilemeyecek; geçmiş siparişleri korunacaktır."
+                          data-confirm-button="Pasif Yap"
+                          data-confirm-type="warning">
+                        <button type="submit" class="btn btn-outline-warning btn-sm"><i class="bi bi-pause-circle"></i><span>Pasif Yap</span>
+                        </button>
+                    </form>
+                    }
+                    else if (canManageSupplier)
+                    {
+                    <form asp-action="Activate" asp-route-id="@supplier.Id" method="post" class="d-inline" data-confirm-title="Tedarikçiyi Aktifleştir" data-confirm-message="Tedarikçi yeniden kullanılabilir olacaktır." data-confirm-button="Aktifleştir" data-confirm-type="success"><button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle"></i><span>Aktifleştir</span></button></form>
+                    }
                 </td>
             </tr>
         }
     </tbody>
-</table>
+</table></div>

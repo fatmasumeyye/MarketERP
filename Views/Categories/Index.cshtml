@@ -1,5 +1,6 @@
 @model IEnumerable<MarketERP.Models.Category>
 
+@using MarketERP.Helpers
 @{
     ViewData["Title"] = "Kategori Yönetimi";
 
@@ -10,6 +11,7 @@
         .Where(c => c.ParentCategoryId == null)
         .OrderBy(c => c.Name)
         .ToList();
+    var canManageCategories = Context.HasPermission("category.manage");
 }
 
 <style>
@@ -72,6 +74,11 @@
         padding-left: 28px;
     }
 
+    .category-tree-toggle { border: 0; background: transparent; color: var(--erp-primary); font-weight: 700; padding: .25rem .4rem; }
+    .category-tree-toggle .bi { transition: transform .18s ease; }
+    .category-tree-toggle[aria-expanded="true"] .bi { transform: rotate(90deg); }
+    .category-child-row.is-collapsed { display: none; }
+
     .small-muted {
         font-size: 13px;
         color: #6c757d;
@@ -132,7 +139,7 @@
     </div>
 </div>
 
-<div class="admin-box">
+<div class="admin-box @(canManageCategories ? "" : "d-none")">
     <h5 class="mb-3">Yeni Kategori Ekle</h5>
 
     <form asp-action="Add" method="post">
@@ -204,7 +211,7 @@
 
                 <tr class="main-category-row">
                     <td>@main.Id</td>
-                    <td>@main.Name</td>
+                    <td><button type="button" class="category-tree-toggle" data-category-id="@main.Id" aria-expanded="true"><i class="bi bi-chevron-right"></i> @main.Name</button></td>
                     <td>Ana kategori</td>
                     <td>
                         @if (main.DefaultVatRate.HasValue)
@@ -219,19 +226,22 @@
                     <td>@mainProductCount</td>
                     <td>@mainSubCount</td>
                     <td>
-                        @if (mainCanDelete)
+                        @if (canManageCategories && mainCanDelete)
                         {
                             <form asp-action="Delete"
                                   method="post"
                                   class="d-inline"
-                                data-confirm-message="Bu kategoriyi silmek istediğinize emin misiniz?">
+                                  data-confirm-title="Boş Kategoriyi Sil"
+                                  data-confirm-message="Bu boş kategori fiziksel olarak silinecek. Devam etmek istiyor musunuz?"
+                                  data-confirm-button="Kategoriyi Sil"
+                                  data-confirm-type="danger">
                                 <input type="hidden" name="id" value="@main.Id" />
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    Sil
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Bağlı kaydı olmayan kategoriyi sil">
+                                    <i class="bi bi-trash3"></i><span>Kategoriyi Sil</span>
                                 </button>
                             </form>
                         }
-                        else
+                        else if (canManageCategories)
                         {
                             <button class="btn btn-secondary btn-sm" disabled
                                     title="Bu kategoriye bağlı ürün veya alt kategori olduğu için silinemez.">
@@ -252,7 +262,7 @@
                     var subSubCount = allCategories.Count(c => c.ParentCategoryId == sub.Id);
                     var subCanDelete = subProductCount == 0 && subSubCount == 0;
 
-                    <tr>
+                    <tr class="category-child-row" data-parent-category="@main.Id">
                         <td>@sub.Id</td>
                         <td class="sub-category-name">↳ @sub.Name</td>
                         <td>@main.Name</td>
@@ -269,19 +279,22 @@
                         <td>@subProductCount</td>
                         <td>@subSubCount</td>
                         <td>
-                            @if (subCanDelete)
+                            @if (canManageCategories && subCanDelete)
                             {
                                 <form asp-action="Delete"
                                       method="post"
                                       class="d-inline"
-                                data-confirm-message="Bu kategoriyi silmek istediğinize emin misiniz?">
+                                      data-confirm-title="Boş Kategoriyi Sil"
+                                      data-confirm-message="Bu boş kategori fiziksel olarak silinecek. Devam etmek istiyor musunuz?"
+                                      data-confirm-button="Kategoriyi Sil"
+                                      data-confirm-type="danger">
                                     <input type="hidden" name="id" value="@sub.Id" />
-                                    <button type="submit" class="btn btn-danger btn-sm">
-                                        Sil
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Bağlı kaydı olmayan kategoriyi sil">
+                                        <i class="bi bi-trash3"></i><span>Kategoriyi Sil</span>
                                     </button>
                                 </form>
                             }
-                            else
+                            else if (canManageCategories)
                             {
                                 <button class="btn btn-secondary btn-sm" disabled
                                         title="Bu kategoriye bağlı ürün veya alt kategori olduğu için silinemez.">
@@ -293,5 +306,19 @@
                 }
             }
         </tbody>
-    </table>
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.category-tree-toggle').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const expanded = button.getAttribute('aria-expanded') === 'true';
+            button.setAttribute('aria-expanded', String(!expanded));
+            document.querySelectorAll('[data-parent-category="' + button.dataset.categoryId + '"]').forEach(function (row) {
+                row.classList.toggle('is-collapsed', expanded);
+            });
+        });
+    });
+});
+</script>
 </div>

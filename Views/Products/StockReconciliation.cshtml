@@ -1,0 +1,127 @@
+@model MarketERP.Models.StockReconciliationViewModel
+
+@{
+    ViewData["Title"] = "Stok Mutabakatı";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Stok Mutabakatı</h1>
+        <p class="text-muted mb-0">Ürün kartı stokları ile stok hareket defteri bakiyelerini karşılaştırın.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+        Ürünlere Dön
+    </a>
+</div>
+
+<div class="alert alert-info" role="alert">
+    <i class="bi bi-info-circle me-2"></i>
+    Stok hareket defteri yeni devreye alındığı için eski ürünlerde başlangıç bakiyesi yoksa fark görünebilir.
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card erp-kpi-card h-100">
+            <div class="card-body"><i class="bi bi-box-seam"></i><small>Toplam Ürün</small><strong>@Model.TotalProductCount</strong><span>Mutabakata dahil ürün</span></div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card erp-kpi-card erp-kpi-success h-100">
+            <div class="card-body"><i class="bi bi-check2-circle"></i><small>Uyumlu</small><strong>@Model.MatchedCount</strong><span>Stok ve ledger eşit</span></div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card erp-kpi-card erp-kpi-danger h-100">
+            <div class="card-body"><i class="bi bi-exclamation-triangle"></i><small>Fark Var</small><strong>@Model.DifferenceCount</strong><span>İncelenmesi gereken ürün</span></div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card erp-kpi-card erp-kpi-warning h-100">
+            <div class="card-body"><i class="bi bi-journal-x"></i><small>Ledger Yok</small><strong>@Model.MissingLedgerCount</strong><span>Hareket kaydı bulunmuyor</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4 col-lg-3">
+                <label for="statusFilter" class="form-label">Mutabakat durumu</label>
+                <select id="statusFilter" name="status" class="form-select">
+                    <option value="all" selected="@(Model.StatusFilter == "all")">Tümü</option>
+                    <option value="matched" selected="@(Model.StatusFilter == "matched")">Uyumlu</option>
+                    <option value="difference" selected="@(Model.StatusFilter == "difference")">Fark Var</option>
+                    <option value="missing" selected="@(Model.StatusFilter == "missing")">Ledger Yok</option>
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filtrele</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<section class="card border-0 shadow-sm">
+    <div class="erp-card-header">
+        <div>
+            <h2 class="erp-card-title">Ürün Stok Karşılaştırması</h2>
+            <p class="erp-card-subtitle">Görüntülenen kayıt: @Model.Items.Count</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Ürün</th>
+                    <th>Barkod</th>
+                    <th class="text-end">Mevcut Stok</th>
+                    <th class="text-end">Ledger Stok</th>
+                    <th class="text-end">Fark</th>
+                    <th>Durum</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr class="erp-empty-state">
+                        <td colspan="6">
+                            <i class="bi bi-inbox"></i>
+                            <strong>Kayıt bulunamadı</strong>
+                            <span>Seçilen filtreye uygun ürün bulunmuyor.</span>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@item.ProductName</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.Barcode) ? "Tanımlanmadı" : item.Barcode)</td>
+                            <td class="text-end">@item.CurrentQuantity</td>
+                            <td class="text-end">@(item.HasLedger ? item.LedgerQuantity : "—")</td>
+                            <td class="text-end fw-semibold @(item.HasLedger && item.Difference != 0 ? "text-danger" : "")">
+                                @(item.HasLedger ? item.Difference : "—")
+                            </td>
+                            <td>
+                                @if (!item.HasLedger)
+                                {
+                                    <span class="badge bg-secondary">Ledger Yok</span>
+                                }
+                                else if (item.Difference == 0)
+                                {
+                                    <span class="badge bg-success">Uyumlu</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Fark Var</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

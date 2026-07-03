@@ -45,11 +45,11 @@ namespace MarketERP.Controllers
                 .OrderByDescending(e => e.ExpenseDate)
                 .ToList();
 
-            var totalIncome = _context.Sales
+            var totalIncome = _context.Sales.ActiveSales()
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
             var totalExpense = expenses.Sum(e => e.Amount);
 
-            var monthlyIncome = _context.Sales
+            var monthlyIncome = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
             var monthlyExpense = expenses
@@ -60,7 +60,7 @@ namespace MarketERP.Controllers
                 .Where(w => w.SaleId != null)
                 .Select(w => w.SaleId!.Value);
 
-            var wholesaleIncome = _context.Sales
+            var wholesaleIncome = _context.Sales.ActiveSales()
                 .Where(s => wholesaleSaleIds.Contains(s.Id))
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
@@ -96,7 +96,7 @@ namespace MarketERP.Controllers
                 .ToList();
             ViewBag.HasExpenseCategoryData = expenseCategoryData.Count > 0;
 
-            var monthlySalesData = _context.Sales
+            var monthlySalesData = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= chartStart && s.SaleDate < tomorrow)
                 .GroupBy(s => new { s.SaleDate.Year, s.SaleDate.Month })
                 .Select(g => new

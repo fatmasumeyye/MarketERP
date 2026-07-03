@@ -107,7 +107,7 @@ namespace MarketERP.Controllers
                 return RedirectToAction("MyClosings");
             }
 
-            var todaySales = _context.Sales
+            var todaySales = _context.Sales.ActiveSales()
                 .Where(s =>
                     s.EmployeeId == employeeId.Value &&
                     s.SaleDate >= today &&
@@ -159,7 +159,7 @@ namespace MarketERP.Controllers
                 return RedirectToAction("MyClosings");
             }
 
-            var todaySales = _context.Sales
+            var todaySales = _context.Sales.ActiveSales()
                 .Where(s =>
                     s.EmployeeId == employeeId.Value &&
                     s.SaleDate >= today &&

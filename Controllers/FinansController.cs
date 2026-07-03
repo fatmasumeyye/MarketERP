@@ -154,15 +154,171 @@ public class FinansController : Controller
         return RedirectToAction(nameof(Hareketler));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OdendiYap(
+        int id,
+        DateTime odemeTarihi,
+        string odemeYontemi,
+        string? odemeNotu)
+    {
+        if (!IsAdmin()) return Forbid();
+
+        var movement = await _context.FinansHareketleri.FindAsync(id);
+        if (movement == null)
+        {
+            TempData["Error"] = "Finans hareketi bulunamadı.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        if (movement.Durum == "Iptal")
+        {
+            TempData["Error"] = "İptal edilmiş finans hareketi ödenemez.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        if (movement.Durum == "Odendi")
+        {
+            TempData["Error"] = "Bu finans hareketi daha önce ödendi olarak işaretlenmiş.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        if (movement.Durum != "Bekliyor")
+        {
+            TempData["Error"] = "Yalnız bekleyen finans hareketleri ödendi olarak işaretlenebilir.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        if (odemeTarihi == default || odemeTarihi.Date > DateTime.Today)
+        {
+            TempData["Error"] = "Ödeme tarihi bugün veya geçmiş bir tarih olmalıdır.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        odemeYontemi = odemeYontemi?.Trim() ?? string.Empty;
+        if (!OdemeYontemleri.Contains(odemeYontemi, StringComparer.Ordinal))
+        {
+            TempData["Error"] = "Geçerli bir ödeme yöntemi seçmelisiniz.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        odemeNotu = odemeNotu?.Trim();
+        string paymentAudit = $"Ödeme tarihi: {odemeTarihi:dd.MM.yyyy} | Ödeme yöntemi: {GetPaymentMethodLabel(odemeYontemi)}";
+        if (!string.IsNullOrWhiteSpace(odemeNotu))
+        {
+            paymentAudit += $" | Ödeme notu: {odemeNotu}";
+        }
+
+        string description = string.IsNullOrWhiteSpace(movement.Aciklama)
+            ? paymentAudit
+            : $"{movement.Aciklama.Trim()} | {paymentAudit}";
+
+        string finalDescription = description.Length <= 1000
+            ? description
+            : description[..1000];
+
+        int updatedRows = await _context.FinansHareketleri
+            .Where(h => h.Id == id && h.Durum == "Bekliyor")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(h => h.Durum, "Odendi")
+                .SetProperty(h => h.Tarih, odemeTarihi.Date)
+                .SetProperty(h => h.OdemeYontemi, odemeYontemi)
+                .SetProperty(h => h.Aciklama, finalDescription));
+
+        if (updatedRows == 0)
+        {
+            TempData["Error"] = "Finans hareketinin durumu başka bir işlem tarafından değiştirildi. Listeyi yenileyip tekrar kontrol edin.";
+            return RedirectToAction(nameof(Hareketler));
+        }
+
+        TempData["Success"] = "Finans hareketi ödendi olarak işaretlendi.";
+        return RedirectToAction(nameof(Hareketler));
+    }
+
     [HttpGet]
     public async Task<IActionResult> SabitGiderler()
     {
         if (!IsAdmin()) return Forbid();
 
-        return View(await _context.SabitGiderler.AsNoTracking()
+        var items = await _context.SabitGiderler.AsNoTracking()
             .OrderByDescending(g => g.AktifMi)
             .ThenBy(g => g.OdemeGunu).ThenBy(g => g.GiderAdi)
-            .ToListAsync());
+            .ToListAsync();
+        var ids = items.Select(x => x.Id).ToList();
+        var movements = await _context.FinansHareketleri.AsNoTracking()
+            .Where(h => h.SabitGiderId.HasValue && ids.Contains(h.SabitGiderId.Value))
+            .OrderByDescending(h => h.Tarih).ToListAsync();
+        var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var monthEnd = monthStart.AddMonths(1);
+        var validMovements = movements.Where(h => h.Durum != "Iptal").ToList();
+        ViewBag.ScheduleInfo = items.ToDictionary(
+            item => item.Id,
+            item => BuildScheduleInfo(
+                item,
+                validMovements.Where(h => h.SabitGiderId == item.Id).ToList(),
+                monthStart,
+                monthEnd));
+        return View(items);
+    }
+
+    private static SabitGiderScheduleViewModel BuildScheduleInfo(
+        SabitGider item,
+        IReadOnlyCollection<FinansHareketi> movements,
+        DateTime monthStart,
+        DateTime monthEnd)
+    {
+        var lastMovement = movements.OrderByDescending(h => h.Tarih).FirstOrDefault();
+        var processedThisMonth = movements.Any(h => h.Tarih >= monthStart && h.Tarih < monthEnd);
+        var result = new SabitGiderScheduleViewModel
+        {
+            LastMovement = lastMovement,
+            ProcessedThisMonth = processedThisMonth
+        };
+
+        if (!item.AktifMi)
+        {
+            result.NextDateLabel = "Devre dışı";
+            return result;
+        }
+
+        var today = DateTime.Today;
+        DateTime candidate;
+        if (item.TekrarTipi == "TekSeferlik")
+        {
+            if (lastMovement != null)
+            {
+                result.NextDateLabel = "Tek seferlik işlendi";
+                return result;
+            }
+
+            if (item.BaslangicTarihi.Date < today)
+            {
+                result.NextDateLabel = "Süresi geçti";
+                return result;
+            }
+
+            candidate = item.BaslangicTarihi.Date;
+        }
+        else if (item.TekrarTipi == "Yillik")
+        {
+            candidate = new DateTime(today.Year, item.BaslangicTarihi.Month, Math.Min(item.OdemeGunu, DateTime.DaysInMonth(today.Year, item.BaslangicTarihi.Month)));
+            if (candidate < today || movements.Any(h => h.Tarih.Year == candidate.Year)) candidate = candidate.AddYears(1);
+        }
+        else
+        {
+            candidate = new DateTime(today.Year, today.Month, Math.Min(item.OdemeGunu, DateTime.DaysInMonth(today.Year, today.Month)));
+            if (candidate < today || processedThisMonth) { var next = today.AddMonths(1); candidate = new DateTime(next.Year, next.Month, Math.Min(item.OdemeGunu, DateTime.DaysInMonth(next.Year, next.Month))); }
+        }
+        if (candidate < item.BaslangicTarihi.Date) candidate = item.BaslangicTarihi.Date;
+        if (item.BitisTarihi.HasValue && candidate > item.BitisTarihi.Value.Date)
+        {
+            result.NextDateLabel = "Tamamlandı";
+            return result;
+        }
+
+        result.NextDate = candidate;
+        result.NextDateLabel = candidate.ToString("dd.MM.yyyy");
+        return result;
     }
 
     [HttpGet]
@@ -323,6 +479,17 @@ public class FinansController : Controller
         ViewBag.OdemeYontemleri = OdemeYontemleri;
         ViewBag.TekrarTipleri = TekrarTipleri;
         ViewBag.Kategoriler = VarsayilanKategoriler;
+    }
+
+    private static string GetPaymentMethodLabel(string paymentMethod)
+    {
+        return paymentMethod switch
+        {
+            "KrediKarti" => "Kredi Kartı",
+            "BankaHavalesi" => "Banka Havalesi",
+            "Diger" => "Diğer",
+            _ => paymentMethod
+        };
     }
 
     private bool IsAdmin()

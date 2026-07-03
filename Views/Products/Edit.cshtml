@@ -6,6 +6,11 @@
 
 <h2 class="mb-4">Ürün Düzenle</h2>
 
+<div class="alert alert-info" role="alert">
+    <i class="bi bi-info-circle me-2"></i>
+    Stok miktarı ürün kartından değiştirilemez. Stok değişiklikleri Stok Girişi işlemiyle kayıt altına alınır.
+</div>
+
 <form asp-action="Edit" method="post">
     <input type="hidden" asp-for="Id" />
 
@@ -34,8 +39,9 @@
     </div>
 
     <div class="mb-3">
-        <label>Stok</label>
-        <input asp-for="StockQuantity" class="form-control" type="number" required />
+        <label class="form-label">Mevcut Stok</label>
+        <input class="form-control" type="text" value="@Model.StockQuantity" readonly aria-readonly="true" />
+        <div class="form-text">Yeni stok girişi için Ürünler listesindeki Stok Girişi işlemini kullanın.</div>
     </div>
 
     <div class="mb-3">

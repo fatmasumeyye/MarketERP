@@ -1,7 +1,11 @@
 @model MarketERP.Models.PurchaseOrder
+@using MarketERP.Helpers
 
 @{
     ViewData["Title"] = "Sipariş Detayı";
+    var canApprovePurchase = Context.HasPermission("purchase.approve");
+    var canCancelPurchase = Context.HasPermission("purchase.create") || canApprovePurchase;
+    var canReceivePurchase = Context.HasPermission("stock.adjust");
 }
 
 <h2 class="mb-4">Satın Alma Sipariş Detayı</h2>
@@ -81,6 +85,19 @@
     </div>
 </div>
 
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white"><strong>İşlem Geçmişi</strong></div>
+    <div class="card-body">
+        <div class="erp-timeline">
+            <div class="erp-timeline-item is-complete"><span class="erp-timeline-dot"></span><div><strong>Sipariş oluşturuldu</strong><div class="text-muted small">@((Model.CreatedAt == default ? Model.OrderDate : Model.CreatedAt).ToString("dd.MM.yyyy HH:mm"))</div></div></div>
+            @if (Model.ApprovedAt.HasValue) { <div class="erp-timeline-item is-complete"><span class="erp-timeline-dot"></span><div><strong>Sipariş onaylandı</strong><div class="text-muted small">@Model.ApprovedAt.Value.ToString("dd.MM.yyyy HH:mm")</div></div></div> }
+            @if (Model.CheckedAt.HasValue) { <div class="erp-timeline-item is-complete"><span class="erp-timeline-dot"></span><div><strong>Mal kabul kontrolü yapıldı</strong><div class="text-muted small">@Model.CheckedAt.Value.ToString("dd.MM.yyyy HH:mm")</div></div></div> }
+            @if (Model.ReceivedAt.HasValue) { <div class="erp-timeline-item is-complete"><span class="erp-timeline-dot"></span><div><strong>Teslim alındı ve stok güncellendi</strong><div class="text-muted small">@Model.ReceivedAt.Value.ToString("dd.MM.yyyy HH:mm")</div></div></div> }
+            @if (Model.Status == "İptal Edildi") { <div class="erp-timeline-item is-cancelled"><span class="erp-timeline-dot"></span><div><strong>Sipariş iptal edildi</strong><div class="text-muted small">Tarih bilgisi mevcut modelde tutulmuyor.</div></div></div> }
+        </div>
+    </div>
+</div>
+
 <form asp-action="Receive" method="post">
     <input type="hidden" name="id" value="@Model.Id" />
 
@@ -112,7 +129,7 @@
                     <td>@item.Quantity</td>
 
                     <td>
-                        @if (Model.Status == "Onaylandı" || Model.Status == "Kısmi Teslim Alındı")
+                        @if (canReceivePurchase && (Model.Status == "Onaylandı" || Model.Status == "Kısmi Teslim Alındı"))
                         {
                             <input type="number"
                                    name="receivedQuantities[@item.Id]"
@@ -152,7 +169,7 @@
         </a>
 
         <div class="d-flex gap-2">
-            @if (Model.Status == "Onay Bekliyor")
+            @if (canApprovePurchase && Model.Status == "Onay Bekliyor")
             {
                 <button type="submit"
                         formaction="/PurchaseOrders/Approve/@Model.Id"
@@ -161,7 +178,10 @@
                                 data-confirm-message="Bu siparişi onaylamak istiyor musunuz?">
                     Siparişi Onayla
                 </button>
+            }
 
+            @if (canCancelPurchase && Model.Status == "Onay Bekliyor")
+            {
                 <button type="submit"
                         formaction="/PurchaseOrders/Cancel/@Model.Id"
                         formmethod="post"
@@ -171,7 +191,7 @@
                 </button>
             }
 
-            @if (Model.Status == "Onaylandı" || Model.Status == "Kısmi Teslim Alındı")
+            @if (canReceivePurchase && (Model.Status == "Onaylandı" || Model.Status == "Kısmi Teslim Alındı"))
             {
                 <button type="submit"
                         formaction="/PurchaseOrders/ReceiveAll/@Model.Id"

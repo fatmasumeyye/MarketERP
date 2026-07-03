@@ -27,6 +27,7 @@ namespace MarketERP.Data
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<SabitGider> SabitGiderler { get; set; }
         public DbSet<FinansHareketi> FinansHareketleri { get; set; }
+        public DbSet<StockMovement> StockMovements { get; set; }
 
         public DbSet<Role> Roles { get; set; }
         public DbSet<Permission> Permissions { get; set; }
@@ -51,6 +52,21 @@ namespace MarketERP.Data
                 .WithMany(c => c.SubCategories)
                 .HasForeignKey(c => c.ParentCategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Sale>()
+                .Property(s => s.Status)
+                .HasMaxLength(30)
+                .HasDefaultValue(Sale.ActiveStatus);
+
+            modelBuilder.Entity<Sale>()
+                .Property(s => s.CancellationReason)
+                .HasMaxLength(500);
+
+            modelBuilder.Entity<Sale>()
+                .HasOne(s => s.CancelledByEmployee)
+                .WithMany()
+                .HasForeignKey(s => s.CancelledByEmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Category>()
                 .Property(c => c.DefaultVatRate)
@@ -178,6 +194,10 @@ namespace MarketERP.Data
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<FinansHareketi>()
+                .HasIndex(h => new { h.KaynakTipi, h.KaynakId })
+                .IsUnique();
+
+            modelBuilder.Entity<FinansHareketi>()
                 .HasOne(h => h.SabitGider)
                 .WithMany(g => g.FinansHareketleri)
                 .HasForeignKey(h => h.SabitGiderId)
@@ -188,6 +208,60 @@ namespace MarketERP.Data
                 .WithMany()
                 .HasForeignKey(h => h.OlusturanKullaniciId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<StockMovement>()
+                .Property(m => m.UnitCost)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<StockMovement>()
+                .HasIndex(m => new { m.ProductId, m.MovementDate });
+
+            modelBuilder.Entity<StockMovement>()
+                .HasIndex(m => new { m.SourceType, m.SourceId, m.SourceLineId });
+
+            modelBuilder.Entity<StockMovement>()
+                .HasOne(m => m.Product)
+                .WithMany()
+                .HasForeignKey(m => m.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<StockMovement>()
+                .HasOne(m => m.CreatedByEmployee)
+                .WithMany()
+                .HasForeignKey(m => m.CreatedByEmployeeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<StockMovement>()
+                .HasOne(m => m.ReversalOfMovement)
+                .WithMany()
+                .HasForeignKey(m => m.ReversalOfMovementId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            EnsureStockMovementsAreAppendOnly();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(
+            bool acceptAllChangesOnSuccess,
+            CancellationToken cancellationToken = default)
+        {
+            EnsureStockMovementsAreAppendOnly();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void EnsureStockMovementsAreAppendOnly()
+        {
+            bool hasMutation = ChangeTracker.Entries<StockMovement>()
+                .Any(entry => entry.State is EntityState.Modified or EntityState.Deleted);
+
+            if (hasMutation)
+            {
+                throw new InvalidOperationException(
+                    "Stok hareketleri değiştirilemez veya silinemez; düzeltmeler ters hareketle kaydedilmelidir.");
+            }
         }
     }
 }

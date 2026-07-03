@@ -13,6 +13,13 @@
     string selectedCategoryName = ViewBag.SelectedCategoryName ?? "Tüm Ürünler";
     string search = ViewBag.Search ?? "";
     string stockStatus = ViewBag.StockStatus ?? "";
+    string recordStatus = ViewBag.RecordStatus ?? "active";
+    var canUpdateProduct = Context.HasPermission("product.update");
+    var canDeactivateProduct = Context.HasPermission("product.delete");
+    var canAdjustStock = Context.HasPermission("stock.adjust");
+    var canManageProduct = canUpdateProduct || canDeactivateProduct || canAdjustStock;
+    var canCreateProduct = Context.HasPermission("product.create");
+    var canCreatePurchase = Context.HasPermission("purchase.create");
 
     var isWholesaleStaff =
         Context.HasPermission("sale.wholesale.create")
@@ -132,12 +139,15 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex gap-2">
-        @if (!isWholesaleStaff)
+        @if (canCreateProduct)
         {
             <a href="/Products/Create" class="btn btn-primary">
                 + Yeni Ürün Ekle
             </a>
+        }
 
+        @if (canCreatePurchase)
+        {
             <a href="/PurchaseOrders/Suggestions" class="btn btn-outline-danger">
                 Kritik Stok Sipariş Önerileri
             </a>
@@ -149,24 +159,28 @@
     <div class="col-md-3 mb-4">
         <div class="category-sidebar">
             <div class="category-title">Kategoriler</div>
+            <input type="search" id="productCategorySearch" class="form-control form-control-sm mb-2" placeholder="Kategori ara..." />
 
             <a asp-controller="Products"
                    asp-action="Index"
                    asp-route-supplierId="@selectedSupplierId"
                    asp-route-stockStatus="@stockStatus"
                    asp-route-search="@search"
+                   asp-route-recordStatus="@recordStatus"
                    class="category-link @(selectedCategoryId == null ? "active" : "")">
                 Tüm Ürünler
             </a>
 
             @foreach (var main in mainCategories)
             {
+                <button type="button" class="btn btn-sm btn-link product-category-toggle p-0" data-category-id="@main.Id" aria-label="Alt kategorileri aç veya kapat"><i class="bi bi-chevron-right"></i></button>
                 <a asp-controller="Products"
                        asp-action="Index"
                        asp-route-categoryId="@main.Id"
                        asp-route-supplierId="@selectedSupplierId"
                        asp-route-stockStatus="@stockStatus"
                        asp-route-search="@search"
+                       asp-route-recordStatus="@recordStatus"
                        class="category-link @(selectedCategoryId == main.Id ? "active" : "")">
                     @main.Name
                 </a>
@@ -179,7 +193,9 @@
                            asp-route-supplierId="@selectedSupplierId"
                            asp-route-stockStatus="@stockStatus"
                            asp-route-search="@search"
-                           class="category-link subcategory-link @(selectedCategoryId == sub.Id ? "active" : "")">
+                           asp-route-recordStatus="@recordStatus"
+                           data-parent-category="@main.Id"
+                           class="category-link subcategory-link product-category-child @(selectedCategoryId == sub.Id ? "active" : "")">
                         @sub.Name
                     </a>
                 }
@@ -203,7 +219,7 @@
                 }
 
                 <div class="row g-2">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text"
                                name="search"
                                value="@search"
@@ -217,7 +233,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <select name="stockStatus" class="form-control">
                             <option value="">Tüm stok durumları</option>
 
@@ -247,6 +263,23 @@
                             {
                                 <option value="normal">Normal</option>
                             }
+
+                            @if (stockStatus == "out")
+                            {
+                                <option value="out" selected>Stokta Yok</option>
+                            }
+                            else
+                            {
+                                <option value="out">Stokta Yok</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <select name="recordStatus" class="form-control">
+                            <option value="active" selected="@(recordStatus == "active")">Aktif</option>
+                            <option value="inactive" selected="@(recordStatus == "inactive")">Pasif</option>
+                            <option value="all" selected="@(recordStatus == "all")">Tümü</option>
                         </select>
                     </div>
 
@@ -263,7 +296,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Barkod</th>
-                        <th>Ürün</th>
+                        <th class="erp-product-name-column">Ürün</th>
                         <th>Kategori</th>
                         <th>Tedarikçi</th>
                         <th>Stok</th>
@@ -271,9 +304,9 @@
                         <th>Satış</th>
                         <th>Durum</th>
 
-                        @if (!isWholesaleStaff)
+                        @if (canManageProduct)
                         {
-                            <th>Stok Ekle</th>
+                        <th>Stok Girişi</th>
                             <th>İşlem</th>
                         }
                     </tr>
@@ -282,10 +315,10 @@
                 <tbody>
                     @foreach (var product in Model)
                     {
-                        <tr>
+                        <tr class="@(!product.IsActive ? "erp-inactive-row" : null)">
                             <td>@product.Id</td>
                             <td>@product.Barcode</td>
-                            <td>@product.Name</td>
+                            <td class="erp-product-name-column"><strong>@product.Name</strong></td>
 
                             <td>
                                 @if (product.Category?.ParentCategory != null)
@@ -310,23 +343,33 @@
                             <td>@product.SalePrice.ToString("N2") ₺</td>
 
                             <td>
-                                @if (product.StockQuantity <= product.CriticalStock)
+                                @if (!product.IsActive)
                                 {
-                                    <span class="badge bg-danger">Kritik</span>
+                                    <span class="badge bg-secondary">Pasif</span>
+                                }
+                                else if (product.StockQuantity <= 0)
+                                {
+                                    <span class="badge bg-danger" title="Ürünün kullanılabilir stoğu bulunmuyor.">Stokta Yok</span>
+                                }
+                                else if (product.StockQuantity <= product.CriticalStock)
+                                {
+                                    <span class="badge bg-warning text-dark" title="Ürün kritik stok seviyesinde veya altında.">Kritik</span>
                                 }
                                 else if (product.StockQuantity <= product.CriticalStock + 5)
                                 {
-                                    <span class="badge bg-warning text-dark">Azalıyor</span>
+                                    <span class="badge bg-info text-dark" title="Stok seviyesi kritik sınıra yaklaşıyor.">Azalıyor</span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-success">Normal</span>
+                                    <span class="badge bg-success" title="Stok seviyesi normal aralıkta.">Normal</span>
                                 }
                             </td>
 
-                            @if (!isWholesaleStaff)
+                            @if (canManageProduct)
                             {
                                 <td>
+                                    @if (product.IsActive && canAdjustStock)
+                                    {
                                     <form asp-action="AddStock" method="post" class="d-flex gap-1">
                                         <input type="hidden" name="productId" value="@product.Id" />
                                         <input type="number"
@@ -335,32 +378,42 @@
                                                placeholder="+Stok"
                                                min="1"
                                                required />
-                                        <button type="submit" class="btn btn-success btn-sm">
-                                            Ekle
+                                        <button type="submit" class="btn btn-success btn-sm" title="Girilen miktarı mevcut stoğa ekle">
+                                            Stok Girişi
                                         </button>
                                     </form>
-                                </td>
-
-                                <td>
-                                    <a href="/Products/Edit/@product.Id" class="btn btn-warning btn-sm">
-                                        Düzenle
-                                    </a>
-
-                                    @if (productIdsUsedInSales.Contains(product.Id))
-                                    {
-                                        <button class="btn btn-secondary btn-sm"
-                                                disabled
-                                                title="Bu ürün satış geçmişinde kullanıldığı için silinemez.">
-                                            Silinemez
-                                        </button>
                                     }
                                     else
                                     {
-                                        <a href="/Products/Delete/@product.Id"
-                                               class="btn btn-danger btn-sm"
-                                data-confirm-message="Bu ürünü silmek istediğinize emin misiniz?">
-                                            Sil
-                                        </a>
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @if (product.IsActive)
+                                    {
+                                    @if (canUpdateProduct)
+                                    {
+                                    <a href="/Products/Edit/@product.Id" class="btn btn-warning btn-sm">
+                                        Düzenle
+                                    </a>
+                                    }
+                                    @if (canDeactivateProduct)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@product.Id" method="post" class="d-inline"
+                                              data-confirm-title="Ürünü Pasif Yap"
+                                              data-confirm-message="Ürün yeni satış ve satın alma işlemlerinde seçilemeyecek; geçmiş kayıtları korunacaktır."
+                                              data-confirm-button="Pasif Yap"
+                                              data-confirm-type="warning">
+                                            <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                <i class="bi bi-pause-circle"></i><span>Pasif Yap</span>
+                                            </button>
+                                        </form>
+                                    }
+                                    }
+                                    else if (canDeactivateProduct)
+                                    {
+                                        <form asp-action="Activate" asp-route-id="@product.Id" method="post" class="d-inline" data-confirm-title="Ürünü Aktifleştir" data-confirm-message="Ürün yeniden yeni işlemlerde kullanılabilecektir." data-confirm-button="Aktifleştir" data-confirm-type="success"><button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle"></i><span>Aktifleştir</span></button></form>
                                     }
                                 </td>
                             }
@@ -372,3 +425,20 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.product-category-toggle').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const children = document.querySelectorAll('.product-category-child[data-parent-category="' + button.dataset.categoryId + '"]');
+            const hide = Array.from(children).some(x => x.style.display !== 'none');
+            children.forEach(x => x.style.display = hide ? 'none' : 'block');
+            button.classList.toggle('is-collapsed', hide);
+        });
+    });
+    const search = document.getElementById('productCategorySearch');
+    search?.addEventListener('input', function () {
+        const term = search.value.toLocaleLowerCase('tr-TR').trim();
+        document.querySelectorAll('.category-link').forEach(link => link.style.display = !term || link.textContent.toLocaleLowerCase('tr-TR').includes(term) ? 'block' : 'none');
+    });
+});
+</script>

@@ -1,10 +1,18 @@
 @model List<MarketERP.Models.Sale>
+@using MarketERP.Helpers
 
 @{
     ViewData["Title"] = "Satış Listesi";
+    var canCancelSale = Context.HasPermission("sale.cancel");
 }
 
-<h2 class="mb-4">Satış Listesi</h2>
+<div class="erp-page-header mb-4">
+    <div>
+        <span class="erp-page-eyebrow">Satış Yönetimi</span>
+        <h2 class="erp-page-title mb-1">@ViewBag.FilterTitle</h2>
+        <p class="erp-page-subtitle mb-0">Aktif ve iptal edilmiş satış belgelerini denetleyin.</p>
+    </div>
+</div>
 
 @if (TempData["Error"] != null)
 {
@@ -17,7 +25,7 @@
     <div class="col-md-6">
         <div class="alert alert-success">
             <h5>
-                Toplam Satış Geliri:
+                Aktif Satış Geliri:
                 <strong>@ViewBag.TotalSalesRevenue ₺</strong>
             </h5>
         </div>
@@ -26,12 +34,20 @@
     <div class="col-md-6">
         <div class="alert alert-info">
             <h5>
-                Toplam Satış Sayısı:
+                Aktif Satış Sayısı:
                 <strong>@ViewBag.TotalSalesCount</strong>
             </h5>
         </div>
     </div>
 </div>
+
+@if ((int)ViewBag.CancelledSalesCount > 0)
+{
+    <div class="alert alert-secondary d-flex align-items-center gap-2" role="status">
+        <i class="bi bi-info-circle"></i>
+        <span>Filtre sonucunda <strong>@ViewBag.CancelledSalesCount</strong> iptal edilmiş satış belgesi bulunuyor. Bu kayıtlar ciroya ve aktif satış sayısına dahil edilmez.</span>
+    </div>
+}
 
 <div class="mb-3">
     <a href="/Sales/Retail" class="btn btn-primary">
@@ -67,6 +83,7 @@
             <th>Müşteri</th>
             <th>Toplam Tutar</th>
             <th>Tarih</th>
+            <th>Durum</th>
             <th>İşlem</th>
         </tr>
     </thead>
@@ -74,25 +91,108 @@
     <tbody>
         @foreach (var sale in Model)
         {
-            <tr>
+            var isCancelled = sale.Status == MarketERP.Models.Sale.CancelledStatus;
+            <tr class="@(isCancelled ? "table-light text-muted" : null)">
                 <td>@sale.Id</td>
                 <td>@sale.Customer?.FullName</td>
-                <td>@sale.TotalAmount ₺</td>
+                <td>@sale.TotalAmount.ToString("N2") ₺</td>
                 <td>@sale.SaleDate.ToString("dd.MM.yyyy HH:mm")</td>
 
                 <td>
-                    <a href="/Sales/Invoice/@sale.Id"
-                           class="btn btn-info btn-sm">
-                        Fatura
+                    @if (isCancelled)
+                    {
+                        <span class="badge text-bg-danger">İptal Edildi</span>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-success">Aktif</span>
+                    }
+                </td>
+
+                <td>
+                    <a asp-action="Invoice" asp-route-id="@sale.Id" asp-route-returnUrl="/Sales/Index"
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-receipt"></i>
+                        Fatura / Belge
                     </a>
 
-                    <a href="/Sales/Cancel/@sale.Id"
-                           class="btn btn-danger btn-sm"
-                                data-confirm-message="Bu satışı iptal etmek istediğinize emin misiniz? Stok geri eklenecek.">
-                        Satışı İptal Et
-                    </a>
+                    @if (!isCancelled && canCancelSale)
+                    {
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm js-open-sale-cancel"
+                                data-bs-toggle="modal"
+                                data-bs-target="#saleCancelModal"
+                                data-sale-id="@sale.Id"
+                                data-sale-label="#@sale.Id - @(sale.Customer?.FullName ?? "Nihai Tüketici")">
+                            <i class="bi bi-x-circle"></i>
+                            İptal Et
+                        </button>
+                    }
                 </td>
             </tr>
         }
     </tbody>
 </table>
+
+@if (canCancelSale)
+{
+    <div class="modal fade" id="saleCancelModal" tabindex="-1" aria-labelledby="saleCancelModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form asp-action="Cancel" method="post" id="saleCancelForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="cancelSaleId" />
+
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="saleCancelModalLabel">Satışı İptal Et</h5>
+                            <small class="text-muted" id="cancelSaleLabel"></small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="alert alert-warning d-flex gap-2" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <div>Bu satış silinmeyecek, iptal durumuna alınacak ve stoklar geri eklenecek.</div>
+                        </div>
+
+                        <label for="cancellationReason" class="form-label">İptal nedeni</label>
+                        <textarea id="cancellationReason"
+                                  name="cancellationReason"
+                                  class="form-control"
+                                  rows="4"
+                                  maxlength="500"
+                                  required
+                                  placeholder="İptal gerekçesini açık ve denetlenebilir biçimde yazın."></textarea>
+                        <div class="form-text">Bu bilgi satış belgesinin denetim izinde saklanacaktır.</div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i>
+                            Satışı İptal Et
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.js-open-sale-cancel').forEach(button => {
+            button.addEventListener('click', () => {
+                document.getElementById('cancelSaleId').value = button.dataset.saleId;
+                document.getElementById('cancelSaleLabel').textContent = button.dataset.saleLabel;
+                document.getElementById('cancellationReason').value = '';
+            });
+        });
+
+        document.getElementById('saleCancelModal')?.addEventListener('shown.bs.modal', () => {
+            document.getElementById('cancellationReason').focus();
+        });
+    </script>
+}

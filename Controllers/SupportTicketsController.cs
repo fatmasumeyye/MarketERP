@@ -22,7 +22,10 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            ViewBag.Customers = new SelectList(_context.Customers.ToList(), "Id", "FullName");
+            ViewBag.Customers = new SelectList(
+                _context.Customers.Where(c => c.IsActive).OrderBy(c => c.FullName).ToList(),
+                "Id",
+                "FullName");
 
             var tickets = _context.SupportTickets
                 .Include(t => t.Customer)
@@ -35,6 +38,13 @@ namespace MarketERP.Controllers
         [HttpPost]
         public IActionResult Add(SupportTicket ticket)
         {
+            if (ticket.CustomerId.HasValue &&
+                !_context.Customers.Any(c => c.Id == ticket.CustomerId.Value && c.IsActive))
+            {
+                TempData["Error"] = "Pasif veya bulunamayan müşteri için destek talebi açılamaz.";
+                return RedirectToAction("Index");
+            }
+
             ticket.CreatedAt = DateTime.Now;
 
             if (string.IsNullOrWhiteSpace(ticket.Status))

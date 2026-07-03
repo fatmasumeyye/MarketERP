@@ -30,6 +30,20 @@ body {
   text-align: start;
 }
 
+.erp-inactive-row > * {
+  color: var(--erp-muted, #64748b) !important;
+  background-color: #f8fafc !important;
+  opacity: .82;
+}
+
+.erp-timeline { position: relative; padding-left: 1.5rem; }
+.erp-timeline::before { content: ""; position: absolute; left: .38rem; top: .45rem; bottom: .45rem; width: 2px; background: var(--erp-border); }
+.erp-timeline-item { position: relative; display: flex; gap: .8rem; padding: 0 0 1.2rem; }
+.erp-timeline-item:last-child { padding-bottom: 0; }
+.erp-timeline-dot { position: absolute; left: -1.5rem; top: .35rem; width: .8rem; height: .8rem; border-radius: 50%; background: var(--erp-info); box-shadow: 0 0 0 4px #e0f2fe; }
+.erp-timeline-item.is-complete .erp-timeline-dot { background: var(--erp-success); box-shadow: 0 0 0 4px #dcfce7; }
+.erp-timeline-item.is-cancelled .erp-timeline-dot { background: var(--erp-danger); box-shadow: 0 0 0 4px #fee2e2; }
+
 :root {
   --erp-primary: #1e3a8a; --erp-primary-hover: #172e6e; --erp-primary-soft: #eef2ff;
   --erp-success: #16a34a; --erp-danger: #dc2626; --erp-warning: #f59e0b; --erp-info: #0284c7;
@@ -320,6 +334,26 @@ textarea.form-control { min-height:100px; }
   .erp-kpi-surface::after { left:16px !important; width:44px !important; height:44px !important; }
   .erp-kpi-surface .erp-kpi-value { font-size:1.55rem !important; }
 }
+
+/* Shared ERP empty charts and operational table clarity */
+.erp-chart-empty-container { position: relative; min-height: 260px; }
+.erp-chart-skeleton-canvas { opacity: .28; }
+.erp-chart-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; min-height:230px; padding:28px; color:var(--erp-muted); text-align:center; }
+.erp-chart-empty > i { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:#eff6ff; color:var(--erp-primary); font-size:21px; }
+.erp-chart-empty > strong { color:var(--erp-heading); font-size:.95rem; font-weight:600; }
+.erp-chart-empty > span { max-width:360px; font-size:.8rem; }
+.erp-chart-empty-overlay { position:absolute; inset:0; min-height:0; background:linear-gradient(180deg,rgba(255,255,255,.36),rgba(255,255,255,.76)); }
+.erp-chart-empty-donut::before { content:""; width:112px; height:112px; margin-bottom:8px; border:18px solid #e2e8f0; border-right-color:#bfdbfe; border-radius:50%; }
+.erp-chart-empty-donut > i { display:none; }
+.erp-product-name-column { min-width:210px; max-width:340px; white-space:normal; }
+.erp-finance-description { min-width:220px; max-width:420px; white-space:normal; }
+.erp-shift-leave-badge { background:#7c3aed; color:#fff; }
+.erp-leave-table-wrap { position:relative; }
+.erp-leave-table .erp-sticky-identity { position:sticky; left:0; z-index:2; min-width:180px; background:#fff; box-shadow:1px 0 0 var(--erp-border); }
+.erp-leave-table thead .erp-sticky-identity { z-index:3; background:#f8fafc; }
+.erp-leave-table tbody tr:nth-of-type(odd) .erp-sticky-identity { background:#f8fafc; }
+.erp-leave-table tbody tr:hover .erp-sticky-identity { background:#eff6ff; }
+.table td .btn + .btn,.table td form + form,.table td .btn + form,.table td form + .btn { margin-left:4px; }
 
 @media (max-width:991.98px) {
   .erp-sidebar { width: 100%; }

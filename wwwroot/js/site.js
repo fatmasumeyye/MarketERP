@@ -98,6 +98,58 @@ document.addEventListener('DOMContentLoaded', () => {
         if (card.querySelector('canvas, .chart-wrap, .finance-chart')) card.classList.add('erp-chart-card');
     });
 
+    const createChartEmptyState = (container, variant = 'axis') => {
+        if (container.querySelector('.erp-chart-empty')) return;
+        const empty = document.createElement('div');
+        empty.className = `erp-chart-empty erp-chart-empty-${variant}`;
+        empty.innerHTML = '<i class="bi bi-bar-chart-line" aria-hidden="true"></i><strong>Henüz gösterilecek veri bulunmuyor</strong><span>Veri oluştuğunda grafik bu alanda otomatik olarak görüntülenecektir.</span>';
+        container.appendChild(empty);
+    };
+
+    document.querySelectorAll('.chart-wrap, .finance-chart, .erp-chart-card .card-body').forEach(container => {
+        const canvas = container.querySelector('canvas');
+
+        if (!canvas) {
+            container.replaceChildren();
+            createChartEmptyState(container, 'axis');
+            return;
+        }
+
+        const chart = window.Chart?.getChart?.(canvas);
+        if (!chart) return;
+
+        const values = chart.data.datasets
+            .flatMap(dataset => Array.isArray(dataset.data) ? dataset.data : [])
+            .map(value => Number(value));
+        const hasData = values.some(value => Number.isFinite(value) && value !== 0);
+        if (hasData) return;
+
+        const chartType = chart.config.type;
+        const isCircular = chartType === 'doughnut' || chartType === 'pie' || chartType === 'polarArea';
+        container.classList.add('erp-chart-empty-container');
+        if (isCircular) canvas.classList.add('d-none');
+        else canvas.classList.add('erp-chart-skeleton-canvas');
+        createChartEmptyState(container, isCircular ? 'donut' : 'overlay');
+    });
+
+    document.querySelectorAll('.erp-chart-card > canvas').forEach(canvas => {
+        const container = canvas.parentElement;
+        const chart = window.Chart?.getChart?.(canvas);
+        if (!container || !chart) return;
+
+        const values = chart.data.datasets
+            .flatMap(dataset => Array.isArray(dataset.data) ? dataset.data : [])
+            .map(value => Number(value));
+        if (values.some(value => Number.isFinite(value) && value !== 0)) return;
+
+        const chartType = chart.config.type;
+        const isCircular = chartType === 'doughnut' || chartType === 'pie' || chartType === 'polarArea';
+        container.classList.add('erp-chart-empty-container');
+        if (isCircular) canvas.classList.add('d-none');
+        else canvas.classList.add('erp-chart-skeleton-canvas');
+        createChartEmptyState(container, isCircular ? 'donut' : 'overlay');
+    });
+
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', () => {
             if (!form.checkValidity()) return;
@@ -112,8 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (button.querySelector('i, svg')) return;
         const text = button.textContent.trim().toLocaleLowerCase('tr-TR');
         let icon = 'arrow-right';
-        if (/ekle|oluştur|tanımla|yeni|kaydet|ata/.test(text)) icon = text.includes('kaydet') ? 'check2' : 'plus-lg';
-        else if (/sil|pasifleştir|iptal/.test(text)) icon = 'trash3';
+        if (/ekle|oluştur|tanımla|yeni|kaydet|ata|stok girişi/.test(text)) icon = text.includes('kaydet') ? 'check2' : 'plus-lg';
+        else if (/aktifleş/.test(text)) icon = 'play-circle';
+        else if (/devre dışı|pasifleştir/.test(text)) icon = 'pause-circle';
+        else if (/kaldır|iptal/.test(text)) icon = 'x-circle';
+        else if (/sil/.test(text)) icon = 'trash3';
         else if (/düzenle|güncelle/.test(text)) icon = 'pencil';
         else if (/görüntüle|detay|aç/.test(text)) icon = 'eye';
         else if (/indir|excel|csv|word/.test(text)) icon = 'download';
@@ -125,12 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const actionCell = button.closest('table td:last-child');
         if (actionCell && button.classList.contains('btn-sm')) {
-            button.classList.add('erp-icon-action');
             button.setAttribute('aria-label', button.textContent.trim());
             button.setAttribute('title', button.textContent.trim());
-            Array.from(button.childNodes)
-                .filter(node => node.nodeType === Node.TEXT_NODE)
-                .forEach(node => node.remove());
+            if (button.classList.contains('erp-icon-only')) {
+                button.classList.add('erp-icon-action');
+                Array.from(button.childNodes)
+                    .filter(node => node.nodeType === Node.TEXT_NODE)
+                    .forEach(node => node.remove());
+            }
         }
     });
 });

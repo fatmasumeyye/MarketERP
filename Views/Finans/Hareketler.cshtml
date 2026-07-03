@@ -1,6 +1,7 @@
 @model MarketERP.Models.FinansHareketlerViewModel
-@{ ViewData["Title"] = "Finans Hareketleri"; var tipler = ViewBag.Tipler as string[] ?? []; var durumlar = ViewBag.Durumlar as string[] ?? []; }
-<div class="erp-page-header"><div><span class="erp-page-eyebrow">FİNANS YÖNETİMİ</span><h2>Finans Hareketleri</h2><p>Gelir ve gider kayıtlarını filtreleyin, finansal akışı izleyin.</p></div><div class="erp-page-actions"><a asp-action="HareketEkle" class="btn btn-primary">Yeni Hareket</a></div></div>
+@{ ViewData["Title"] = "Finans Hareketleri"; var tipler = ViewBag.Tipler as string[] ?? []; var durumlar = ViewBag.Durumlar as string[] ?? []; var odemeYontemleri = ViewBag.OdemeYontemleri as string[] ?? []; }
+<div class="erp-page-header"><div><span class="erp-page-eyebrow">FİNANS YÖNETİMİ</span><h2>Finans Hareketleri</h2><p>Gelir ve gider kayıtlarını filtreleyin, finansal akışı izleyin.</p></div><div class="erp-page-actions"><a asp-action="HareketEkle" class="btn btn-primary">Finans Hareketi Oluştur</a></div></div>
+<div class="alert alert-info d-flex gap-2 align-items-start"><i class="bi bi-info-circle-fill"></i><span>Gelir kayıtları normalde satış/tahsilat süreçlerinden oluşmalıdır. Manuel gelir yalnız istisnai gelirler için kullanılmalıdır.</span></div>
 <div class="card border-0 shadow-sm mb-4"><div class="card-body"><form method="get" class="row g-3 align-items-end">
 <div class="col-md-2"><label class="form-label">Tip</label><select name="tip" class="form-select"><option value="">Tümü</option>@foreach(var x in tipler){<option value="@x" selected="@(Model.Tip == x)">@x</option>}</select></div>
 <div class="col-md-2"><label class="form-label">Durum</label><select name="durum" class="form-select"><option value="">Tümü</option>@foreach(var x in durumlar){<option value="@x" selected="@(Model.Durum == x)">@x</option>}</select></div>
@@ -10,6 +11,67 @@
 <div class="col-md-2 d-flex gap-2"><button class="btn btn-primary">Filtrele</button><a asp-action="Hareketler" class="btn btn-outline-secondary">Temizle</a></div>
 </form></div></div>
 <div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-<thead class="table-light"><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Başlık</th><th>Ödeme</th><th>Durum</th><th class="text-end">Tutar</th></tr></thead>
-<tbody>@if(Model.Hareketler.Count == 0){<tr><td colspan="7" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>}else{@foreach(var x in Model.Hareketler){<tr><td>@x.Tarih.ToString("dd.MM.yyyy")</td><td><span class="badge @(x.Tip == "Gelir" ? "bg-success" : "bg-danger")">@x.Tip</span></td><td>@x.Kategori</td><td><strong>@x.Baslik</strong><div class="small text-muted">@x.Aciklama</div></td><td>@x.OdemeYontemi</td><td>@x.Durum</td><td class="text-end">@x.Tutar.ToString("N2") ₺</td></tr>}}</tbody>
+<thead class="table-light"><tr><th>İşlem No</th><th>Kaynak</th><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Başlık</th><th>Ödeme</th><th>Durum</th><th class="text-end">Tutar</th><th class="text-end">İşlem</th></tr></thead>
+<tbody>@if(Model.Hareketler.Count == 0){<tr><td colspan="10" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>}else{@foreach(var x in Model.Hareketler){var paymentLabel=x.OdemeYontemi switch{"KrediKarti"=>"Kredi Kartı","BankaHavalesi"=>"Banka Havalesi","Diger"=>"Diğer",_=>x.OdemeYontemi};var statusLabel=x.Durum switch{"Odendi"=>"Ödendi","Gecikti"=>"Gecikti","Iptal"=>"İptal",_=>x.Durum};var sourceLabel=x.KaynakTipi switch{"PurchaseOrder"=>$"Satın Alma #{x.KaynakNo ?? $"PO-{x.KaynakId:000000}"}","Return"=>$"İade #{x.KaynakNo ?? x.KaynakId?.ToString()}","Sale"=>$"Satış #{x.KaynakId}",_=>x.KaynakNo ?? x.KaynakTipi};<tr><td class="fw-semibold">FIN-@x.Id.ToString("000000")</td><td>@if(x.OtomatikMi){<span class="badge bg-info text-dark">Otomatik</span><div class="small text-muted mt-1">@sourceLabel</div>}else{<span class="badge bg-secondary">Manuel</span>}</td><td>@x.Tarih.ToString("dd.MM.yyyy")</td><td><span class="badge @(x.Tip == "Gelir" ? "bg-success" : "bg-danger")">@x.Tip</span></td><td>@x.Kategori</td><td class="erp-finance-description"><strong>@x.Baslik</strong><div class="small text-muted">@(string.IsNullOrWhiteSpace(x.Aciklama) ? "—" : x.Aciklama)</div></td><td>@paymentLabel</td><td>@statusLabel</td><td class="text-end text-nowrap">@x.Tutar.ToString("N2") ₺</td><td class="text-end">@if(x.Durum == "Bekliyor"){<button type="button" class="btn btn-outline-success btn-sm js-mark-paid" data-bs-toggle="modal" data-bs-target="#markPaidModal" data-movement-id="@x.Id" data-movement-no="FIN-@x.Id.ToString("000000")" data-payment-method="@x.OdemeYontemi"><i class="bi bi-check2-circle"></i><span>Ödendi Yap</span></button>}else{<span class="text-muted">—</span>}</td></tr>}}</tbody>
 </table></div></div>
+
+<div class="modal fade" id="markPaidModal" tabindex="-1" aria-labelledby="markPaidModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form asp-action="OdendiYap" method="post">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="markPaidModalTitle">Finans Hareketini Ödendi Yap</h5>
+                        <div class="small text-muted" id="markPaidMovementNo"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="markPaidMovementId" />
+                    <div class="mb-3">
+                        <label for="markPaidDate" class="form-label">Ödeme tarihi</label>
+                        <input type="date" name="odemeTarihi" id="markPaidDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="markPaidMethod" class="form-label">Ödeme yöntemi</label>
+                        <select name="odemeYontemi" id="markPaidMethod" class="form-select" required>
+                            @foreach (var method in odemeYontemleri)
+                            {
+                                var methodLabel = method switch { "KrediKarti" => "Kredi Kartı", "BankaHavalesi" => "Banka Havalesi", "Diger" => "Diğer", _ => method };
+                                <option value="@method">@methodLabel</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label for="markPaidNote" class="form-label">Ödeme notu</label>
+                        <textarea name="odemeNotu" id="markPaidNote" class="form-control" rows="3" maxlength="500" placeholder="Dekont, referans veya kısa ödeme açıklaması"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> Ödendi Yap</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('markPaidModal')?.addEventListener('show.bs.modal', event => {
+            const trigger = event.relatedTarget;
+            if (!trigger) return;
+
+            document.getElementById('markPaidMovementId').value = trigger.dataset.movementId || '';
+            document.getElementById('markPaidMovementNo').textContent = trigger.dataset.movementNo || '';
+
+            const method = trigger.dataset.paymentMethod;
+            const methodSelect = document.getElementById('markPaidMethod');
+            if (method && Array.from(methodSelect.options).some(option => option.value === method)) {
+                methodSelect.value = method;
+            }
+
+            document.getElementById('markPaidNote').value = '';
+        });
+    </script>
+}

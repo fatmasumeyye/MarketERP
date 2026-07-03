@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Data;
 using System.IO.Compression;
 using System.Net;
 using System.Security;
@@ -111,9 +112,10 @@ public class EmployeeShiftsController : Controller
         List<Employee> employees;
         if (canManage)
         {
+            var employeeIdsWithShifts = shifts.Select(s => s.EmployeeId).Distinct().ToList();
             employees = await _context.Employees
                 .AsNoTracking()
-                .Where(e => e.IsActive)
+                .Where(e => e.IsActive || employeeIdsWithShifts.Contains(e.Id))
                 .OrderBy(e => e.FullName)
                 .ToListAsync();
         }
@@ -125,7 +127,10 @@ public class EmployeeShiftsController : Controller
                 .ToListAsync();
         }
 
-        ViewBag.Employees = new SelectList(employees, "Id", "FullName");
+        ViewBag.Employees = new SelectList(
+            employees.Where(e => e.IsActive),
+            "Id",
+            "FullName");
 
         var rows = employees.Select(employee =>
         {
@@ -346,6 +351,70 @@ public class EmployeeShiftsController : Controller
             ? "Vardiya başarıyla kaydedildi."
             : "Bu çalışanın seçili gündeki vardiyası güncellendi.";
 
+        return RedirectToWeek(weekStart ?? normalizedDate);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [PermissionAuthorize("reports.employee", "employee.view")]
+    public async Task<IActionResult> BulkAdd(
+        List<int>? employeeIds,
+        DateTime shiftDate,
+        string shiftType,
+        string? note,
+        DateTime? weekStart)
+    {
+        if (!CanManageShifts()) return Forbid();
+        if (employeeIds == null || employeeIds.Count == 0)
+        {
+            TempData["Error"] = "Toplu vardiya atamak için en az bir çalışan seçmelisiniz.";
+            return RedirectToWeek(weekStart ?? shiftDate);
+        }
+
+        var option = FindShiftType(shiftType);
+        if (option is null || option.IsEmpty)
+        {
+            TempData["Error"] = "Toplu atama için geçerli bir şift tipi seçmelisiniz.";
+            return RedirectToWeek(weekStart ?? shiftDate);
+        }
+
+        var normalizedDate = shiftDate.Date;
+        var selectedIds = employeeIds.Distinct().ToList();
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var activeIds = await _context.Employees
+            .Where(e => selectedIds.Contains(e.Id) && e.IsActive)
+            .Select(e => e.Id)
+            .ToListAsync();
+        var occupiedIds = await _context.EmployeeShifts
+            .Where(s => activeIds.Contains(s.EmployeeId) && s.ShiftDate.Date == normalizedDate)
+            .Select(s => s.EmployeeId)
+            .Distinct()
+            .ToListAsync();
+        var leaveIds = await _context.EmployeeLeaves
+            .Where(l => activeIds.Contains(l.EmployeeId) && l.Status == "Onaylandı" &&
+                        l.StartDate.Date <= normalizedDate && l.EndDate.Date >= normalizedDate)
+            .Select(l => l.EmployeeId)
+            .Distinct()
+            .ToListAsync();
+        var eligibleIds = activeIds.Except(occupiedIds).Except(leaveIds).ToList();
+
+        var addedCount = 0;
+        foreach (var employeeId in eligibleIds)
+        {
+            var duplicateExists = await _context.EmployeeShifts.AnyAsync(s =>
+                s.EmployeeId == employeeId && s.ShiftDate.Date == normalizedDate);
+            if (duplicateExists) continue;
+
+            var shift = new EmployeeShift { EmployeeId = employeeId, ShiftDate = normalizedDate };
+            ApplyShiftType(shift, option, note);
+            _context.EmployeeShifts.Add(shift);
+            addedCount++;
+        }
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        var skipped = selectedIds.Count - addedCount;
+        TempData["Success"] = $"{addedCount} çalışana vardiya atandı. {skipped} kayıt pasif çalışan, izin veya vardiya çakışması nedeniyle atlandı.";
         return RedirectToWeek(weekStart ?? normalizedDate);
     }
 
@@ -595,12 +664,6 @@ public class EmployeeShiftsController : Controller
             .Select(day => monday.AddDays(day))
             .ToList();
 
-        var employees = await _context.Employees
-            .AsNoTracking()
-            .Where(employee => employee.IsActive)
-            .OrderBy(employee => employee.FullName)
-            .ToListAsync();
-
         var shifts = await _context.EmployeeShifts
             .AsNoTracking()
             .Where(shift =>
@@ -609,6 +672,13 @@ public class EmployeeShiftsController : Controller
             .OrderBy(shift => shift.EmployeeId)
             .ThenBy(shift => shift.ShiftDate)
             .ThenBy(shift => shift.StartTime)
+            .ToListAsync();
+
+        var employeeIdsWithShifts = shifts.Select(shift => shift.EmployeeId).Distinct().ToList();
+        var employees = await _context.Employees
+            .AsNoTracking()
+            .Where(employee => employee.IsActive || employeeIdsWithShifts.Contains(employee.Id))
+            .OrderBy(employee => employee.FullName)
             .ToListAsync();
 
         var rows = employees.Select(employee =>

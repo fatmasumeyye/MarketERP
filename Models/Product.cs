@@ -38,6 +38,9 @@ namespace MarketERP.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
+
         public Category? Category { get; set; }
 
         public Supplier? Supplier { get; set; }

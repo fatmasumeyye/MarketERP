@@ -1,8 +1,10 @@
 ﻿using MarketERP.Data;
 using MarketERP.Helpers;
 using MarketERP.Models;
+using MarketERP.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace MarketERP.Controllers
 {
@@ -10,10 +12,14 @@ namespace MarketERP.Controllers
     public class PurchaseOrdersController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly IStockMovementService _stockMovementService;
 
-        public PurchaseOrdersController(AppDbContext context)
+        public PurchaseOrdersController(
+            AppDbContext context,
+            IStockMovementService stockMovementService)
         {
             _context = context;
+            _stockMovementService = stockMovementService;
         }
 
         public IActionResult Index(string status)
@@ -62,7 +68,7 @@ namespace MarketERP.Controllers
             return View(order);
         }
 
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.create")]
         public IActionResult Create()
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -73,7 +79,8 @@ namespace MarketERP.Controllers
             var productSupplierOptions = _context.ProductSuppliers
                 .Include(ps => ps.Product)
                 .Include(ps => ps.Supplier)
-                .Where(ps => ps.Product != null && ps.Supplier != null)
+                .Where(ps => ps.Product != null && ps.Product.IsActive &&
+                             ps.Supplier != null && ps.Supplier.IsActive)
                 .OrderBy(ps => ps.Product.Name)
                 .ThenByDescending(ps => ps.IsDefault)
                 .ThenBy(ps => ps.Supplier.CompanyName)
@@ -99,7 +106,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.create")]
         public IActionResult CreateManual(ManualPurchaseOrderViewModel model)
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -137,9 +144,12 @@ namespace MarketERP.Controllers
                 {
                     var productSupplier = _context.ProductSuppliers
                         .Include(ps => ps.Supplier)
+                        .Include(ps => ps.Product)
                         .FirstOrDefault(ps =>
                             ps.ProductId == item.ProductId &&
-                            ps.SupplierId == item.SupplierId);
+                            ps.SupplierId == item.SupplierId &&
+                            ps.Product.IsActive &&
+                            ps.Supplier.IsActive);
 
                     if (productSupplier == null)
                     {
@@ -227,7 +237,7 @@ namespace MarketERP.Controllers
             return 0;
         }
 
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.create")]
         public IActionResult Suggestions()
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -236,6 +246,7 @@ namespace MarketERP.Controllers
             }
 
             var suppliers = _context.Suppliers
+                .Where(s => s.IsActive)
                 .OrderBy(s => s.CompanyName)
                 .ToList();
 
@@ -243,7 +254,9 @@ namespace MarketERP.Controllers
                 .Include(p => p.Category)
                     .ThenInclude(c => c.ParentCategory)
                 .Include(p => p.Supplier)
-                .Where(p => p.StockQuantity <= p.CriticalStock)
+                .Where(p => p.IsActive &&
+                            p.StockQuantity <= p.CriticalStock &&
+                            (p.Supplier == null || p.Supplier.IsActive))
                 .OrderBy(p => p.Supplier != null ? p.Supplier.CompanyName : "")
                 .ThenBy(p => p.Name)
                 .ToList();
@@ -285,7 +298,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.create")]
         public IActionResult CreateFromSuggestions(PurchaseOrderSuggestionsViewModel model)
         {
             if (HttpContext.Session.GetString("Username") == null)
@@ -311,6 +324,17 @@ namespace MarketERP.Controllers
             if (!selectedItems.Any())
             {
                 TempData["Error"] = "Sipariş oluşturmak için en az bir ürün seçmelisiniz.";
+                return RedirectToAction("Suggestions");
+            }
+
+            var selectedProductIds = selectedItems.Select(x => x.ProductId).Distinct().ToList();
+            var selectedSupplierIds = selectedItems.Select(x => x.SupplierId!.Value).Distinct().ToList();
+            var activeProductCount = _context.Products.Count(p => selectedProductIds.Contains(p.Id) && p.IsActive);
+            var activeSupplierCount = _context.Suppliers.Count(s => selectedSupplierIds.Contains(s.Id) && s.IsActive);
+
+            if (activeProductCount != selectedProductIds.Count || activeSupplierCount != selectedSupplierIds.Count)
+            {
+                TempData["Error"] = "Pasif ürün veya tedarikçi için satın alma siparişi oluşturulamaz.";
                 return RedirectToAction("Suggestions");
             }
 
@@ -360,7 +384,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.approve")]
         public IActionResult Approve(int id)
         {
             var order = _context.PurchaseOrders.Find(id);
@@ -386,7 +410,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.approve")]
         public IActionResult ApproveSelected(List<int> selectedOrderIds)
         {
             if (selectedOrderIds == null || selectedOrderIds.Count == 0)
@@ -418,7 +442,7 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
+        [PermissionAuthorize("purchase.approve")]
         public IActionResult ApproveAllPending()
         {
             var orders = _context.PurchaseOrders
@@ -444,143 +468,147 @@ namespace MarketERP.Controllers
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
-        public IActionResult Cancel(int id)
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("purchase.create", "purchase.approve")]
+        public async Task<IActionResult> Cancel(int id)
         {
-            var order = _context.PurchaseOrders.Find(id);
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
 
-            if (order == null)
+            try
             {
-                return NotFound();
+                var order = await _context.PurchaseOrders
+                    .Include(o => o.Items)
+                    .FirstOrDefaultAsync(o => o.Id == id);
+
+                if (order == null)
+                {
+                    await transaction.RollbackAsync();
+                    return NotFound();
+                }
+
+                if (order.Items.Any(i => i.ReceivedQuantity > 0))
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Kısmen veya tamamen teslim alınmış sipariş iptal edilemez.";
+                    return RedirectToAction("Details", new { id });
+                }
+
+                order.Status = "İptal Edildi";
+
+                var financeMovement = await _context.FinansHareketleri
+                    .FirstOrDefaultAsync(h =>
+                        h.OtomatikMi
+                        && h.KaynakTipi == "PurchaseOrder"
+                        && h.KaynakId == order.Id);
+
+                if (financeMovement != null)
+                {
+                    financeMovement.Durum = "Iptal";
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                TempData["Success"] = "Sipariş iptal edildi.";
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Sipariş iptal edilemedi. Hiçbir değişiklik kaydedilmedi.";
             }
 
-            if (order.Status == "Teslim Alındı")
-            {
-                TempData["Error"] = "Teslim alınmış sipariş iptal edilemez.";
-                return RedirectToAction("Details", new { id });
-            }
-
-            order.Status = "İptal Edildi";
-            _context.SaveChanges();
-
-            TempData["Success"] = "Sipariş iptal edildi.";
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
-        public IActionResult Receive(int id, Dictionary<int, int> receivedQuantities)
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("stock.adjust")]
+        public async Task<IActionResult> Receive(int id, Dictionary<int, int> receivedQuantities)
         {
-            var order = _context.PurchaseOrders
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Product)
-                .FirstOrDefault(o => o.Id == id);
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
 
-            if (order == null)
+            try
             {
-                return NotFound();
-            }
+                var order = await LoadOrderForReceiptAsync(id);
 
-            if (order.Status != "Onaylandı" && order.Status != "Kısmi Teslim Alındı")
-            {
-                TempData["Error"] = "Ürün teslim almak için sipariş önce onaylanmalıdır.";
-                return RedirectToAction("Details", new { id });
-            }
-
-            foreach (var item in order.Items)
-            {
-                int newReceivedQuantity = 0;
-
-                if (receivedQuantities != null && receivedQuantities.ContainsKey(item.Id))
+                if (order == null)
                 {
-                    newReceivedQuantity = receivedQuantities[item.Id];
+                    await transaction.RollbackAsync();
+                    return NotFound();
                 }
 
-                if (newReceivedQuantity < 0)
+                if (order.Status != "Onaylandı" && order.Status != "Kısmi Teslim Alındı")
                 {
-                    newReceivedQuantity = 0;
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Ürün teslim almak için sipariş önce onaylanmalıdır.";
+                    return RedirectToAction("Details", new { id });
                 }
 
-                if (newReceivedQuantity > item.Quantity)
-                {
-                    newReceivedQuantity = item.Quantity;
-                }
+                await ApplyReceiptQuantitiesAsync(order, receivedQuantities, DateTime.Now);
 
-                int stockIncrease = newReceivedQuantity - item.ReceivedQuantity;
+                UpdateReceivedOrderStatus(order);
+                await UpsertPurchaseFinanceMovementAsync(order, DateTime.Now);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                if (stockIncrease > 0 && item.Product != null)
-                {
-                    item.Product.StockQuantity += stockIncrease;
-                    item.ReceivedQuantity = newReceivedQuantity;
-                }
+                TempData["Success"] = "Teslim alma işlemi kaydedildi; stok ve bekleyen finans hareketi birlikte güncellendi.";
             }
-
-            bool allReceived = order.Items.All(i => i.ReceivedQuantity >= i.Quantity);
-            bool anyReceived = order.Items.Any(i => i.ReceivedQuantity > 0);
-
-            if (allReceived)
+            catch (Exception)
             {
-                order.Status = "Teslim Alındı";
-                order.CheckedAt = DateTime.Now;
-                order.ReceivedAt = DateTime.Now;
-            }
-            else if (anyReceived)
-            {
-                order.Status = "Kısmi Teslim Alındı";
-                order.CheckedAt = DateTime.Now;
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Teslim alma tamamlanamadı. Stok ve finans kayıtlarında değişiklik yapılmadı.";
             }
 
-            _context.SaveChanges();
-
-            TempData["Success"] = "Teslim alma işlemi kaydedildi. Gelen miktarlar stoğa eklendi.";
             return RedirectToAction("Details", new { id });
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
-        public IActionResult ReceiveAll(int id)
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("stock.adjust")]
+        public async Task<IActionResult> ReceiveAll(int id)
         {
-            var order = _context.PurchaseOrders
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Product)
-                .FirstOrDefault(o => o.Id == id);
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
 
-            if (order == null)
+            try
             {
-                return NotFound();
-            }
+                var order = await LoadOrderForReceiptAsync(id);
 
-            if (order.Status != "Onaylandı" && order.Status != "Kısmi Teslim Alındı")
-            {
-                TempData["Error"] = "Sipariş geldi onayı verebilmek için sipariş önce onaylanmış olmalıdır.";
-                return RedirectToAction("Index");
-            }
-
-            foreach (var item in order.Items)
-            {
-                int remainingQuantity = item.Quantity - item.ReceivedQuantity;
-
-                if (remainingQuantity > 0 && item.Product != null)
+                if (order == null)
                 {
-                    item.Product.StockQuantity += remainingQuantity;
-                    item.ReceivedQuantity = item.Quantity;
+                    await transaction.RollbackAsync();
+                    return NotFound();
                 }
+
+                if (order.Status != "Onaylandı" && order.Status != "Kısmi Teslim Alındı")
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Sipariş geldi onayı verebilmek için sipariş önce onaylanmış olmalıdır.";
+                    return RedirectToAction("Index");
+                }
+
+                await ApplyRemainingReceiptAsync(order, DateTime.Now);
+                UpdateReceivedOrderStatus(order);
+                await UpsertPurchaseFinanceMovementAsync(order, DateTime.Now);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Success"] = "Sipariş teslim alındı; stok ve bekleyen finans hareketi birlikte güncellendi.";
             }
-
-            order.Status = "Teslim Alındı";
-            order.CheckedAt = DateTime.Now;
-            order.ReceivedAt = DateTime.Now;
-
-            _context.SaveChanges();
-
-            TempData["Success"] = "Sipariş geldi olarak onaylandı. Ürünler kontrol edildi ve stoklara işlendi.";
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Teslim alma tamamlanamadı. Stok ve finans kayıtlarında değişiklik yapılmadı.";
+            }
 
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
-        public IActionResult ReceiveSelected(List<int> selectedReceiveOrderIds)
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("stock.adjust")]
+        public async Task<IActionResult> ReceiveSelected(List<int> selectedReceiveOrderIds)
         {
             if (selectedReceiveOrderIds == null || selectedReceiveOrderIds.Count == 0)
             {
@@ -588,82 +616,267 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index");
             }
 
-            var orders = _context.PurchaseOrders
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Product)
-                .Where(o =>
-                    selectedReceiveOrderIds.Contains(o.Id) &&
-                    (o.Status == "Onaylandı" || o.Status == "Kısmi Teslim Alındı"))
-                .ToList();
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
 
-            if (!orders.Any())
+            try
             {
-                TempData["Error"] = "Seçilen siparişler arasında geldi olarak işlenebilecek sipariş bulunamadı.";
-                return RedirectToAction("Index");
-            }
+                var orderIds = await _context.PurchaseOrders
+                    .AsNoTracking()
+                    .Where(o =>
+                        selectedReceiveOrderIds.Contains(o.Id) &&
+                        (o.Status == "Onaylandı" || o.Status == "Kısmi Teslim Alındı"))
+                    .Select(o => o.Id)
+                    .OrderBy(id => id)
+                    .ToListAsync();
 
-            foreach (var order in orders)
-            {
-                foreach (var item in order.Items)
+                var orders = new List<PurchaseOrder>();
+                foreach (int orderId in orderIds)
                 {
-                    int remainingQuantity = item.Quantity - item.ReceivedQuantity;
-
-                    if (remainingQuantity > 0 && item.Product != null)
+                    var order = await LoadOrderForReceiptAsync(orderId);
+                    if (order != null
+                        && (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı"))
                     {
-                        item.Product.StockQuantity += remainingQuantity;
-                        item.ReceivedQuantity = item.Quantity;
+                        orders.Add(order);
                     }
                 }
 
-                order.Status = "Teslim Alındı";
-                order.CheckedAt = DateTime.Now;
-                order.ReceivedAt = DateTime.Now;
+                if (!orders.Any())
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Seçilen siparişler arasında geldi olarak işlenebilecek sipariş bulunamadı.";
+                    return RedirectToAction("Index");
+                }
+
+                foreach (var order in orders)
+                {
+                    await ApplyRemainingReceiptAsync(order, DateTime.Now);
+                    UpdateReceivedOrderStatus(order);
+                    await UpsertPurchaseFinanceMovementAsync(order, DateTime.Now);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                TempData["Success"] = $"{orders.Count} sipariş için stok ve bekleyen finans hareketleri birlikte güncellendi.";
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Toplu teslim alma tamamlanamadı. Stok ve finans kayıtlarında değişiklik yapılmadı.";
             }
 
-            _context.SaveChanges();
-
-            TempData["Success"] = $"{orders.Count} sipariş geldi/kontrol edildi olarak işaretlendi ve stoklara işlendi.";
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        [PermissionAuthorize("purchase.create", "stock.view", "product.view")]
-        public IActionResult ReceiveAllApproved()
+        [ValidateAntiForgeryToken]
+        [PermissionAuthorize("stock.adjust")]
+        public async Task<IActionResult> ReceiveAllApproved()
         {
-            var orders = _context.PurchaseOrders
-                .Include(o => o.Items)
-                    .ThenInclude(i => i.Product)
-                .Where(o => o.Status == "Onaylandı" || o.Status == "Kısmi Teslim Alındı")
-                .ToList();
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
 
-            if (!orders.Any())
+            try
             {
-                TempData["Error"] = "Geldi olarak işlenebilecek onaylı sipariş bulunamadı.";
-                return RedirectToAction("Index");
-            }
+                var orderIds = await _context.PurchaseOrders
+                    .AsNoTracking()
+                    .Where(o => o.Status == "Onaylandı" || o.Status == "Kısmi Teslim Alındı")
+                    .Select(o => o.Id)
+                    .OrderBy(id => id)
+                    .ToListAsync();
 
-            foreach (var order in orders)
-            {
-                foreach (var item in order.Items)
+                var orders = new List<PurchaseOrder>();
+                foreach (int orderId in orderIds)
                 {
-                    int remainingQuantity = item.Quantity - item.ReceivedQuantity;
-
-                    if (remainingQuantity > 0 && item.Product != null)
+                    var order = await LoadOrderForReceiptAsync(orderId);
+                    if (order != null
+                        && (order.Status == "Onaylandı" || order.Status == "Kısmi Teslim Alındı"))
                     {
-                        item.Product.StockQuantity += remainingQuantity;
-                        item.ReceivedQuantity = item.Quantity;
+                        orders.Add(order);
                     }
                 }
 
-                order.Status = "Teslim Alındı";
-                order.CheckedAt = DateTime.Now;
-                order.ReceivedAt = DateTime.Now;
+                if (!orders.Any())
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = "Geldi olarak işlenebilecek onaylı sipariş bulunamadı.";
+                    return RedirectToAction("Index");
+                }
+
+                foreach (var order in orders)
+                {
+                    await ApplyRemainingReceiptAsync(order, DateTime.Now);
+                    UpdateReceivedOrderStatus(order);
+                    await UpsertPurchaseFinanceMovementAsync(order, DateTime.Now);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                TempData["Success"] = $"{orders.Count} onaylı sipariş için stok ve bekleyen finans hareketleri birlikte güncellendi.";
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Toplu teslim alma tamamlanamadı. Stok ve finans kayıtlarında değişiklik yapılmadı.";
             }
 
-            _context.SaveChanges();
-
-            TempData["Success"] = $"{orders.Count} onaylı sipariş geldi/kontrol edildi olarak işaretlendi ve stoklara işlendi.";
             return RedirectToAction("Index");
+        }
+
+        private async Task<PurchaseOrder?> LoadOrderForReceiptAsync(int id)
+        {
+            var order = await _context.PurchaseOrders
+                .FromSqlInterpolated(
+                    $"SELECT * FROM purchase_orders WHERE id = {id} FOR UPDATE")
+                .SingleOrDefaultAsync();
+
+            if (order == null)
+            {
+                return null;
+            }
+
+            await _context.Entry(order)
+                .Collection(o => o.Items)
+                .Query()
+                .LoadAsync();
+
+            return order;
+        }
+
+        private async Task ApplyReceiptQuantitiesAsync(
+            PurchaseOrder order,
+            IReadOnlyDictionary<int, int>? receivedQuantities,
+            DateTime processedAt)
+        {
+            foreach (var item in order.Items.OrderBy(i => i.Id))
+            {
+                int newReceivedQuantity = receivedQuantities != null
+                    && receivedQuantities.TryGetValue(item.Id, out int enteredQuantity)
+                        ? enteredQuantity
+                        : item.ReceivedQuantity;
+
+                newReceivedQuantity = Math.Clamp(
+                    newReceivedQuantity,
+                    item.ReceivedQuantity,
+                    item.Quantity);
+                int receivedDifference = newReceivedQuantity - item.ReceivedQuantity;
+
+                if (receivedDifference > 0)
+                {
+                    item.ReceivedQuantity = newReceivedQuantity;
+                    await RecordPurchaseReceiptAsync(order, item, receivedDifference, processedAt);
+                }
+            }
+        }
+
+        private async Task ApplyRemainingReceiptAsync(PurchaseOrder order, DateTime processedAt)
+        {
+            foreach (var item in order.Items.OrderBy(i => i.Id))
+            {
+                int remainingQuantity = item.Quantity - item.ReceivedQuantity;
+                if (remainingQuantity <= 0)
+                {
+                    continue;
+                }
+
+                item.ReceivedQuantity = item.Quantity;
+                await RecordPurchaseReceiptAsync(order, item, remainingQuantity, processedAt);
+            }
+        }
+
+        private Task<StockMovement> RecordPurchaseReceiptAsync(
+            PurchaseOrder order,
+            PurchaseOrderItem item,
+            int receivedQuantity,
+            DateTime processedAt)
+        {
+            string sourceNo = $"PO-{order.Id:D6}";
+            return _stockMovementService.RecordAsync(new StockMovementCommand(
+                ProductId: item.ProductId,
+                MovementType: StockMovementService.InboundMovement,
+                ReasonType: "SatinAlmaTeslimi",
+                Quantity: receivedQuantity,
+                MovementDate: processedAt,
+                UnitCost: item.UnitPrice,
+                SourceType: "PurchaseReceipt",
+                SourceId: order.Id,
+                SourceLineId: item.Id,
+                SourceNo: sourceNo,
+                Description: "Satın alma teslimi.",
+                CreatedByEmployeeId: HttpContext.Session.GetInt32("EmployeeId"),
+                AllowInactiveProduct: true,
+                EnforceUniqueSourceLine: false));
+        }
+
+        private static void UpdateReceivedOrderStatus(PurchaseOrder order)
+        {
+            var processedAt = DateTime.Now;
+            bool allReceived = order.Items.All(i => i.ReceivedQuantity >= i.Quantity);
+            bool anyReceived = order.Items.Any(i => i.ReceivedQuantity > 0);
+
+            if (allReceived)
+            {
+                order.Status = "Teslim Alındı";
+                order.CheckedAt = processedAt;
+                order.ReceivedAt = processedAt;
+            }
+            else if (anyReceived)
+            {
+                order.Status = "Kısmi Teslim Alındı";
+                order.CheckedAt = processedAt;
+            }
+        }
+
+        private async Task UpsertPurchaseFinanceMovementAsync(PurchaseOrder order, DateTime processedAt)
+        {
+            decimal receivedTotal = order.Items.Sum(i => i.ReceivedQuantity * i.UnitPrice);
+            if (receivedTotal <= 0)
+            {
+                return;
+            }
+
+            string sourceNo = $"PO-{order.Id:D6}";
+            var movement = await _context.FinansHareketleri
+                .FirstOrDefaultAsync(h =>
+                    h.OtomatikMi
+                    && h.KaynakTipi == "PurchaseOrder"
+                    && h.KaynakId == order.Id);
+
+            if (movement == null)
+            {
+                _context.FinansHareketleri.Add(new FinansHareketi
+                {
+                    Tip = "Gider",
+                    Kategori = "Satın Alma",
+                    Baslik = "Satın Alma Teslimatı",
+                    Tutar = receivedTotal,
+                    Tarih = processedAt,
+                    Durum = "Bekliyor",
+                    OdemeYontemi = "BankaHavalesi",
+                    Aciklama = $"{sourceNo} numaralı siparişte teslim alınan ürünlerin maliyeti.",
+                    OlusturanKullaniciId = HttpContext.Session.GetInt32("EmployeeId"),
+                    OlusturmaTarihi = processedAt,
+                    KaynakTipi = "PurchaseOrder",
+                    KaynakId = order.Id,
+                    KaynakNo = sourceNo,
+                    OtomatikMi = true
+                });
+                return;
+            }
+
+            if (movement.Durum != "Bekliyor")
+            {
+                if (movement.Tutar != receivedTotal)
+                {
+                    throw new InvalidOperationException(
+                        "Ödeme durumu kesinleşmiş satın alma hareketinin tutarı yeni teslimatla değiştirilemez.");
+                }
+
+                return;
+            }
+
+            movement.Tutar = receivedTotal;
+            movement.Aciklama = $"{sourceNo} numaralı siparişte teslim alınan ürünlerin güncel toplam maliyeti.";
         }
     }
 

@@ -143,6 +143,10 @@ namespace MarketERP.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("full_name");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_active");
+
                     b.Property<string>("Phone")
                         .HasColumnType("longtext")
                         .HasColumnName("phone");
@@ -377,6 +381,20 @@ namespace MarketERP.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("kategori");
 
+                    b.Property<int?>("KaynakId")
+                        .HasColumnType("int")
+                        .HasColumnName("kaynak_id");
+
+                    b.Property<string>("KaynakNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("kaynak_no");
+
+                    b.Property<string>("KaynakTipi")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("kaynak_tipi");
+
                     b.Property<string>("OdemeYontemi")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -390,6 +408,10 @@ namespace MarketERP.Migrations
                     b.Property<DateTime>("OlusturmaTarihi")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("olusturma_tarihi");
+
+                    b.Property<bool>("OtomatikMi")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("otomatik_mi");
 
                     b.Property<int?>("SabitGiderId")
                         .HasColumnType("int")
@@ -415,6 +437,9 @@ namespace MarketERP.Migrations
                     b.HasIndex("OlusturanKullaniciId");
 
                     b.HasIndex("SabitGiderId");
+
+                    b.HasIndex("KaynakTipi", "KaynakId")
+                        .IsUnique();
 
                     b.ToTable("finans_hareketleri");
                 });
@@ -467,6 +492,10 @@ namespace MarketERP.Migrations
                     b.Property<int>("CriticalStock")
                         .HasColumnType("int")
                         .HasColumnName("critical_stock");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -845,6 +874,19 @@ namespace MarketERP.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<int?>("CancelledByEmployeeId")
+                        .HasColumnType("int")
+                        .HasColumnName("cancelled_by_employee_id");
+
                     b.Property<int?>("CustomerId")
                         .HasColumnType("int")
                         .HasColumnName("customer_id");
@@ -862,11 +904,21 @@ namespace MarketERP.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("sale_date");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasDefaultValue("Aktif")
+                        .HasColumnName("status");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(65,30)")
                         .HasColumnName("total_amount");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CancelledByEmployeeId");
 
                     b.HasIndex("CustomerId");
 
@@ -949,6 +1001,100 @@ namespace MarketERP.Migrations
                     b.ToTable("saved_queries");
                 });
 
+            modelBuilder.Entity("MarketERP.Models.StockMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("CreatedByEmployeeId")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by_employee_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("MovementDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("movement_date");
+
+                    b.Property<string>("MovementType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("movement_type");
+
+                    b.Property<int>("NewQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("new_quantity");
+
+                    b.Property<int>("PreviousQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("previous_quantity");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<string>("ReasonType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("reason_type");
+
+                    b.Property<int?>("ReversalOfMovementId")
+                        .HasColumnType("int")
+                        .HasColumnName("reversal_of_movement_id");
+
+                    b.Property<int?>("SourceId")
+                        .HasColumnType("int")
+                        .HasColumnName("source_id");
+
+                    b.Property<int?>("SourceLineId")
+                        .HasColumnType("int")
+                        .HasColumnName("source_line_id");
+
+                    b.Property<string>("SourceNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("source_no");
+
+                    b.Property<string>("SourceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("unit_cost");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByEmployeeId");
+
+                    b.HasIndex("ReversalOfMovementId");
+
+                    b.HasIndex("ProductId", "MovementDate");
+
+                    b.HasIndex("SourceType", "SourceId", "SourceLineId");
+
+                    b.ToTable("stock_movement_logs");
+                });
+
             modelBuilder.Entity("MarketERP.Models.Supplier", b =>
                 {
                     b.Property<int>("Id")
@@ -976,6 +1122,10 @@ namespace MarketERP.Migrations
                         .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("email");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("is_active");
 
                     b.Property<string>("Phone")
                         .IsRequired()
@@ -1387,6 +1537,11 @@ namespace MarketERP.Migrations
 
             modelBuilder.Entity("MarketERP.Models.Sale", b =>
                 {
+                    b.HasOne("MarketERP.Models.Employee", "CancelledByEmployee")
+                        .WithMany()
+                        .HasForeignKey("CancelledByEmployeeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MarketERP.Models.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId");
@@ -1394,6 +1549,8 @@ namespace MarketERP.Migrations
                     b.HasOne("MarketERP.Models.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId");
+
+                    b.Navigation("CancelledByEmployee");
 
                     b.Navigation("Customer");
 
@@ -1417,6 +1574,31 @@ namespace MarketERP.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("MarketERP.Models.StockMovement", b =>
+                {
+                    b.HasOne("MarketERP.Models.Employee", "CreatedByEmployee")
+                        .WithMany()
+                        .HasForeignKey("CreatedByEmployeeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MarketERP.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarketERP.Models.StockMovement", "ReversalOfMovement")
+                        .WithMany()
+                        .HasForeignKey("ReversalOfMovementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByEmployee");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("ReversalOfMovement");
                 });
 
             modelBuilder.Entity("MarketERP.Models.SupportTicket", b =>

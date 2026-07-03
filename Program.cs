@@ -1,4 +1,5 @@
 using MarketERP.Data;
+using MarketERP.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarketERP
@@ -18,6 +19,7 @@ namespace MarketERP
             // Add services to the container.
             builder.Services.AddControllersWithViews();
             builder.Services.AddSession();
+            builder.Services.AddScoped<IStockMovementService, StockMovementService>();
 
             var app = builder.Build();
 

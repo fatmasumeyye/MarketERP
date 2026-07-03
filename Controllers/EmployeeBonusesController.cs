@@ -24,7 +24,10 @@ namespace MarketERP.Controllers
                 return RedirectToAction("Index", "Login");
             }
 
-            ViewBag.Employees = new SelectList(_context.Employees.ToList(), "Id", "FullName");
+            ViewBag.Employees = new SelectList(
+                _context.Employees.Where(e => e.IsActive).OrderBy(e => e.FullName).ToList(),
+                "Id",
+                "FullName");
 
             var bonuses = _context.EmployeeBonuses
                 .Include(b => b.Employee)
@@ -37,6 +40,12 @@ namespace MarketERP.Controllers
         [HttpPost]
         public IActionResult Add(EmployeeBonus bonus)
         {
+            if (!_context.Employees.Any(e => e.Id == bonus.EmployeeId && e.IsActive))
+            {
+                TempData["Error"] = "Pasif veya bulunamayan çalışana prim atanamaz.";
+                return RedirectToAction("Index");
+            }
+
             _context.EmployeeBonuses.Add(bonus);
             _context.SaveChanges();
 

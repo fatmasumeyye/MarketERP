@@ -1,5 +1,6 @@
 using MarketERP.Data;
 using MarketERP.Helpers;
+using MarketERP.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -98,22 +99,22 @@ namespace MarketERP.Controllers
             DateTime yearStart = new DateTime(today.Year, 1, 1);
 
             // Satış / Ciro Kartları
-            ViewBag.TodaySalesCount = _context.Sales
+            ViewBag.TodaySalesCount = _context.Sales.ActiveSales()
                 .Count(s => s.SaleDate >= today && s.SaleDate < tomorrow);
 
-            ViewBag.TodayRevenue = _context.Sales
+            ViewBag.TodayRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= today && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            ViewBag.WeeklyRevenue = _context.Sales
+            ViewBag.WeeklyRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= weekStart && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            ViewBag.MonthlyRevenue = _context.Sales
+            ViewBag.MonthlyRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            ViewBag.YearlyRevenue = _context.Sales
+            ViewBag.YearlyRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= yearStart && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
@@ -156,7 +157,7 @@ namespace MarketERP.Controllers
                 .ToList();
 
             // Son satışlar
-            ViewBag.RecentSales = _context.Sales
+            ViewBag.RecentSales = _context.Sales.ActiveSales()
                 .Include(s => s.Customer)
                 .Include(s => s.Employee)
                 .OrderByDescending(s => s.SaleDate)
@@ -175,11 +176,11 @@ namespace MarketERP.Controllers
                 DateTime day = sevenDaysAgo.AddDays(i);
                 DateTime nextDay = day.AddDays(1);
 
-                decimal dayRevenue = _context.Sales
+                decimal dayRevenue = _context.Sales.ActiveSales()
                     .Where(s => s.SaleDate >= day && s.SaleDate < nextDay)
                     .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-                int daySalesCount = _context.Sales
+                int daySalesCount = _context.Sales.ActiveSales()
                     .Count(s => s.SaleDate >= day && s.SaleDate < nextDay);
 
                 last7DaysLabels.Add(day.ToString("dd.MM"));
@@ -192,7 +193,7 @@ namespace MarketERP.Controllers
             ViewBag.SalesCountChartData = last7DaysSalesCount;
 
             // Bu ay ödeme tipi dağılımı
-            var paymentTypeData = _context.Sales
+            var paymentTypeData = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
                 .GroupBy(s => string.IsNullOrWhiteSpace(s.PaymentType) ? "Belirtilmedi" : s.PaymentType)
                 .Select(g => new
@@ -216,6 +217,7 @@ namespace MarketERP.Controllers
                 .Where(sd =>
                     sd.Product != null
                     && sd.Sale != null
+                    && sd.Sale.Status != Sale.CancelledStatus
                     && sd.Sale.SaleDate >= today
                     && sd.Sale.SaleDate < tomorrow)
                 .GroupBy(sd => sd.Product!.Name)
@@ -241,10 +243,10 @@ namespace MarketERP.Controllers
             ViewBag.CustomerCount = _context.Customers.Count();
             ViewBag.EmployeeCount = _context.Employees.Count();
 
-            ViewBag.TotalRevenue = _context.Sales
+            ViewBag.TotalRevenue = _context.Sales.ActiveSales()
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            ViewBag.SaleCount = _context.Sales.Count();
+            ViewBag.SaleCount = _context.Sales.ActiveSales().Count();
 
             ViewBag.TotalBonus = _context.EmployeeBonuses
                 .Sum(b => (decimal?)b.BonusAmount) ?? 0;
@@ -312,11 +314,11 @@ namespace MarketERP.Controllers
             var tomorrow = today.AddDays(1);
             var monthStart = new DateTime(today.Year, today.Month, 1);
 
-            var todayRevenue = _context.Sales
+            var todayRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= today && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
-            var monthlyRevenue = _context.Sales
+            var monthlyRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
@@ -326,7 +328,7 @@ namespace MarketERP.Controllers
 
             ViewBag.TodayRevenue = todayRevenue;
             ViewBag.MonthlyRevenue = monthlyRevenue;
-            ViewBag.TotalCollections = _context.Sales
+            ViewBag.TotalCollections = _context.Sales.ActiveSales()
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
             ViewBag.MonthlyExpense = monthlyExpense;
             ViewBag.MonthlyNet = monthlyRevenue - monthlyExpense;
@@ -357,7 +359,7 @@ namespace MarketERP.Controllers
             ViewBag.PendingPurchaseOrderAmount = pendingPurchaseOrders
                 .Sum(o => (decimal?)o.TotalAmount) ?? 0;
 
-            var paymentTypeTotals = _context.Sales
+            var paymentTypeTotals = _context.Sales.ActiveSales()
                 .Where(s => s.SaleDate >= monthStart && s.SaleDate < tomorrow)
                 .GroupBy(s => string.IsNullOrWhiteSpace(s.PaymentType)
                     ? "Belirtilmedi"
@@ -387,7 +389,7 @@ namespace MarketERP.Controllers
                 .Take(5)
                 .ToList();
 
-            ViewBag.RecentSales = _context.Sales
+            ViewBag.RecentSales = _context.Sales.ActiveSales()
                 .Include(s => s.Customer)
                 .OrderByDescending(s => s.SaleDate)
                 .Take(5)
@@ -408,7 +410,7 @@ namespace MarketERP.Controllers
             DateTime today = DateTime.Today;
             DateTime tomorrow = today.AddDays(1);
 
-            var todaySales = _context.Sales
+            var todaySales = _context.Sales.ActiveSales()
                 .Include(s => s.Customer)
                 .Where(s =>
                     s.EmployeeId == employeeId.Value &&
@@ -427,7 +429,7 @@ namespace MarketERP.Controllers
                 .Where(s => s.PaymentType == "Kart")
                 .Sum(s => s.TotalAmount);
 
-            ViewBag.LastSales = _context.Sales
+            ViewBag.LastSales = _context.Sales.ActiveSales()
                 .Include(s => s.Customer)
                 .Where(s => s.EmployeeId == employeeId.Value)
                 .OrderByDescending(s => s.SaleDate)
@@ -448,10 +450,10 @@ namespace MarketERP.Controllers
                     r.EmployeeId == employeeId.Value &&
                     r.Status == "Beklemede");
 
-            ViewBag.MyTotalSalesCount = _context.Sales
+            ViewBag.MyTotalSalesCount = _context.Sales.ActiveSales()
                 .Count(s => s.EmployeeId == employeeId.Value);
 
-            ViewBag.MyTotalRevenue = _context.Sales
+            ViewBag.MyTotalRevenue = _context.Sales.ActiveSales()
                 .Where(s => s.EmployeeId == employeeId.Value)
                 .Sum(s => (decimal?)s.TotalAmount) ?? 0;
 
